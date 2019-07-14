@@ -1,0 +1,20 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+.directory
+MANIFEST
+
+
+# dist files
+dist/
+*.zip
+*.tar.gz
+
+build/
+	*.*
+
+*.so
+
+outliertree/
+	*.so
+	outlier_cpp_interface.cpp
