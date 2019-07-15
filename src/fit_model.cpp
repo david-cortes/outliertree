@@ -1023,6 +1023,7 @@ void process_categ_col(std::vector<Cluster> &cluster_root,
                                      &workspace.outlier_depth[0], workspace.clusters->back(),
                                      &input_data.cat_counts[ model_outputs.start_ix_cat_counts[workspace.target_col_num] ],
                                      &workspace.buffer_subset_categ[0], workspace.orig_mean);
+        workspace.st = move_outliers_to_front(&workspace.ix_arr[0], &workspace.outlier_scores[0], workspace.st, workspace.end);
     }
 
     /* if no conditional outliers are required, stop there */
