@@ -77,12 +77,19 @@ df = data.frame(
 	categ_col    = sample(c('categA', 'categB', 'categC'), size = nrows, replace = TRUE)
 	)
 
+### test data frame with another obvious outlier
+df_test = data.frame(
+	numeric_col1 = rnorm(nrows),
+	numeric_col2 = c(rgamma(nrows, 1), 1e6),
+	categ_col    = sample(c('categA', 'categB', 'categC'), size = nrows, replace = TRUE)
+	)
+
 ### fit model
 outliers_model = outlier.tree(df, outliers_print = 10, save_outliers = TRUE)
 outliers_df = outliers_model$outliers_df
 
 ### find outliers in new data
-new_outliers = predict(outliers_model, df)
+new_outliers = predict(outliers_model, df_test)
 
 ### print outliers in readable format
 print(new_outliers)
@@ -104,12 +111,19 @@ df = pd.DataFrame({
 	"categ_col"    : np.random.choice(['categA', 'categB', 'categC'], size = nrows)
 	})
 
+### test data frame with another obvious outlier
+df_test = pd.DataFrame({
+	"numeric_col1" : np.random.normal(size = nrows),
+	"numeric_col2" : np.r_[np.random.gamma(1, 1, size = nrows - 1), np.array([float(1e6)])],
+	"categ_col"    : np.random.choice(['categA', 'categB', 'categC'], size = nrows)
+	})
+
 ### fit model
 outliers_model = OutlierTree()
 outliers_df = outliers_model.fit(df, outliers_print = 10, return_outliers = True)
 
 ### find outliers in new data
-new_outliers = outliers_model.predict(df)
+new_outliers = outliers_model.predict(df_test)
 
 ### print outliers in readable format
 outliers_model.print_outliers(new_outliers)

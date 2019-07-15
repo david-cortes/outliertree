@@ -890,3 +890,6 @@ class OutlierTree:
                         outstr += str(cols_concat[cl]) + ", "
                 outstr = re.sub(", $", ".\n", outstr)
                 f_out.write(outstr)
+
+    def _get_model_outputs(self):
+        return self._outlier_cpp_obj.get_model_outputs()

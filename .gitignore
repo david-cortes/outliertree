@@ -14,7 +14,17 @@ build/
 	*.*
 
 *.so
+*.lib
+*.obj
+*.dynlib
+*.pyd
 
 outliertree/
 	*.so
 	outlier_cpp_interface.cpp
+
+outliertree.egg-info/
+	*
+
+build/
+	*

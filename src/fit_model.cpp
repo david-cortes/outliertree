@@ -239,6 +239,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     #pragma omp parallel for shared(model_outputs, input_data, model_params, tot_cols)
     for (size_t_for col = 0; col < tot_cols; col++) {
         if (input_data.skip_col[col]) continue;
+        if (cols_ignore != NULL && cols_ignore[col]) continue;
         model_outputs.all_clusters[col].reserve(tot_cols * (pow2(model_params.max_depth + 1)));
         model_outputs.all_trees[col].reserve( square(model_params.max_depth) );
         /* this is not exact as categoricals and ordinals can also be split multiple times */
@@ -508,6 +509,7 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
             sum_sq -= square(workspace.target_numeric_col[workspace.ix_arr[row]]);
             if (row == 0) break;
         }
+        workspace.col_has_outliers = true;
 
     }
     workspace.sd_y = calc_sd(input_data.nrows - workspace.st, sum, sum_sq);

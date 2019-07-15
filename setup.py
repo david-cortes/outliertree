@@ -39,7 +39,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '0.1.0',
+    version = '0.1.1',
 	description = 'Explainable outlier detection through smart decision tree conditioning',
 	author = 'David Cortes',
 	author_email = 'david.cortes.rivera@gmail.com',
@@ -52,6 +52,6 @@ setup(
     									 "src/fit_model.cpp", "src/clusters.cpp", "src/misc.cpp", "src/predict.cpp"],
     							include_dirs=[np.get_include(), ".", "./src"],
     							language="c++",
-    							install_requires = ["numpy", "pandas", "cython"]
+    							install_requires = ["numpy", "pandas>=0.24.0", "cython"]
     						)]
     ) 
