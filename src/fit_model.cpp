@@ -371,7 +371,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
 
     }
 
-    // #ifdef TEST_MODE_DEFINE
+    #ifdef TEST_MODE_DEFINE
     for (size_t col = 0; col < tot_cols; col++) {
         std::cout << "col " << col << " has " << model_outputs.all_clusters[col].size() << " clusters [" << model_outputs.all_trees[col].size() << " trees]" << std::endl;
     }
@@ -399,7 +399,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     //                    &cat_data_row[0],
     //                    &ord_data_row[0],
     //                    1, 1, model_outputs);
-    // #endif
+    #endif
 
     return found_outliers;
 }
