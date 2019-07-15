@@ -85,6 +85,12 @@ class OutlierTree:
         ----------
         is_fitted_ : bool
             Indicates if the model as already been fit.
+        flaggable_values : dict[ncols]
+            A dictionary indicating for each column which kind of values are possible to flag as outlier in
+            at least one of the explored branches. For numerical and timestamp columns, will indicate the
+            lower and upper bounds of the normal range (that is, it can only flag values *outside* of that interval),
+            while for categorical, ordinal, and boolean, it will indicate the categories (which it can flag as outliers).
+            If no values in a column can be flagged as outlier, entry for that column will be an empty dict.
         cols_num_ : array(ncols_numeric, )
             Names of the numeric columns in the data passed to '.fit'.
         cols_cat_ : array(ncols_categ, )
@@ -152,6 +158,7 @@ class OutlierTree:
         self._cat_mapping = list()
         self._ord_mapping = list()
         self._ts_min      = np.empty(0, dtype = int)
+        self.flaggable_values = dict()
 
     def fit(self, df, cols_ignore = None, outliers_print = 15, return_outliers = True):
         """
@@ -179,7 +186,13 @@ class OutlierTree:
         Note
         ----
         Boolean or binary columns must be passed as categorical (will not accept them as numerical, nor
-        as ordinal).
+        as ordinal). If they have missing values, pandas will not be able to have them with dtype "bool"
+        however (they need to be passed either as "object" or "Categorical" dtypes).
+
+        Note
+        ----
+        Do NOT do one-hot or dummy encoding on categorical variables.
+
 
         Parameters
         ----------
@@ -234,6 +247,10 @@ class OutlierTree:
                                                         )
         self.is_fitted_ = True
 
+        ### obtain info on which values or categories are possible to flag as outliers
+        self._determine_flaggable_values()
+
+        ### return/print info on training data as requested
         if out_df is not None:
             out_df.index = df.index.copy()
         if outliers_print:
@@ -247,6 +264,7 @@ class OutlierTree:
         else:
             return self
 
+
     def predict(self, df, outliers_print = None):
         """
         Detect outliers on new data
@@ -256,6 +274,14 @@ class OutlierTree:
         The group statistics for outliers are calculated only on rows that are not flagged as
         outliers - that is, they do not include the row being reported in their calculations,
         and exclude any outliers that were flagged at a previous parent branch.
+
+        Note
+        ----
+        This will generate conditions having these criteria: "<=", ">", "in", "=", "!=" (not equal).
+        When it says "in", it means that the value is within the subset of categories provided.
+        For ordinal columns, they will always be represented as "in", but the subset will follow
+        the order. The ".print" method will additionally simplify conditions to numeric "between",
+        and merge repeated splits that are on the same column.
 
         Parameters
         ----------
@@ -572,12 +598,48 @@ class OutlierTree:
             "outlier_score"    :  np.nan
             })
 
+    def _determine_flaggable_values(self):
+        self.flaggable_values = dict()
+        min_outl, max_outl, cat_outl = self._outlier_cpp_obj.get_flaggable_bounds()
+
+        for cl in range(min_outl.shape[0]):
+            if cl < self.cols_num_.shape[0]:
+                self.flaggable_values[self.cols_num_[cl]] = {"low" : min_outl[cl], "high" : max_outl[cl]}
+            else:
+                cl_ts = cl - self.cols_num_.shape[0]
+                self.flaggable_values[self.cols_ts_[cl_ts]] = {"low" : self._decode_date(min_outl[cl], cl_ts),
+                                                               "high" : self._decode_date(max_outl[cl], cl_ts)}
+
+        for cl in range(len(cat_outl)):
+            if cl < self.cols_cat_.shape[0]:
+                if cat_outl[cl].shape[0] == 0:
+                    self.flaggable_values[self.cols_cat_[cl]] = dict()
+                else:
+                    self.flaggable_values[self.cols_cat_[cl]] = np.array(self._cat_mapping[cl])[cat_outl[cl]]
+
+            elif cl < (self.cols_cat_.shape[0] + self.cols_bool_.shape[0]):
+                if cat_outl[cl].shape[0] == 0:
+                    self.flaggable_values[self.cols_bool_[cl]] = dict()
+                else:
+                    self.flaggable_values[self.cols_bool_[cl]] = np.array([False, True])[cat_outl[cl]]
+            
+            else:
+                if cat_outl[cl].shape[0] == 0:
+                    self.flaggable_values[self.cols_ord_[cl]] = dict()
+                else:
+                    self.flaggable_values[self.cols_ord_[cl]] = np.array(self._ord_mapping[cl])[cat_outl[cl]]
+
     def _print_no_outliers(self):
         print("No outliers found in input data.\n")
 
     def print_outliers(self, df_outliers, max_outliers = 15):
         """
         Print outliers in readable format
+
+        See the documentation for 'predict' for more details. This function will additionally
+        perform some simplifications on the branch conditions, such as taking the smallest
+        value when it is split two times by "<=". Can also pass a smaller DataFrame with
+        only selected outliers to be printed.
 
         Parameters
         ----------

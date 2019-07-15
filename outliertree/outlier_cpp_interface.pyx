@@ -120,6 +120,11 @@ cdef class OutlierCppObject:
     def get_model_outputs(self):
         return self.model_outputs
 
+    def get_flaggable_bounds(self):
+        return  np.array(self.model_outputs.min_outlier_any_cl), \
+                np.array(self.model_outputs.max_outlier_any_cl), \
+                [np.array(cl) for cl in self.model_outputs.cat_outlier_any_cl]
+
     def fit_model(self,
                   np.ndarray[double, ndim = 2] arr_num, np.ndarray[int, ndim = 2] arr_cat, np.ndarray[int, ndim = 2] arr_ord,
                   np.ndarray[int, ndim = 1] ncat, np.ndarray[int, ndim = 1] ncat_ord, np.ndarray[char, ndim = 1] cols_ignore,
