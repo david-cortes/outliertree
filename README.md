@@ -42,6 +42,7 @@ row [885] - suspicious column: [Fare] - suspicious value: [29.125]
 ```
 (i.e. it's saying that this person paid too much for the kind of accomodation he had)
 
+_Note that it can also produce other types of conditions such as 'between' (for numeric intervals) or 'in' (for categorical subsets)_
 
 # Installation
 
