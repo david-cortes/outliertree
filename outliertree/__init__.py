@@ -4,105 +4,104 @@ from ._outlier_cpp_interface import OutlierCppObject
 
 
 class OutlierTree:
+    """
+    Outlier Tree
+    
+    Explainable outlier detection through decision-tree grouping. Tries to detect outliers by generating decision trees that attempt to
+    "predict" the values of each column based on each other column, testing in each branch of every tried split (if it meets
+    some minimum criteria) whether there are observations that seem too distant from the others in a 1-D distribution for the column that
+    the split tries to "predict" (unlike other methods, this will not generate a score for each observation).
+
+    Splits are based on gain, while outlierness is based on confidence intervals. Similar in spirit to the GritBot software
+    developed by RuleQuest research.
+
+    Supports columns of types numeric, categorical, and ordinal (for this last one, will
+    consider their order when splitting other columns from them, but not when splitting to "predict" them), and can handle missing values
+    in any of them. Can also pass timestamps that will get converted to numeric but shown as timestamps in the output.
+    Offers option to set columns to be used only to split other columns but not to look at outliers in them.
+
+    Infinite values will be taken into consideration when the column is used to split another column (that is, +inf will go into
+    the branch that is greater than something, -inf into the other branch), but when a column is the target of the split, they
+    will be taken as missing - that is, it will not report infinite values as outliers.
+
+    Parameters
+    ----------
+    max_depth : int
+        Maximum depth of the trees to grow. Can also pass zero, in which case it will only look for
+        outliers with no conditions (i.e. takes each column as a 1-d distribution and looks for outliers
+        in there independently of the values in other column).
+    min_gain : float
+        Minimum gain that a split has to produce in order to consider it (both in terms of looking
+        for outliers in each branch, and in considering whether to continue branching from them).
+        Note that default value for GritBot is 1e-6.
+    z_norm : float
+        Maximum Z-value (from standard normal distribution) that can be considered as a normal observation.
+        Note that simply having values above this will not automatically flag observations as outliers,
+        nor does it assume that columns follow normal distributions.
+        Also used for categorical and ordinal columns for building approximate confidence intervals of
+        proportions.
+    z_outlier : float
+        Minimum Z-value that can be considered as an outlier. There must be a large gap in the Z-value of
+        the next observation in sorted order to consider it as outlier, given by (z_outlier - z_norm).
+        Ignored for categorical and ordinal columns.
+    pct_outliers : float
+        Approximate max percentage of outliers to expect in a given branch.
+    min_size_numeric : int
+        Minimum size that branches need to have when splitting a numeric column.
+    min_size_categ : int
+        Minimum size that branches need to have when splitting a categorical or ordinal column.
+    categ_as_bin : bool
+        Whether to make categorical-by-categorical binary splits by binarizing each category in the
+        column and then attempting splits by grouping categories into subsets. Alternative is to
+        create one branch per category of the column being split from. Ignored when there is only one
+        or fewer categorical columns. Can only pass one of 'categ_as_bin' and 'cat_bruteforce_subset'.
+    ord_as_bin : bool
+        Same as 'categ_as_bin', but for ordinal columns, and cumulative (i.e. it splits by '<=', not '=').
+        Ignored when there are no ordinal columns or no categorical columns.
+    cat_bruteforce_subset : bool
+        Whether to make categorical-by-categorical binary splits by trying all the possible combinations
+        of columns in each subset (that is, it evaluates 2^n potential splits every time). Note that trying
+        this when there are many categories in a column will result in exponential computation time that
+        might never finish. Alternative is to create one branch per category of the column being split from.
+        Ignored when there is only one or fewer categorical columns. Can only pass one of 'categ_as_bin'
+        and 'cat_bruteforce_subset'.
+    follow_all : bool
+        Whether to continue branching from each split that meets the size and gain criteria. This will
+        produce exponentially many more branches, and if depth is large, might take forever to finish.
+        Will also produce a lot more spurious outiers. Not recommended.
+    nthreads : int
+        Number of parallel threads to use. When fitting the model, it will only use up to one thread per
+        column, while for prediction it will use up to one thread per row. The more threads that are
+        used, the more memory will be required and allocated, so using more threads will not always lead
+        to better speed. Passing zero or negative numbers will default to the maximum number of available CPU
+        cores (but not if the object attribute is overwritten). Can be changed after the object is
+        already initialized.
+
+    Attributes
+    ----------
+    is_fitted_ : bool
+        Indicates if the model as already been fit.
+    flaggable_values : dict[ncols]
+        A dictionary indicating for each column which kind of values are possible to flag as outlier in
+        at least one of the explored branches. For numerical and timestamp columns, will indicate the
+        lower and upper bounds of the normal range (that is, it can only flag values *outside* of that interval),
+        while for categorical, ordinal, and boolean, it will indicate the categories (which it can flag as outliers).
+        If no values in a column can be flagged as outlier, entry for that column will be an empty dict.
+    cols_num_ : array(ncols_numeric, )
+        Names of the numeric columns in the data passed to '.fit'.
+    cols_cat_ : array(ncols_categ, )
+        Names of the categorical/string columns in the data passed to '.fit'.
+    cols_bool_ : array(ncols_bool, )
+        Names of the boolean columns in the data passed to '.fit'.
+    cols_ord_ : array(ncols_ordinal, )
+        Names of the ordinal columns in the data passed to '.fit'.
+    cols_ts_ : array(ncols_tiemstamp, )
+        Names of the timestamp columns in the data passed to '.fit'.
+    """
 
     def __init__(self, max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_outlier = 8.0, pct_outliers = 0.01,
                  min_size_numeric = 25, min_size_categ = 75, categ_as_bin = True, ord_as_bin = True,
                  cat_bruteforce_subset = False, follow_all = False, nthreads = -1):
-        """
-        Outlier Tree
-        
-        Explainable outlier detection through decision-tree grouping. Tries to detect outliers by generating decision trees that attempt to
-        "predict" the values of each column based on each other column, testing in each branch of every tried split (if it meets
-        some minimum criteria) whether there are observations that seem too distant from the others in a 1-D distribution for the column that
-        the split tries to "predict" (unlike other methods, this will not generate a score for each observation).
-
-        Splits are based on gain, while outlierness is based on confidence intervals. Similar in spirit to the GritBot software
-        developed by RuleQuest research.
-
-        Supports columns of types numeric, categorical, and ordinal (for this last one, will
-        consider their order when splitting other columns from them, but not when splitting to "predict" them), and can handle missing values
-        in any of them. Can also pass timestamps that will get converted to numeric but shown as timestamps in the output.
-        Offers option to set columns to be used only to split other columns but not to look at outliers in them.
-
-        Infinite values will be taken into consideration when the column is used to split another column (that is, +inf will go into
-        the branch that is greater than something, -inf into the other branch), but when a column is the target of the split, they
-        will be taken as missing - that is, it will not report infinite values as outliers.
-
-        Parameters
-        ----------
-        max_depth : int
-            Maximum depth of the trees to grow. Can also pass zero, in which case it will only look for
-            outliers with no conditions (i.e. takes each column as a 1-d distribution and looks for outliers
-            in there independently of the values in other column).
-        min_gain : float
-            Minimum gain that a split has to produce in order to consider it (both in terms of looking
-            for outliers in each branch, and in considering whether to continue branching from them).
-            Note that default value for GritBot is 1e-6.
-        z_norm : float
-            Maximum Z-value (from standard normal distribution) that can be considered as a normal observation.
-            Note that simply having values above this will not automatically flag observations as outliers,
-            nor does it assume that columns follow normal distributions.
-            Also used for categorical and ordinal columns for building approximate confidence intervals of
-            proportions.
-        z_outlier : float
-            Minimum Z-value that can be considered as an outlier. There must be a large gap in the Z-value of
-            the next observation in sorted order to consider it as outlier, given by (z_outlier - z_norm).
-            Ignored for categorical and ordinal columns.
-        pct_outliers : float
-            Approximate max percentage of outliers to expect in a given branch.
-        min_size_numeric : int
-            Minimum size that branches need to have when splitting a numeric column.
-        min_size_categ : int
-            Minimum size that branches need to have when splitting a categorical or ordinal column.
-        categ_as_bin : bool
-            Whether to make categorical-by-categorical binary splits by binarizing each category in the
-            column and then attempting splits by grouping categories into subsets. Alternative is to
-            create one branch per category of the column being split from. Ignored when there is only one
-            or fewer categorical columns. Can only pass one of 'categ_as_bin' and 'cat_bruteforce_subset'.
-        ord_as_bin : bool
-            Same as 'categ_as_bin', but for ordinal columns, and cumulative (i.e. it splits by '<=', not '=').
-            Ignored when there are no ordinal columns or no categorical columns.
-        cat_bruteforce_subset : bool
-            Whether to make categorical-by-categorical binary splits by trying all the possible combinations
-            of columns in each subset (that is, it evaluates 2^n potential splits every time). Note that trying
-            this when there are many categories in a column will result in exponential computation time that
-            might never finish. Alternative is to create one branch per category of the column being split from.
-            Ignored when there is only one or fewer categorical columns. Can only pass one of 'categ_as_bin'
-            and 'cat_bruteforce_subset'.
-        follow_all : bool
-            Whether to continue branching from each split that meets the size and gain criteria. This will
-            produce exponentially many more branches, and if depth is large, might take forever to finish.
-            Will also produce a lot more spurious outiers. Not recommended.
-        nthreads : int
-            Number of parallel threads to use. When fitting the model, it will only use up to one thread per
-            column, while for prediction it will use up to one thread per row. The more threads that are
-            used, the more memory will be required and allocated, so using more threads will not always lead
-            to better speed. Passing zero or negative numbers will default to the maximum number of available CPU
-            cores (but not if the object attribute is overwritten). Can be changed after the object is
-            already initialized.
-
-        Attributes
-        ----------
-        is_fitted_ : bool
-            Indicates if the model as already been fit.
-        flaggable_values : dict[ncols]
-            A dictionary indicating for each column which kind of values are possible to flag as outlier in
-            at least one of the explored branches. For numerical and timestamp columns, will indicate the
-            lower and upper bounds of the normal range (that is, it can only flag values *outside* of that interval),
-            while for categorical, ordinal, and boolean, it will indicate the categories (which it can flag as outliers).
-            If no values in a column can be flagged as outlier, entry for that column will be an empty dict.
-        cols_num_ : array(ncols_numeric, )
-            Names of the numeric columns in the data passed to '.fit'.
-        cols_cat_ : array(ncols_categ, )
-            Names of the categorical/string columns in the data passed to '.fit'.
-        cols_bool_ : array(ncols_bool, )
-            Names of the boolean columns in the data passed to '.fit'.
-        cols_ord_ : array(ncols_ordinal, )
-            Names of the ordinal columns in the data passed to '.fit'.
-        cols_ts_ : array(ncols_tiemstamp, )
-            Names of the timestamp columns in the data passed to '.fit'.
-        """
-
 
         ### validate inputs
         assert max_depth >= 0
