@@ -166,9 +166,9 @@ class OutlierTree:
         Note
         ----
         Row names will be taken as the index of the data frame.
-        Column types will be taken as follows:
+        Column types will be taken as follows: \n
         Numeric -> Everything that is a subtype of numpy's 'number' (e.g. integers and floats). \n
-        Categorical -> Python object, boolean, and pandas Categorical. \n
+        Categorical -> Python object (**even if the underlying types are numbers!!!**), boolean, and pandas Categorical. \n
         Ordinal -> pandas Categorical with ordered attribute - the order will
         be the same as they have when passed. \n
         Timestamp -> numpy's datetime64 dtype - they will only be taken with a
@@ -198,8 +198,9 @@ class OutlierTree:
         df : DataFrame(n_rows, n_cols)
             Pandas' DataFrame with normal data that might contain some outliers.
         cols_ignore : boolean array(n_cols, ) or string array(n_ignore, )
-            Array containing columns which will not be split, but will be evaluated
-            for usage in splitting other columns. Pass 'None' to use all columns.
+            Array containing columns which will not be split, but will be evaluated for usage in splitting other columns.
+            Can pass either a boolean array with the same number of columns as 'df', or a list/array of column names
+            (must match with those of 'df'). Pass 'None' to use all columns.
         outliers_print : int or None
             Maximum number of flagged outliers in the training data to print after fitting the model.
             Pass zero or None to avoid printing any.
@@ -296,15 +297,16 @@ class OutlierTree:
         -------
         result_df : DataFrame(n_rows, 6)
             DataFrame indicating for each row whether it is a suspected outlier or not. When they
-            are suspected outliers, the resulting DataFrame will contain columns with a) information
-            about the column in the input data whose value is suspicious, b) aggregate statistics for
-            the values in this column among the normal observations, c) conditions that qualify the row
-            to be put into that group, d) depth in the decision tree branch in which they can be considered
-            an outlier, e) Whether the conditions that make it belong to the decision tree branch contain
-            any NA split, f) The resulting outlier score or probability (based on Chebyshyov's bound for numerical
+            are suspected outliers, the resulting DataFrame will contain columns with \n
+            a) information about the column in the input data whose value is suspicious, \n
+            b) aggregate statistics for the values in this column among the normal observations, \n
+            c) conditions that qualify the row to be put into that group, \n
+            d) depth in the decision tree branch in which they can be considered an outlier, \n
+            e) Whether the conditions that make it belong to the decision tree branch contain any NA split, \n
+            f) The resulting outlier score or probability (based on Chebyshyov's bound for numerical
             columns, and a simple upper conficence bound for categorical and ordinal columns - but note that it will
             always prefer to assign a row to an outlier branch that does not follow any NA path, or failing that,
-            to the one with the smallest depth) - lower scores indicate lower probabilities and thus more outlierness.
+            to the one with the smallest depth) - lower scores indicate lower probabilities and thus more outlierness. \n
             Information such as the conditions in the tree or the group statistics are returned as dictionaries,
             since they are not tabular format.
             The index of the output will be the same as that of the input.

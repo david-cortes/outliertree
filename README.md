@@ -81,7 +81,7 @@ df = data.frame(
 ### test data frame with another obvious outlier
 df_test = data.frame(
 	numeric_col1 = rnorm(nrows),
-	numeric_col2 = c(rgamma(nrows, 1), 1e6),
+	numeric_col2 = c(-1e6, rgamma(nrows, 1)),
 	categ_col    = sample(c('categA', 'categB', 'categC'), size = nrows, replace = TRUE)
 	)
 
@@ -115,7 +115,7 @@ df = pd.DataFrame({
 ### test data frame with another obvious outlier
 df_test = pd.DataFrame({
 	"numeric_col1" : np.random.normal(size = nrows),
-	"numeric_col2" : np.r_[np.random.gamma(1, 1, size = nrows - 1), np.array([float(1e6)])],
+	"numeric_col2" : np.r_[np.array([float(-1e6)]), np.random.gamma(1, 1, size = nrows - 1)],
 	"categ_col"    : np.random.choice(['categA', 'categB', 'categC'], size = nrows)
 	})
 
