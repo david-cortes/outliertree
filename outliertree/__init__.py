@@ -491,14 +491,26 @@ class OutlierTree:
         df_num = df[self.cols_num_].astype(ctypes.c_double) if self.cols_num_.shape[0] > 0 else None
         df_cat = df[self.cols_cat_].copy() if self.cols_cat_.shape[0] > 0 else None
         df_ord = df[self.cols_ord_].copy() if self.cols_ord_.shape[0] > 0 else None
+        warn_new_cols = False
+        cols_warn_new = list()
 
         if df_cat is not None:
             for cl in range(self.cols_cat_.shape[0]):
+                new_cat = (~np.in1d(df_cat[self.cols_cat_[cl]], self._cat_mapping[cl])) & (~pd.isnull(df_cat[self.cols_cat_[cl]]).to_numpy())
                 df_cat[self.cols_cat_[cl]] = pd.Categorical(df_cat[self.cols_cat_[cl]], self._cat_mapping[cl]).codes.astype(ctypes.c_int)
+                if np.any(new_cat):
+                    warn_new_cols = True
+                    cols_warn_new.append(self._cat_mapping[cl])
+                    df_cat.loc[new_cat, self.cols_cat_[cl]] = self._cat_mapping[cl].shape[0]
 
         if df_ord is not None:
             for cl in range(self.cols_ord_.shape[0]):
+                new_cat = (~np.in1d(df_cat[self.cols_ord_[cl]], self._ord_mapping[cl])) & (~pd.isnull(df_cat[self.cols_ord_[cl]]).to_numpy())
                 df_ord[self.cols_ord_[cl]] = pd.Categorical(df_ord[self.cols_ord_[cl]], self._ord_mapping[cl]).codes.astype(ctypes.c_int)
+                if np.any(new_cat):
+                    warn_new_cols = True
+                    cols_warn_new.append(self._ord_mapping[cl])
+                    df_cat.loc[new_cat, self.cols_ord_[cl]] = self._ord_mapping[cl].shape[0]
 
         if self.cols_bool_.shape[0] > 0:
             df_bool = df[self.cols_bool_].astype("bool").astype(ctypes.c_int)
@@ -513,6 +525,12 @@ class OutlierTree:
                 df_num = df_ts
             else:
                 df_num = pd.concat([df_num, df_ts], axis = 1)
+
+        if warn_new_cols:
+            warn_msg  = "Some categorical/ordinal columns had new values that were not "
+            warn_msg += "present in the training data. These values will be ignored. "
+            warn_msg += "Columns head: " + ", ".join([str(cl) for cl in cols_warn_new])[:3]
+            warnings.warn(warn_msg)
 
         return  np.asfortranarray(df_num.to_numpy()) if df_num is not None else np.empty((0, 0), dtype = ctypes.c_double), \
                 np.asfortranarray(df_cat.to_numpy()) if df_cat is not None else np.empty((0, 0), dtype = ctypes.c_int), \
