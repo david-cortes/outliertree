@@ -211,6 +211,7 @@ cdef class OutlierCppObject:
                                             nrows, nthreads,
                                             self.model_outputs
                                         )
+
         
         if found_outliers:
             out_df = self.create_df(arr_num, arr_cat, arr_ord,
@@ -255,7 +256,7 @@ cdef class OutlierCppObject:
                     else:
                         out_df.iat[row, 0] = {
                                                 "column" : colnames_num[outl_col],
-                                                "value" : np.datetime64((arr_num[row, outl_col] - 1 + ts_min[outl_col - ncols_true_numeric]) * 10**6, "ns")
+                                                "value" : np.datetime64(np.int(arr_num[row, outl_col] - 1 + ts_min[outl_col - ncols_true_numeric]), "s")
                                             }
                 elif outl_col < (ncol_num + ncol_cat):
                     colname = colnames_cat[outl_col - ncol_num]
@@ -288,8 +289,8 @@ cdef class OutlierCppObject:
                             out_df.iat[row, 1] = {
                                                     "upper_thr" : compar_thr,
                                                     "pct_below" : compar_pct,
-                                                    "mean"  : np.datetime64((self.model_outputs.all_clusters[outl_col][outl_clust].display_mean \
-                                                                            - 1 + ts_min[outl_col - ncols_true_numeric]) * 10**6, "ns"),
+                                                    "mean"  : np.datetime64(np.int(self.model_outputs.all_clusters[outl_col][outl_clust].display_mean \
+                                                                                   - 1 + ts_min[outl_col - ncols_true_numeric]), "s"),
                                                     "n_obs" : self.model_outputs.all_clusters[outl_col][outl_clust].cluster_size
                                                 }
 
@@ -358,12 +359,12 @@ cdef class OutlierCppObject:
                                 condval = self.model_outputs.all_clusters[outl_col][outl_clust].split_point
                             else:
                                 condval = np.datetime64(
-                                                        (
-                                                            self.model_outputs.all_clusters[outl_col][outl_clust].split_point \
-                                                            - 1 \
-                                                            + ts_min[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
-                                                        ) * 10**6,
-                                                        "ns")
+                                                        np.int(
+                                                                self.model_outputs.all_clusters[outl_col][outl_clust].split_point \
+                                                                - 1 \
+                                                                + ts_min[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
+                                                            ),
+                                                        "s")
                         else:
                             colcond = "in"
                             condval = levs_ord[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]\
@@ -376,12 +377,12 @@ cdef class OutlierCppObject:
                                 condval = self.model_outputs.all_clusters[outl_col][outl_clust].split_point
                             else:
                                 condval = np.datetime64(
-                                                        (
-                                                            self.model_outputs.all_clusters[outl_col][outl_clust].split_point \
-                                                            - 1 \
-                                                            + ts_min[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
-                                                        ) * 10**6,
-                                                        "ns")
+                                                        np.int(
+                                                                self.model_outputs.all_clusters[outl_col][outl_clust].split_point \
+                                                                - 1 \
+                                                                + ts_min[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
+                                                            ),
+                                                        "s")
                         else:
                             colcond = "in"
                             condval = levs_ord[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]\
@@ -435,7 +436,7 @@ cdef class OutlierCppObject:
                         cond_col = colnames_num[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
                         colval   = arr_num[row, self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
                         if self.model_outputs.all_clusters[outl_col][outl_clust].col_num >= ncols_true_numeric:
-                            colval = np.datetime64((colval - 1 + ts_min[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]) * 10**6, "ns")
+                            colval = np.datetime64(np.int(colval - 1 + ts_min[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]), "s")
                     elif self.model_outputs.all_clusters[outl_col][outl_clust].column_type == Categorical:
                         cond_col = colnames_cat[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
                         if self.model_outputs.all_clusters[outl_col][outl_clust].col_num < ncols_true_cat:
@@ -471,15 +472,15 @@ cdef class OutlierCppObject:
                                 condval = self.model_outputs.all_trees[outl_col][curr_tree].split_point
                                 colval  = arr_num[row, self.model_outputs.all_trees[outl_col][curr_tree].col_num]
                                 if self.model_outputs.all_trees[outl_col][curr_tree].col_num >= ncols_true_numeric:
-                                    condval = np.datetime64((condval - 1 + ts_min[self.model_outputs.all_trees[outl_col][curr_tree].col_num]) * 10**6, "ns")
-                                    colval  = np.datetime64((colval - 1 + ts_min[self.model_outputs.all_trees[outl_col][curr_tree].col_num]) * 10**6, "ns")
+                                    condval = np.datetime64(np.int(condval - 1 + ts_min[self.model_outputs.all_trees[outl_col][curr_tree].col_num]), "s")
+                                    colval  = np.datetime64(np.int(colval - 1 + ts_min[self.model_outputs.all_trees[outl_col][curr_tree].col_num]),  "s")
                             elif self.model_outputs.all_trees[outl_col][curr_tree].split_this_branch == Greater:
                                 colcond = ">"
                                 condval = self.model_outputs.all_trees[outl_col][curr_tree].split_point
                                 colval  = arr_num[row, self.model_outputs.all_trees[outl_col][curr_tree].col_num]
                                 if self.model_outputs.all_trees[outl_col][curr_tree].col_num >= ncols_true_numeric:
-                                    condval = np.datetime64((condval - 1 + ts_min[self.model_outputs.all_trees[outl_col][curr_tree].col_num]) * 10**6, "ns")
-                                    colval  = np.datetime64((colval - 1 + ts_min[self.model_outputs.all_trees[outl_col][curr_tree].col_num]) * 10**6, "ns")
+                                    condval = np.datetime64(np.int(condval - 1 + ts_min[self.model_outputs.all_trees[outl_col][curr_tree].col_num]), "s")
+                                    colval  = np.datetime64(np.int(colval - 1 + ts_min[self.model_outputs.all_trees[outl_col][curr_tree].col_num]),  "s")
 
                         elif self.model_outputs.all_trees[outl_col][curr_tree].column_type == Categorical:
                             if self.model_outputs.all_trees[outl_col][curr_tree].split_this_branch == IsNa:
@@ -542,8 +543,8 @@ cdef class OutlierCppObject:
                             condval = self.model_outputs.all_trees[outl_col][parent_tree].split_point
                             colval  = arr_num[row, self.model_outputs.all_trees[outl_col][parent_tree].col_num]
                             if self.model_outputs.all_trees[outl_col][parent_tree].col_num >= ncols_true_numeric:
-                                condval = np.datetime64((condval - 1 + ts_min[self.model_outputs.all_trees[outl_col][parent_tree].col_num]) * 10**6, "ns")
-                                colval  = np.datetime64((colval - 1 + ts_min[self.model_outputs.all_trees[outl_col][parent_tree].col_num]) * 10**6, "ns")
+                                condval = np.datetime64(np.int(condval - 1 + ts_min[self.model_outputs.all_trees[outl_col][parent_tree].col_num]), "s")
+                                colval  = np.datetime64(np.int(colval - 1 + ts_min[self.model_outputs.all_trees[outl_col][parent_tree].col_num]),  "s")
                         else:
                             colcond = "in"
                             condval = levs_ord[self.model_outputs.all_trees[outl_col][parent_tree].col_num]\
@@ -557,8 +558,8 @@ cdef class OutlierCppObject:
                             condval = self.model_outputs.all_trees[outl_col][parent_tree].split_point
                             colval  = arr_num[row, self.model_outputs.all_trees[outl_col][parent_tree].col_num]
                             if self.model_outputs.all_trees[outl_col][parent_tree].col_num >= ncols_true_numeric:
-                                condval = np.datetime64((condval - 1 + ts_min[self.model_outputs.all_trees[outl_col][parent_tree].col_num]) * 10**6, "ns")
-                                colval  = np.datetime64((colval - 1 + ts_min[self.model_outputs.all_trees[outl_col][parent_tree].col_num]) * 10**6, "ns")
+                                condval = np.datetime64(np.int(condval - 1 + ts_min[self.model_outputs.all_trees[outl_col][parent_tree].col_num]), "s")
+                                colval  = np.datetime64(np.int(colval - 1 + ts_min[self.model_outputs.all_trees[outl_col][parent_tree].col_num]),  "s")
                         else:
                             colcond = "in"
                             condval = levs_ord[self.model_outputs.all_trees[outl_col][parent_tree].col_num]\

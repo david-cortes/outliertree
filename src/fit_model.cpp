@@ -289,12 +289,12 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                               workspace[tid],
                               input_data,
                               model_params, model_outputs);
-            calculate_cluster_poss_categs(model_outputs, col, col - input_data.ncols_numeric - input_data.ncols_categ);
+            calculate_cluster_poss_categs(model_outputs, col, col - input_data.ncols_numeric);
         }
 
         /* shrink the dynamic vectors to what ended up used only */
         #ifdef TEST_MODE_DEFINE
-        prune_unused_trees(model_outputs.all_trees[col][0]);
+        prune_unused_trees(model_outputs.all_trees[col]);
         #endif
         if (
             model_outputs.all_clusters[col].size() == 0 ||
@@ -489,14 +489,14 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
     workspace.tree->emplace_back(0, Root);
 
     workspace.clusters->emplace_back(NoType, Root);
-    workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, &workspace.ix_arr[0], workspace.st,
-                                                      workspace.end, &workspace.outlier_scores[0],
-                                                      &workspace.outlier_clusters[0], &workspace.outlier_trees[0], &workspace.outlier_depth[0],
-                                                      workspace.clusters->back(), *(workspace.clusters), 0, 0, 0,
-                                                      workspace.log_transf, workspace.log_minval, workspace.exp_transf,
-                                                      workspace.orig_mean, workspace.orig_sd,
-                                                      workspace.left_tail, workspace.right_tail, workspace.orig_target_col,
-                                                      model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
+    workspace.col_has_outliers = define_numerical_cluster(workspace.target_numeric_col, &workspace.ix_arr[0], workspace.st,
+                                                          workspace.end, &workspace.outlier_scores[0],
+                                                          &workspace.outlier_clusters[0], &workspace.outlier_trees[0], &workspace.outlier_depth[0],
+                                                          workspace.clusters->back(), *(workspace.clusters), 0, 0, 0,
+                                                          workspace.log_transf, workspace.log_minval, workspace.exp_transf,
+                                                          workspace.orig_mean, workspace.orig_sd,
+                                                          workspace.left_tail, workspace.right_tail, workspace.orig_target_col,
+                                                          model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
     workspace.tree->back().clusters.push_back(0);
 
     /* remove outliers if any were found, and update statistics */
@@ -509,7 +509,6 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
             sum_sq -= square(workspace.target_numeric_col[workspace.ix_arr[row]]);
             if (row == 0) break;
         }
-        workspace.col_has_outliers = true;
 
     }
     workspace.sd_y = calc_sd(input_data.nrows - workspace.st, sum, sum_sq);

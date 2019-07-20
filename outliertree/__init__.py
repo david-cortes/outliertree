@@ -29,7 +29,7 @@ class OutlierTree:
     max_depth : int
         Maximum depth of the trees to grow. Can also pass zero, in which case it will only look for
         outliers with no conditions (i.e. takes each column as a 1-d distribution and looks for outliers
-        in there independently of the values in other column).
+        in there independently of the values in other columns).
     min_gain : float
         Minimum gain that a split has to produce in order to consider it (both in terms of looking
         for outliers in each branch, and in considering whether to continue branching from them).
@@ -411,9 +411,9 @@ class OutlierTree:
                 cols_cat = cols_cat & (~cols_ord)
                 cols_str = cols_str | cols_cat
 
-
+        ### https://github.com/pandas-dev/pandas/issues/27490
         df_num  = df[df.columns[cols_num]].astype(ctypes.c_double)
-        df_ts   = df[df.columns[cols_ts]].astype('datetime64[ns]').astype(int) / 10**6
+        df_ts   = pd.DataFrame(df[df.columns[cols_ts]].to_numpy().astype('datetime64[s]').astype(int), columns = df.columns[cols_ts])
         df_bool = df[df.columns[cols_bool]].astype(ctypes.c_int)
         df_cat  = df[df.columns[cols_str]].copy()
         df_ord  = df[df.columns[cols_ord]].copy()
@@ -505,12 +505,12 @@ class OutlierTree:
 
         if df_ord is not None:
             for cl in range(self.cols_ord_.shape[0]):
-                new_cat = (~np.in1d(df_cat[self.cols_ord_[cl]], self._ord_mapping[cl])) & (~pd.isnull(df_cat[self.cols_ord_[cl]]).to_numpy())
+                new_cat = (~np.in1d(df_ord[self.cols_ord_[cl]], self._ord_mapping[cl])) & (~pd.isnull(df_ord[self.cols_ord_[cl]]).to_numpy())
                 df_ord[self.cols_ord_[cl]] = pd.Categorical(df_ord[self.cols_ord_[cl]], self._ord_mapping[cl]).codes.astype(ctypes.c_int)
                 if np.any(new_cat):
                     warn_new_cols = True
                     cols_warn_new.append(self._ord_mapping[cl])
-                    df_cat.loc[new_cat, self.cols_ord_[cl]] = self._ord_mapping[cl].shape[0]
+                    df_ord.loc[new_cat, self.cols_ord_[cl]] = self._ord_mapping[cl].shape[0]
 
         if self.cols_bool_.shape[0] > 0:
             df_bool = df[self.cols_bool_].astype("bool").astype(ctypes.c_int)
@@ -520,7 +520,7 @@ class OutlierTree:
                 df_cat = pd.concat([df_cat, df_bool], axis = 1)
 
         if self.cols_ts_.shape[0] > 0:
-            df_ts = (df[self.cols_ts_].astype('datetime64[ns]').astype(int) / 10**6 - self._ts_min + 1).astype(ctypes.c_double)
+            df_ts = pd.DataFrame((df[self.cols_ts_].to_numpy().astype('datetime64[s]').astype(int) - self._ts_min + 1).reshape((df.shape[0], -1)), columns = self.cols_ts_).astype(ctypes.c_double)
             if df_num is None:
                 df_num = df_ts
             else:
@@ -603,8 +603,10 @@ class OutlierTree:
 
 
     def _decode_date(self, ts_int, cl_num):
-        #https://github.com/scipy/scipy/pull/9438
-        return np.datetime64(operator.index((ts_int - 1 + self._ts_min[cl_num]) * 10**6), "ns")
+        try:
+            return np.datetime64(np.int(ts_int - 1 + self._ts_min[cl_num]), "s")
+        except:
+            return np.nan
 
     def _generate_empty_out_df(self, nrows):
         empty_dict_col = [dict() for row in range(nrows)]
@@ -626,7 +628,7 @@ class OutlierTree:
                 self.flaggable_values[self.cols_num_[cl]] = {"low" : min_outl[cl], "high" : max_outl[cl]}
             else:
                 cl_ts = cl - self.cols_num_.shape[0]
-                self.flaggable_values[self.cols_ts_[cl_ts]] = {"low" : self._decode_date(min_outl[cl], cl_ts),
+                self.flaggable_values[self.cols_ts_[cl_ts]] = {"low" :  self._decode_date(min_outl[cl], cl_ts),
                                                                "high" : self._decode_date(max_outl[cl], cl_ts)}
 
         for cl in range(len(cat_outl)):
@@ -638,15 +640,16 @@ class OutlierTree:
 
             elif cl < (self.cols_cat_.shape[0] + self.cols_bool_.shape[0]):
                 if cat_outl[cl].shape[0] == 0:
-                    self.flaggable_values[self.cols_bool_[cl]] = dict()
+                    self.flaggable_values[self.cols_bool_[cl - self.cols_cat_.shape[0]]] = dict()
                 else:
-                    self.flaggable_values[self.cols_bool_[cl]] = np.array([False, True])[cat_outl[cl]]
+                    self.flaggable_values[self.cols_bool_[cl - self.cols_cat_.shape[0]]] = np.array([False, True])[cat_outl[cl]]
             
             else:
+                rel_col = cl - self.cols_cat_.shape[0] - self.cols_bool_.shape[0]
                 if cat_outl[cl].shape[0] == 0:
-                    self.flaggable_values[self.cols_ord_[cl]] = dict()
+                    self.flaggable_values[self.cols_ord_[rel_col]] = dict()
                 else:
-                    self.flaggable_values[self.cols_ord_[cl]] = np.array(self._ord_mapping[cl])[cat_outl[cl]]
+                    self.flaggable_values[self.cols_ord_[rel_col]] = np.array(self._ord_mapping[rel_col])[cat_outl[cl]]
 
     def _print_no_outliers(self):
         print("No outliers found in input data.\n")

@@ -206,10 +206,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                         outlier_scores[ix_arr[row]] >= 1.0 ||
                         (clusters[outlier_clusters[ix_arr[row]]].has_NA_branch && !cluster.has_NA_branch) ||
                         (
-                            (
-                                (cluster.has_NA_branch && clusters[outlier_clusters[ix_arr[row]]].has_NA_branch) ||
-                                (!cluster.has_NA_branch && !clusters[outlier_clusters[ix_arr[row]]].has_NA_branch)
-                            ) &&
+                            cluster.has_NA_branch == clusters[outlier_clusters[ix_arr[row]]].has_NA_branch
+                                &&
                             (
                                 tree_depth < outlier_depth[ix_arr[row]] ||
                                 (
@@ -284,10 +282,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                         outlier_scores[ix_arr[row]] >= 1.0 ||
                         (clusters[outlier_clusters[ix_arr[row]]].has_NA_branch && !cluster.has_NA_branch) ||
                         (
-                            (
-                                (cluster.has_NA_branch && clusters[outlier_clusters[ix_arr[row]]].has_NA_branch) ||
-                                (!cluster.has_NA_branch && !clusters[outlier_clusters[ix_arr[row]]].has_NA_branch)
-                            ) &&
+                            cluster.has_NA_branch == clusters[outlier_clusters[ix_arr[row]]].has_NA_branch
+                            &&
                             (
                                 tree_depth < outlier_depth[ix_arr[row]] ||
                                 (
@@ -500,10 +496,8 @@ bool define_categ_cluster(int *restrict x, size_t *restrict ix_arr, size_t st, s
                         outlier_scores[ix_arr[row]] >= 1.0 ||
                         (clusters[outlier_clusters[ix_arr[row]]].has_NA_branch && !cluster.has_NA_branch) ||
                         (
-                            (
-                                (cluster.has_NA_branch && clusters[outlier_clusters[ix_arr[row]]].has_NA_branch) ||
-                                (!cluster.has_NA_branch && !clusters[outlier_clusters[ix_arr[row]]].has_NA_branch)
-                            ) &&
+                            cluster.has_NA_branch == clusters[outlier_clusters[ix_arr[row]]].has_NA_branch
+                            &&
                             (
                                 tree_depth < outlier_depth[ix_arr[row]] ||
                                 (
