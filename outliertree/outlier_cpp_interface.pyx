@@ -274,7 +274,7 @@ cdef class OutlierCppObject:
                 ### info about the normal observations in tree branch
                 if outl_col < ncol_num:
 
-                    if arr_num[row, outl_col] > self.model_outputs.all_clusters[outl_col][outl_clust].upper_lim:
+                    if arr_num[row, outl_col] >= self.model_outputs.all_clusters[outl_col][outl_clust].upper_lim:
                         compar_pct = self.model_outputs.all_clusters[outl_col][outl_clust].perc_below
                         compar_thr = self.model_outputs.all_clusters[outl_col][outl_clust].display_lim_high
                         if outl_col < ncols_true_numeric:
