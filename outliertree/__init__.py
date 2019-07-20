@@ -86,6 +86,7 @@ class OutlierTree:
         at least one of the explored branches. For numerical and timestamp columns, will indicate the
         lower and upper bounds of the normal range (that is, it can only flag values *outside* of that interval),
         while for categorical, ordinal, and boolean, it will indicate the categories (which it can flag as outliers).
+        If the lower bound is higher than the upper bound, it means that any value can potentially be flagged as outlier.
         If no values in a column can be flagged as outlier, entry for that column will be an empty dict.
     cols_num_ : array(ncols_numeric, )
         Names of the numeric columns in the data passed to '.fit'.
