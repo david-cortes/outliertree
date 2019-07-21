@@ -159,7 +159,7 @@ typedef struct Cluster {
     /* constructors in order to use C++'s vector emplace */
 
     /* full data (no conditions) */
-    Cluster(ColType column_type = NoType, SplitType split_type = Root)
+    Cluster(ColType column_type, SplitType split_type)
     {
         this->column_type = column_type;
         this->split_type = split_type;
@@ -205,6 +205,39 @@ typedef struct Cluster {
         this->split_lev = split_lev;
         this->has_NA_branch = has_NA_branch;
     }
+
+    #ifdef Rcpp_hpp
+    /* this is for serialization with Rcereal */
+    template<class Archive>
+    void serialize(Archive &archive)
+    {
+        archive(
+                this->column_type,
+                this->col_num,
+                this->split_type,
+                this->split_point,
+                this->split_subset,
+                this->split_lev,
+                this->has_NA_branch,
+                this->cluster_size,
+                this->lower_lim,
+                this->upper_lim,
+                this->perc_below,
+                this->perc_above,
+                this->display_lim_low,
+                this->display_lim_high,
+                this->display_mean,
+                this->display_sd,
+                this->subset_common,
+                this->perc_in_subset,
+                this->perc_next_most_comm,
+                this->cluster_mean,
+                this->cluster_sd,
+                this->score_categ
+                );
+    }
+    Cluster() {};
+    #endif
     
 } Cluster;
 
@@ -296,6 +329,31 @@ typedef struct ClusterTree {
         this->split_lev = cat_chosen;
     }
 
+    #ifdef Rcpp_hpp
+    /* this is for serialization with Rcereal */
+    template<class Archive>
+    void serialize(Archive &archive)
+    {
+        archive(
+                this->parent,
+                this->parent_branch,
+                this->clusters,
+                this->split_this_branch,
+                this->all_branches,
+                this->column_type,
+                this->col_num,
+                this->split_point,
+                this->split_subset,
+                this->split_lev,
+                this->tree_NA,
+                this->tree_left,
+                this->tree_right,
+                this->binary_branches
+                );
+    }
+    ClusterTree() {};
+    #endif
+
 } ClusterTree;
 
 /* these are needed for prediction time, and are thus returned from the function that fits the model */
@@ -321,6 +379,40 @@ typedef struct ModelOutputs {
     std::vector<double> max_outlier_any_cl;             /* redundant info which speeds up prediction */
     std::vector<std::vector<bool>> cat_outlier_any_cl;  /* redundant info which speeds up prediction */
     size_t max_depth;                                   /* redundant info which speeds up prediction */
+
+
+    #ifdef Rcpp_hpp
+    /* this is for serialization with Rcereal */
+    template<class Archive>
+    void serialize(Archive &archive)
+    {
+        archive(
+                this->all_trees,
+                this->all_clusters,
+                this->outlier_scores_final,
+                this->outlier_clusters_final,
+                this->outlier_columns_final,
+                this->outlier_trees_final,
+                this->outlier_depth_final,
+                this->start_ix_cat_counts,
+                this->prop_categ,
+                this->col_transf,
+                this->transf_offset,
+                this->sd_div,
+                this->ncat,
+                this->ncat_ord,
+                this->ncols_numeric,
+                this->ncols_categ,
+                this->ncols_ord,
+                this->min_outlier_any_cl,
+                this->max_outlier_any_cl,
+                this->cat_outlier_any_cl,
+                this->max_depth
+                );
+    }
+    ModelOutputs() {};
+    #endif
+
 } ModelOutputs;
 
 /*    

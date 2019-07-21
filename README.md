@@ -1,8 +1,6 @@
 # OutlierTree
 
-Explainable outlier/anomaly detection based on smart decision tree grouping, similar in spirit to the GritBot software developed by RuleQuest research. Written in C++ with interfaces for R (*coming soon!!*) and Python. Supports columns of types numeric, categorical, binary/boolean, and ordinal, and can handle missing values in all of them. Ideal as a sanity checker in exploratory data analysis.
-
-*Note: R version will be available in a couple days - at the time of writing this, has not yet been uploaded*
+Explainable outlier/anomaly detection based on smart decision tree grouping, similar in spirit to the GritBot software developed by RuleQuest research. Written in C++ with interfaces for R and Python. Supports columns of types numeric, categorical, binary/boolean, and ordinal, and can handle missing values in all of them. Ideal as a sanity checker in exploratory data analysis.
 
 # How it works
 
@@ -28,7 +26,7 @@ row [2229] - suspicious column: [T3] - suspicious vale: [10.600]
 		[query hyperthyroid] = [f]
 ```
 (i.e. it's saying that it's abnormal to be pregnant at the age of 75, or to not be classified as hyperthyroidal when having very high thyroid hormone levels)
-(this dataset is also bundled into the R package (*coming soon!!*) - e.g. `data(hypothyroid)`)
+(this dataset is also bundled into the R package - e.g. `data(hypothyroid)`)
 
 
 Example outlier from [Titanic dataset](https://www.kaggle.com/c/titanic):
@@ -46,7 +44,7 @@ _Note that it can also produce other types of conditions such as 'between' (for 
 
 # Installation
 
-* For R (*not yet uploaded at the time of writing*):
+* For R:
 ```r
 devtools::install_github("david-cortes/outliertree")
 ```
@@ -79,18 +77,18 @@ df = data.frame(
 	)
 
 ### test data frame with another obvious outlier
+nrows_test = 50
 df_test = data.frame(
-	numeric_col1 = rnorm(nrows),
-	numeric_col2 = c(-1e6, rgamma(nrows, 1)),
-	categ_col    = sample(c('categA', 'categB', 'categC'), size = nrows, replace = TRUE)
+	numeric_col1 = rnorm(nrows_test),
+	numeric_col2 = c(-1e6, rgamma(nrows_test - 1, 1)),
+	categ_col    = sample(c('categA', 'categB', 'categC'), size = nrows_test, replace = TRUE)
 	)
 
 ### fit model
 outliers_model = outlier.tree(df, outliers_print = 10, save_outliers = TRUE)
-outliers_df = outliers_model$outliers_df
 
 ### find outliers in new data
-new_outliers = predict(outliers_model, df_test)
+new_outliers = predict(outliers_model, df_test, outliers_print = 10, return_outliers = TRUE)
 
 ### print outliers in readable format
 print(new_outliers)
@@ -134,7 +132,7 @@ outliers_model.print_outliers(new_outliers)
 
 # Documentation
 
-* For R (*coming soon!!*): documentation is built-in in the package (e.g. `help(outlier.tree::outlier.tree)`).
+* For R : documentation is built-in in the package (e.g. `help(outlier.tree::outlier.tree)`) - PDF coming to CRAN soon.
 
 * For Python: documentation is available at [ReadTheDocs](http://outliertree.readthedocs.io/en/latest/) (and it's also built-in in the package as docstrings, e.g. `help(outliertree.OutlierTree.fit)`).
 
