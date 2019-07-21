@@ -791,7 +791,7 @@ class OutlierTree:
                     elif cond["comparison"] == "=":
                         ln_cond += "\n\t\t[%s] = [%s]" % (cond["column"], str(cond["value_comp"]))
                     elif cond["comparison"] == "!=":
-                        ln_cond += "\n\t\t[%s] = [%s] (value: %s)" % (cond["column"], str(cond["value_comp"]), str(cond["value_this"]))
+                        ln_cond += "\n\t\t[%s] != [%s] (value: %s)" % (cond["column"], str(cond["value_comp"]), str(cond["value_this"]))
                     elif cond["comparison"] == "in":
                         ln_cond += "\n\t\t[%s] in [%s] (value: %s)" % (cond["column"],
                                                                        ", ".join([str(cat) for cat in cond["value_comp"]]),
