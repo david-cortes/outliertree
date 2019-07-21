@@ -63,9 +63,9 @@ pip install outliertree
 
 # Sample usage
 
-* For R (*coming soon!!*):
+* For R:
 ```r
-library(outlier.tree)
+library(outliertree)
 
 ### random data frame with an obvious outlier
 nrows = 100
@@ -85,13 +85,13 @@ df_test = data.frame(
 	)
 
 ### fit model
-outliers_model = outlier.tree(df, outliers_print = 10, save_outliers = TRUE)
+outliers_model = outliertree::outlier.tree(df, outliers_print = 10, save_outliers = TRUE)
 
 ### find outliers in new data
 new_outliers = predict(outliers_model, df_test, outliers_print = 10, return_outliers = TRUE)
 
 ### print outliers in readable format
-print(new_outliers)
+summary(new_outliers)
 ```
 (see documentation for more examples)
 
@@ -132,7 +132,7 @@ outliers_model.print_outliers(new_outliers)
 
 # Documentation
 
-* For R : documentation is built-in in the package (e.g. `help(outlier.tree::outlier.tree)`) - PDF coming to CRAN soon.
+* For R : documentation is built-in in the package (e.g. `help(outliertree::outlier.tree)`) - PDF coming to CRAN soon.
 
 * For Python: documentation is available at [ReadTheDocs](http://outliertree.readthedocs.io/en/latest/) (and it's also built-in in the package as docstrings, e.g. `help(outliertree.OutlierTree.fit)`).
 
