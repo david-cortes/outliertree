@@ -82,14 +82,25 @@ split.types <- function(df, cols_ord = NULL, cols_ignore = NULL) {
     if (NROW(cols_date)) {
         df[, cols_date] <- as.data.frame(lapply(df[, cols_date, drop = FALSE], as.numeric))
         outp$date_min   <- sapply(df[, cols_date, drop = FALSE], min, na.rm = TRUE)
-        df[, cols_date] <- df[, cols_date, drop = FALSE] - outp$date_min + 1
+        if (NROW(cols_date) != NROW(df)) {
+            df[, cols_date] <- df[, cols_date, drop = FALSE] - outp$date_min + 1
+        } else {
+            ### if the number of columns is the same as the number of rows, R will
+            ### always make subtraction by-row instead of by-col, regardless of whether
+            ### it's passed as a matrix with a certain shape like in NumPy
+            df[, cols_date] <- mapply(function(a, b) a - b + 1, df[, cols_date, drop = FALSE], outp$date_min)
+        }
         ## the extra 1 is for the way in which package applies log transforms
     }
     
     if (NROW(cols_ts)) {
         df[, cols_ts] <- as.data.frame(lapply(df[, cols_ts, drop = FALSE], as.numeric))
         outp$ts_min   <- sapply(df[, cols_ts, drop = FALSE], min, na.rm = TRUE)
-        df[, cols_ts] <- df[, cols_ts, drop = FALSE] - outp$ts_min + 1
+        if (NROW(cols_ts) != NROW(df)) {
+            df[, cols_ts] <- df[, cols_ts, drop = FALSE] - outp$ts_min + 1
+        } else {
+            df[, cols_ts] <- mapply(function(a, b) a - b + 1, df[, cols_ts, drop = FALSE], outp$ts_min)
+        }
     }
     
     if (NROW(outp$cols_cat)) {
@@ -372,7 +383,7 @@ report.outliers <- function(lst, rnames, outliers_print) {
             }
         } else if ("categs_common" %in% names(group_statistics[[row_ix]])) {
             cat(sprintf("\tdistribution: %.3f%% in [%s]\n",
-                        group_statistics[[row_ix]]$pct_common,
+                        group_statistics[[row_ix]]$pct_common * 100,
                         paste(group_statistics[[row_ix]]$categs_common, collapse = ", ")))
             if (NROW(conditions[[row_ix]])) {
                 cat(sprintf("\t( [norm. obs: %d] - [prior_prob: %.3f%%] - [next smallest: %.3f%%] )\n",

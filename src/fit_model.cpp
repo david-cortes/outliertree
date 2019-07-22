@@ -310,7 +310,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
         
         /* simplify single-elements in subset to 'equals' or 'not equals' */
         simplify_when_equal_cond(model_outputs.all_clusters[col], ncat_ord);
-        simplify_when_equal_cond(model_outputs.all_trees[col], ncat_ord);
+        simplify_when_equal_cond(model_outputs.all_trees[col],    ncat_ord);
 
         /* remember only the best (rarest) value for each row */
         #pragma omp critical

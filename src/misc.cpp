@@ -531,6 +531,7 @@ void set_tree_as_categorical(ClusterTree &tree, size_t col, int ncat)
     tree.column_type = Categorical;
     tree.col_num = col;
     tree.binary_branches.resize(ncat, 0);
+    tree.binary_branches.shrink_to_fit();
     tree.split_subset.shrink_to_fit();
 }
 

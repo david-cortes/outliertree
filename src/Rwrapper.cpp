@@ -116,11 +116,11 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                     );
                 }
             } else if (outl_col < (ncols_num + ncols_cat)) {
-                if (outl_col < ncols_cat_cat) {
+                if (outl_col < (ncols_num + ncols_cat_cat)) {
                     outlier_val[row] = Rcpp::List::create(
                         Rcpp::_["column"] = Rcpp::CharacterVector(1, colnames_cat[outl_col - ncols_num]),
                         Rcpp::_["value"]  = Rcpp::CharacterVector(1, cat_levels[outl_col - ncols_num]
-                                                                           [arr_cat[row + (outl_col - ncols_num) * nrows]])
+                                                                               [arr_cat[row + (outl_col - ncols_num) * nrows]])
                     );
                 } else {
                     outlier_val[row] = Rcpp::List::create(
@@ -132,7 +132,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                 outlier_val[row] = Rcpp::List::create(
                     Rcpp::_["column"] = Rcpp::CharacterVector(1, colnames_ord[outl_col - ncols_num - ncols_cat]),
                     Rcpp::_["value"]  = Rcpp::CharacterVector(1, ord_levels[outl_col - ncols_num - ncols_cat]
-                                                                      [arr_ord[row + (outl_col - ncols_num - ncols_cat) * nrows]])
+                                                                           [arr_ord[row + (outl_col - ncols_num - ncols_cat) * nrows]])
                 );
             }
             
@@ -235,8 +235,8 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                         Rcpp::_["categs_common"]      = Rcpp::as<Rcpp::CharacterVector>(ord_levels[outl_col - ncols_num - ncols_cat][tmp_bool]),
                         Rcpp::_["pct_common"]         = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset),
                         Rcpp::_["pct_next_most_comm"] = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_next_most_comm),
-                        Rcpp::_["prior_prob"]         = Rcpp::wrap(model_outputs.prop_categ[model_outputs.start_ix_cat_counts[outl_col - ncols_num - ncols_cat] +
-                                                                   arr_cat[row + (outl_col - ncols_num) * nrows]]),
+                        Rcpp::_["prior_prob"]         = Rcpp::wrap(model_outputs.prop_categ[model_outputs.start_ix_cat_counts[outl_col - ncols_num] +
+                                                                   arr_ord[row + (outl_col - ncols_num - ncols_cat) * nrows]]),
                         Rcpp::_["n_obs"]              = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
                     );
                 } else {
@@ -277,7 +277,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                         if (model_outputs.all_clusters[outl_col][outl_clust].col_num < ncols_cat_cat) {
                             if (arr_cat[row + model_outputs.all_clusters[outl_col][outl_clust].col_num * nrows] >= 0) {
                                 cond_clust["value_this"] = Rcpp::CharacterVector(1, cat_levels[model_outputs.all_clusters[outl_col][outl_clust].col_num]
-                                                                                                 [arr_cat[row + model_outputs.all_clusters[outl_col][outl_clust].col_num * nrows]]);
+                                                                                              [arr_cat[row + model_outputs.all_clusters[outl_col][outl_clust].col_num * nrows]]);
                             } else {
                                 cond_clust["value_this"] = Rcpp::as<Rcpp::CharacterVector>(NA_STRING);
                             }
@@ -292,7 +292,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                         cond_clust["column"] = Rcpp::CharacterVector(1, colnames_ord[model_outputs.all_clusters[outl_col][outl_clust].col_num]);
                         if (arr_ord[row + model_outputs.all_clusters[outl_col][outl_clust].col_num * nrows] >= 0) {
                             cond_clust["value_this"] = Rcpp::CharacterVector(1, ord_levels[model_outputs.all_clusters[outl_col][outl_clust].col_num]
-                                                                                             [arr_ord[row + model_outputs.all_clusters[outl_col][outl_clust].col_num * nrows]]);
+                                                                                          [arr_ord[row + model_outputs.all_clusters[outl_col][outl_clust].col_num * nrows]]);
                         } else {
                             cond_clust["value_this"] = Rcpp::as<Rcpp::CharacterVector>(NA_STRING);
                         }
@@ -686,7 +686,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                         cond_clust["value_this"] = Rcpp::CharacterVector(1, ord_levels[model_outputs.all_trees[outl_col][curr_tree].col_num]
                                                                                                       [arr_ord[row + model_outputs.all_trees[outl_col][curr_tree].col_num * nrows]]);
                                         cond_clust["comparison"] = Rcpp::CharacterVector("=");
-                                        cond_clust["value_this"] = Rcpp::CharacterVector(1, ord_levels[model_outputs.all_trees[outl_col][curr_tree].col_num]
+                                        cond_clust["value_comp"] = Rcpp::CharacterVector(1, ord_levels[model_outputs.all_trees[outl_col][curr_tree].col_num]
                                                                                                       [model_outputs.all_trees[outl_col][curr_tree].split_lev]);
                                         break;
                                     }
@@ -696,7 +696,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                         cond_clust["value_this"] = Rcpp::CharacterVector(1, ord_levels[model_outputs.all_trees[outl_col][curr_tree].col_num]
                                                                                                       [arr_ord[row + model_outputs.all_trees[outl_col][curr_tree].col_num * nrows]]);
                                         cond_clust["comparison"] = Rcpp::CharacterVector("!=");
-                                        cond_clust["value_this"] = Rcpp::CharacterVector(1, ord_levels[model_outputs.all_trees[outl_col][curr_tree].col_num]
+                                        cond_clust["value_comp"] = Rcpp::CharacterVector(1, ord_levels[model_outputs.all_trees[outl_col][curr_tree].col_num]
                                                                                                       [model_outputs.all_trees[outl_col][curr_tree].split_lev]);
                                         break;
                                     }
