@@ -5,14 +5,14 @@
 \title{Print outliers in human-readable format}
 \usage{
 \method{print}{outlieroutputs}(x, outliers_print = 15,
-  only_for_rows = NULL, ...)
+  only_these_rows = NULL, ...)
 }
 \arguments{
 \item{x}{Outliers as returned by predict method on an object from `outlier.tree`.}
 
 \item{outliers_print}{Maximum number of outliers to print.}
 
-\item{only_for_rows}{Specific rows to print (either numbers if the row names in the original
+\item{only_these_rows}{Specific rows to print (either numbers if the row names in the original
 data frame were null, or the row names they had if non-null). Pass `NULL` to print information
 about potentially all rows}
 

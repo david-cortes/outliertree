@@ -115,3 +115,6 @@ model <- outlier.tree(hypothyroid, outliers_print = 10)
 \references{
 GritBot software: \url{https://www.rulequest.com/gritbot-info.html}
 }
+\seealso{
+\link{predict.outliertree}
+}

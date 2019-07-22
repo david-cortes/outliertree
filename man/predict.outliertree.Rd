@@ -65,6 +65,9 @@ outliers_model = outlier.tree(df, outliers_print = FALSE)
 test_outliers = predict(outliers_model, df_test,
     outliers_print = 1, return_outliers = TRUE)
 
-### retrieve the outlier info as an R list
-test_outliers[1]
+### retrieve the outlier info (for row 1) as an R list
+test_outliers[[1]]
+}
+\seealso{
+\link{outlier.tree}
 }

@@ -72,6 +72,7 @@
 #' but when a column is the target of the split, they will be taken as missing - that is, it will not report
 #' infinite values as outliers. 
 #' @references GritBot software: \url{https://www.rulequest.com/gritbot-info.html}
+#' @seealso \link{predict.outliertree}
 #' @examples 
 #' library(outliertree)
 #' data(hypothyroid)
@@ -140,10 +141,18 @@ outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
     
     ### print or store the outliers if requested
     if (outliers_print > 0) {
-        report.outliers(model_data$obj_from_cpp$outliers_info, row.names(df), outliers_print)
+        if (model_data$obj_from_cpp$found_outliers) {
+                report.outliers(model_data$obj_from_cpp$outliers_info, row.names(df), outliers_print)
+            } else {
+                report.no.outliers()
+            }
     }
     if (save_outliers) {
-        model_data$outliers_data <- outliers.to.list(df, model_data$obj_from_cpp$outliers_info)
+        if (model_data$obj_from_cpp$found_outliers) {
+                model_data$outliers_data <- outliers.to.list(df, model_data$obj_from_cpp$outliers_info)
+            } else {
+                model_data$outliers_data <- produce.empty.outliers(row.names(df))
+            }
     } else {
         model_data$outliers_data <- NULL
     }
@@ -173,6 +182,7 @@ outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
 #' @details Note that after loading a serialized object from `outlier.tree` through `readRDS` or `load`,
 #' it will only de-serialize the underlying C++ object upon running `predict` or `print`, so the first run will
 #' be slower, while subsequent runs will be faster as the C++ object will already be in-memory.
+#' @seealso \link{outlier.tree}
 #' @examples 
 #' library(outliertree)
 #' ### random data frame with an obvious outlier
@@ -201,8 +211,8 @@ outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
 #' test_outliers = predict(outliers_model, df_test,
 #'     outliers_print = 1, return_outliers = TRUE)
 #' 
-#' ### retrieve the outlier info as an R list
-#' test_outliers[1]
+#' ### retrieve the outlier info (for row 1) as an R list
+#' test_outliers[[1]]
 #' @export 
 predict.outliertree <- function(object, newdata, outliers_print = 15, return_outliers = FALSE, ...) {
     check.is.model.obj(object)
@@ -217,7 +227,7 @@ predict.outliertree <- function(object, newdata, outliers_print = 15, return_out
         if (outliers_print) {
             report.no.outliers()
         }
-        if (return_outliers) { outp = list(); class(outp) <- "outlieroutputs"; return(outp) } else { return(NULL) }
+        if (return_outliers) { return(produce.empty.outliers(row.names(newdata))) } else { return(invisible(NULL)) }
     }
     
     c_arr_data    <- split.types.new(newdata, object)
@@ -244,21 +254,21 @@ predict.outliertree <- function(object, newdata, outliers_print = 15, return_out
 #' Same as function `summary`.
 #' @param x Outliers as returned by predict method on an object from `outlier.tree`.
 #' @param outliers_print Maximum number of outliers to print.
-#' @param only_for_rows Specific rows to print (either numbers if the row names in the original
+#' @param only_these_rows Specific rows to print (either numbers if the row names in the original
 #' data frame were null, or the row names they had if non-null). Pass `NULL` to print information
 #' about potentially all rows
 #' @param ... Not used.
 #' @export 
-print.outlieroutputs <- function(x, outliers_print = 15, only_for_rows = NULL, ...) {
+print.outlieroutputs <- function(x, outliers_print = 15, only_these_rows = NULL, ...) {
+    if (NROW(x) == 0) { report.no.outliers(); return(invisible(NULL)); }
     outliers_print <- check.outliers.print(outliers_print)
     if (!outliers_print) { stop("Must pass a positive integer for 'outliers_print'.") }
-    if (NROW(x) == 0) { report.no.outliers(); return(invisible(NULL)) }
-    if (is.null(only_for_rows)) {
+    if (is.null(only_these_rows)) {
         outliers_info <- list.to.outliers(x)
         report.outliers(outliers_info, names(x), outliers_print)
     } else {
-        outliers_info <- list.to.outliers(x[only_for_rows])
-        report.outliers(outliers_info, names(x[only_for_rows]), outliers_print)
+        outliers_info <- list.to.outliers(x[only_these_rows])
+        report.outliers(outliers_info, names(x[only_these_rows]), outliers_print)
     }
 }
 

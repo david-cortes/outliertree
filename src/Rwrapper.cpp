@@ -67,7 +67,6 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
     size_t nrows         = model_outputs.outlier_scores_final.size();
     size_t ncols_num     = model_outputs.ncols_numeric;
     size_t ncols_cat     = model_outputs.ncols_categ;
-    size_t ncols_ord     = model_outputs.ncols_ord;
     size_t ncols_num_num = model_outputs.ncols_numeric - min_date.size() - min_ts.size();
     size_t ncols_date    = model_outputs.ncols_numeric - min_ts.size();
     size_t ncols_cat_cat = cat_levels.size();
@@ -930,6 +929,22 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                 break;
                             }
 
+                            case SingleCateg:
+                            {
+                                if (model_outputs.all_trees[outl_col][parent_tree].col_num < ncols_cat_cat) {
+                                    cond_clust["value_this"] = Rcpp::CharacterVector(1, cat_levels[model_outputs.all_trees[outl_col][parent_tree].col_num]
+                                                                                                  [arr_cat[row + model_outputs.all_trees[outl_col][parent_tree].col_num * nrows]]);
+                                    cond_clust["comparison"] = Rcpp::CharacterVector("=");
+                                    cond_clust["value_comp"] = Rcpp::CharacterVector(1, cat_levels[model_outputs.all_trees[outl_col][parent_tree].col_num]
+                                                                                                  [arr_cat[row + model_outputs.all_trees[outl_col][parent_tree].col_num * nrows]]);
+                                } else {
+                                    cond_clust["value_this"] = Rcpp::wrap((bool) arr_cat[row + model_outputs.all_trees[outl_col][parent_tree].col_num * nrows]);
+                                    cond_clust["comparison"] = Rcpp::CharacterVector("=");
+                                    cond_clust["value_comp"] = Rcpp::wrap((bool) arr_cat[row + model_outputs.all_trees[outl_col][parent_tree].col_num * nrows]);
+                                }
+                                break;
+                            }
+
                         }
 
                         
@@ -1088,6 +1103,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
     }
     outp["ntrees"] = Rcpp::wrap((int) ntrees);
     outp["nclust"] = Rcpp::wrap((int) nclust);
+    outp["found_outliers"] = Rcpp::wrap(found_outliers);
     
     forget_row_outputs(*model_outputs);
     outp["ptr_model"] = Rcpp::XPtr<ModelOutputs>(model_outputs.release(), true);

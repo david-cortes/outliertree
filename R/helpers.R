@@ -296,6 +296,8 @@ report.no.outliers <- function() {
 }
 
 report.outliers <- function(lst, rnames, outliers_print) {
+
+    if (NROW(lst) == 0) { report.no.outliers(); return(invisible(NULL)); }
     
     suspicous_value  <- lst$suspicous_value
     group_statistics <- lst$group_statistics
@@ -562,4 +564,11 @@ list.to.outliers <- function(outliers_data) {
         uses_NA_branch   = sapply(outliers_data, function(x) x$uses_NA_branch),
         outlier_score    = sapply(outliers_data, function(x) x$outlier_score)
     ))
+}
+
+produce.empty.outliers <- function(row_names) {
+    empty_lst        <- rep_len(list(list()), NROW(row_names))
+    names(empty_lst) <- row_names
+    class(empty_lst) <- c("outlieroutputs", class(empty_lst))
+    return(empty_lst)
 }

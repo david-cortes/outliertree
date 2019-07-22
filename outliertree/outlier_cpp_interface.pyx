@@ -86,6 +86,8 @@ cdef extern from "outlier_tree.hpp":
         vector[ColTransf] col_transf
         vector[double] transf_offset
         vector[double] sd_div
+        vector[int]    ncat
+        vector[int]    ncat_ord
         size_t ncols_numeric
         size_t ncols_categ
         size_t ncols_ord
@@ -603,6 +605,14 @@ cdef class OutlierCppObject:
                         colval  = levs_cat[self.model_outputs.all_trees[outl_col][parent_tree].col_num]\
                                           [arr_cat[row, self.model_outputs.all_trees[outl_col][parent_tree].col_num]]
 
+                    elif self.model_outputs.all_trees[outl_col][curr_tree].parent_branch == SingleCateg:
+                        colcond = "="
+                        if self.model_outputs.all_trees[outl_col][parent_tree].col_num < ncols_true_cat:
+                            condval = levs_cat[self.model_outputs.all_trees[outl_col][parent_tree].col_num]\
+                                              [arr_cat[row, self.model_outputs.all_trees[outl_col][parent_tree].col_num]]
+                        else:
+                            condval = bool(arr_cat[row, self.model_outputs.all_trees[outl_col][parent_tree].col_num])
+                        colval  = condval
 
 
                     ### add column name
