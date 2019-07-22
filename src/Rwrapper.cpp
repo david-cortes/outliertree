@@ -397,10 +397,10 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                         
                     case NotInSubset:
                     {
-                        tmp_bool = Rcpp::LogicalVector(model_outputs.all_clusters[outl_col][outl_clust].split_subset.size(), true);
+                        tmp_bool = Rcpp::LogicalVector(model_outputs.all_clusters[outl_col][outl_clust].split_subset.size(), false);
                         for (size_t cat = 0; cat < model_outputs.all_clusters[outl_col][outl_clust].split_subset.size(); cat++) {
-                            if (model_outputs.all_clusters[outl_col][outl_clust].split_subset[cat] > 0) {
-                                tmp_bool[cat] = false;
+                            if (model_outputs.all_clusters[outl_col][outl_clust].split_subset[cat] == 0) {
+                                tmp_bool[cat] = true;
                             }
                         }
                         cond_clust["comparison"] = Rcpp::CharacterVector("in");
@@ -863,10 +863,10 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                             case NotInSubset:
                             {
                                 if (model_outputs.all_trees[outl_col][parent_tree].col_num < ncols_cat_cat) {
-                                    tmp_bool = Rcpp::LogicalVector(cat_levels[model_outputs.all_trees[outl_col][parent_tree].col_num].size(), true);
+                                    tmp_bool = Rcpp::LogicalVector(cat_levels[model_outputs.all_trees[outl_col][parent_tree].col_num].size(), false);
                                     for (size_t cat = 0; cat < model_outputs.all_trees[outl_col][parent_tree].split_subset.size(); cat++) {
-                                        if (model_outputs.all_trees[outl_col][parent_tree].split_subset[cat] > 0) {
-                                            tmp_bool[cat] = false;
+                                        if (model_outputs.all_trees[outl_col][parent_tree].split_subset[cat] == 0) {
+                                            tmp_bool[cat] = true;
                                         }
                                     }
                                     cond_clust["value_this"] = Rcpp::CharacterVector(1, cat_levels[model_outputs.all_trees[outl_col][parent_tree].col_num]

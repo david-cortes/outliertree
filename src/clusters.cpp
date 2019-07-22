@@ -597,7 +597,7 @@ void simplify_when_equal_cond(std::vector<Cluster> &clusters, int ncat_ord[])
                         else
                             clusters[clust].split_type = NotEqual;
 
-                    } else if (size_subset == clusters[clust].split_subset.size() - 1) {
+                    } else if (size_subset == (clusters[clust].split_subset.size() - 1)) {
 
                         do {col_equal++;} while (clusters[clust].split_subset[col_equal] != 0);
                         if (clusters[clust].split_type == NotInSubset)
