@@ -205,7 +205,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                             Rcpp::_["pct_common"]         = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset),
                             Rcpp::_["pct_next_most_comm"] = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_next_most_comm),
                             Rcpp::_["prior_prob"]         = Rcpp::wrap(model_outputs.prop_categ[model_outputs.start_ix_cat_counts[outl_col - ncols_num] +
-                                                                       arr_cat[row, outl_col - ncols_num]]),
+                                                                       arr_cat[row + (outl_col - ncols_num) * nrows]]),
                             Rcpp::_["n_obs"]              = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
                         );
                     } else {
@@ -220,7 +220,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                     lst_stats[row] = Rcpp::List::create(
                         Rcpp::_["pct_other"]  = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset),
                         Rcpp::_["prior_prob"] = Rcpp::wrap(model_outputs.prop_categ[model_outputs.start_ix_cat_counts[outl_col - ncols_num] +
-                                                           arr_cat[row, outl_col - ncols_num]]),
+                                                           arr_cat[row + (outl_col - ncols_num) * nrows]]),
                         Rcpp::_["n_obs"]      = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
                     );
                 }
@@ -237,7 +237,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                         Rcpp::_["pct_common"]         = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset),
                         Rcpp::_["pct_next_most_comm"] = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_next_most_comm),
                         Rcpp::_["prior_prob"]         = Rcpp::wrap(model_outputs.prop_categ[model_outputs.start_ix_cat_counts[outl_col - ncols_num - ncols_cat] +
-                                                                   arr_cat[row, outl_col - ncols_num]]),
+                                                                   arr_cat[row + (outl_col - ncols_num) * nrows]]),
                         Rcpp::_["n_obs"]              = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
                     );
                 } else {

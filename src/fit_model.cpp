@@ -1295,8 +1295,10 @@ void recursive_split_categ(Workspace &workspace,
             /* If it was forcibly binarized, need to calculate the gain on the original categories to make it comparable */
             if (
                     !isinf(workspace.this_gain) &&
-                    (!workspace.target_col_is_ord && input_data.ncat[workspace.target_col_num] > 2) ||
-                    (workspace.target_col_is_ord && input_data.ncat_ord[workspace.target_col_num - input_data.ncols_categ] > 2)
+                    (
+                        (!workspace.target_col_is_ord && input_data.ncat[workspace.target_col_num] > 2) ||
+                        (workspace.target_col_is_ord && input_data.ncat_ord[workspace.target_col_num - input_data.ncols_categ] > 2)
+                    )
                 )
             {
                 divide_subset_split(&workspace.ix_arr[0], input_data.categorical_data + col * input_data.nrows,
