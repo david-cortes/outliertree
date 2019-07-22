@@ -478,7 +478,7 @@ simplify.conditions <- function(conditions) {
             highest_gt  <- -Inf
             val_eq      <- NA
             val_neq     <- NA
-            smallest_in <- NA
+            smallest_in <- NULL
             
             for (cn in 1:NROW(conditions)) {
                 if (conditions[[cn]]$column == cl) {
@@ -498,7 +498,7 @@ simplify.conditions <- function(conditions) {
                            },
                            "in" = {
                                    n_in <- n_in + 1
-                                   if (is.na(smallest_in)) {
+                                   if (is.null(smallest_in)) {
                                        smallest_in <- conditions[[cn]]$value_comp
                                    } else {
                                        smallest_in <- intersect(smallest_in, conditions[[cn]]$value_comp)
@@ -525,7 +525,7 @@ simplify.conditions <- function(conditions) {
             } else if (n_le  > 0 & n_gt  > 0) {
                 replacing_cond[[NROW(replacing_cond) + 1]] <- list(column = cl, value_this = val_this,
                                                                    comparison = "between", value_comp = c(highest_gt, lowest_le))
-            } else if (n_in == 0 & n_eq == 0 & n_neq == 0) {
+            } else if (n_in  > 0 & n_eq == 0 & n_neq == 0) {
                 replacing_cond[[NROW(replacing_cond) + 1]] <- list(column = cl, value_this = val_this,
                                                                    comparison = "in", value_comp = smallest_in)
             } else if (n_in  > 0 & n_eq  > 0) {
