@@ -25,7 +25,7 @@ print.outliertree <- function(x, ...) {
     if (!is.null(x$outliers_data)) cat(sprintf("Contains saved outlier info for %d rows\n", NROW(x$outliers_data)))
     cat("\n")
     cat(sprintf("Consists of %d clusters, spread across %d tree branches\n",
-                x$obj_from_cpp$ntrees, x$obj_from_cpp$nclust))
+                x$obj_from_cpp$nclust, x$obj_from_cpp$ntrees))
 }
 
 #' @title Print summary information from Outlier Tree model

@@ -68,7 +68,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
     size_t ncols_num     = model_outputs.ncols_numeric;
     size_t ncols_cat     = model_outputs.ncols_categ;
     size_t ncols_num_num = model_outputs.ncols_numeric - min_date.size() - min_ts.size();
-    size_t ncols_date    = model_outputs.ncols_numeric - min_ts.size();
+    size_t ncols_date    = model_outputs.ncols_numeric - ncols_num_num - min_ts.size();
     size_t ncols_cat_cat = cat_levels.size();
     Rcpp::List outp;
     
@@ -112,7 +112,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                 } else {
                     outlier_val[row] = Rcpp::List::create(
                         Rcpp::_["column"] = Rcpp::CharacterVector(1, colnames_num[outl_col]),
-                        Rcpp::_["value"]  = Rcpp::Date(arr_num[row + outl_col * nrows] - 1 + min_ts[outl_col - ncols_num_num - ncols_date])
+                        Rcpp::_["value"]  = Rcpp::Datetime(arr_num[row + outl_col * nrows] - 1 + min_ts[outl_col - ncols_num_num - ncols_date])
                     );
                 }
             } else if (outl_col < (ncols_num + ncols_cat)) {
@@ -789,11 +789,11 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                     } else {
                                         cond_clust["value_this"] = Rcpp::Datetime(arr_num[row + model_outputs.all_trees[outl_col][parent_tree].col_num * nrows]
                                                                                   - 1 + min_ts[model_outputs.all_trees[outl_col][parent_tree].col_num
-                                                                                                 - ncols_num_num - ncols_date]);
+                                                                                               - ncols_num_num - ncols_date]);
                                         cond_clust["comparison"] = Rcpp::CharacterVector("<=");
                                         cond_clust["value_comp"] = Rcpp::Datetime(model_outputs.all_trees[outl_col][parent_tree].split_point
                                                                                   - 1 + min_ts[model_outputs.all_trees[outl_col][parent_tree].col_num
-                                                                                                 - ncols_num_num - ncols_date]);
+                                                                                               - ncols_num_num - ncols_date]);
                                     }
                                 } else {
                                     tmp_bool = Rcpp::LogicalVector(ord_levels[model_outputs.all_trees[outl_col][parent_tree].col_num].size(), false);

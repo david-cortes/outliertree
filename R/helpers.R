@@ -81,14 +81,14 @@ split.types <- function(df, cols_ord = NULL, cols_ignore = NULL) {
     
     if (NROW(cols_date)) {
         df[, cols_date] <- as.data.frame(lapply(df[, cols_date, drop = FALSE], as.numeric))
-        outp$date_min   <- sapply(df[, cols_date, drop = FALSE], min)
+        outp$date_min   <- sapply(df[, cols_date, drop = FALSE], min, na.rm = TRUE)
         df[, cols_date] <- df[, cols_date, drop = FALSE] - outp$date_min + 1
         ## the extra 1 is for the way in which package applies log transforms
     }
     
     if (NROW(cols_ts)) {
         df[, cols_ts] <- as.data.frame(lapply(df[, cols_ts, drop = FALSE], as.numeric))
-        outp$ts_min   <- sapply(df[, cols_ts, drop = FALSE], min)
+        outp$ts_min   <- sapply(df[, cols_ts, drop = FALSE], min, na.rm = TRUE)
         df[, cols_ts] <- df[, cols_ts, drop = FALSE] - outp$ts_min + 1
     }
     
@@ -409,7 +409,7 @@ report.outliers <- function(lst, rnames, outliers_print) {
                                    cat(sprintf("\t\t[%s] <= [%.3f] (value: %.3f)\n",
                                                cond$column, cond$value_comp, cond$value_this))
                                } else {
-                                   cat(sprintf("\t\t[%s] <= [%.3f] (value: %s)\n",
+                                   cat(sprintf("\t\t[%s] <= [%s] (value: %s)\n",
                                                cond$column, cond$value_comp, cond$value_this))
                                }
                        },
@@ -418,7 +418,7 @@ report.outliers <- function(lst, rnames, outliers_print) {
                                    cat(sprintf("\t\t[%s] > [%.3f] (value: %.3f)\n",
                                                cond$column, cond$value_comp, cond$value_this))
                                } else {
-                                   cat(sprintf("\t\t[%s] > [%.3f] (value: %s)\n",
+                                   cat(sprintf("\t\t[%s] > [%s] (value: %s)\n",
                                                cond$column, cond$value_comp, cond$value_this))
                                }
                        },
