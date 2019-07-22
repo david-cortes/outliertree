@@ -241,9 +241,14 @@ predict.outliertree <- function(object, newdata, outliers_print = 15, return_out
                                          object$date_min,
                                          object$ts_min)
     if (outliers_print > 0) {
-        report.outliers(outliers_info, row.names(newdata), outliers_print)
+        if (outliers_info$found_outliers) {
+                report.outliers(outliers_info, row.names(newdata), outliers_print)
+            } else {
+                report.no.outliers()
+            }
     }
     if (return_outliers) {
+        outliers_info$found_outliers <- NULL
         return(outliers.to.list(newdata, outliers_info))
     }
 }
