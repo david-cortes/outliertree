@@ -553,6 +553,7 @@ void simplify_when_equal_cond(std::vector<Cluster> &clusters, int ncat_ord[])
 
     int col_equal;
     size_t size_subset;
+    size_t size_subset_excl;
     for (size_t clust = 0; clust < clusters.size(); clust++) {
         if (clusters[clust].split_type == IsNa) continue;
 
@@ -587,6 +588,9 @@ void simplify_when_equal_cond(std::vector<Cluster> &clusters, int ncat_ord[])
 
                 } else {
 
+                    size_subset_excl = std::accumulate(clusters[clust].split_subset.begin(), clusters[clust].split_subset.end(), (size_t)0,
+                                                       [](const size_t a, const char b){return a + ((b < 0)? 1 : 0);});
+                    if (size_subset_excl > 0) continue;
                     size_subset = std::accumulate(clusters[clust].split_subset.begin(), clusters[clust].split_subset.end(), (size_t)0,
                                                   [](const size_t a, const char b){return a + ((b > 0)? 1 : 0);});
                     if (size_subset == 1) {

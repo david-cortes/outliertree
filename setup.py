@@ -39,7 +39,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '0.1.5',
+    version = '0.1.6',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     author_email = 'david.cortes.rivera@gmail.com',

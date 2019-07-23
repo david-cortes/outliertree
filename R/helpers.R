@@ -533,7 +533,7 @@ simplify.conditions <- function(conditions) {
                                                                    comparison = "=", value_comp = val_eq)
             } else if (n_in  > 0 & n_neq > 0) {
                 replacing_cond[[NROW(replacing_cond) + 1]] <- list(column = cl, value_this = val_this,
-                                                                   comparison = "!=", value_comp = val_eq)
+                                                                   comparison = "!=", value_comp = val_neq)
             }
             
         }
