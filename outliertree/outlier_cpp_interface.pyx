@@ -2,6 +2,7 @@ import  numpy as np
 cimport numpy as np
 from libcpp cimport bool as bool_t ###don't confuse it with Python bool
 from libcpp.vector cimport vector
+import ctypes
 
 cdef extern from "outlier_tree.hpp":
 
@@ -129,7 +130,7 @@ cdef class OutlierCppObject:
 
     def fit_model(self,
                   np.ndarray[double, ndim = 2] arr_num, np.ndarray[int, ndim = 2] arr_cat, np.ndarray[int, ndim = 2] arr_ord,
-                  np.ndarray[int, ndim = 1] ncat, np.ndarray[int, ndim = 1] ncat_ord, np.ndarray[char, ndim = 1] cols_ignore,
+                  np.ndarray[int, ndim = 1] ncat, np.ndarray[int, ndim = 1] ncat_ord, cols_ignore,
                   size_t ncols_true_numeric = 0, size_t ncols_true_ts = 0, size_t ncols_true_cat = 0, size_t ncols_true_bool = 0,
                   colnames_num = [], colnames_cat = [], colnames_ord = [], levs_cat = [], levs_ord = [], ts_min = None,
                   bool_t return_outliers = 1, int nthreads = 1, bool_t categ_as_bin = 1, bool_t ord_as_bin = 1, bool_t cat_bruteforce_subset = 0,
@@ -148,6 +149,7 @@ cdef class OutlierCppObject:
         cdef int    *ptr_arr_ncat     = NULL
         cdef int    *ptr_arr_ncat_ord = NULL
         cdef char   *ptr_cols_ignore  = NULL
+        cdef int iiii
 
         if ncol_num > 0:
             ptr_arr_num = &arr_num[0, 0]
@@ -157,8 +159,12 @@ cdef class OutlierCppObject:
         if ncol_ord > 0:
             ptr_arr_ord = &arr_ord[0, 0]
             ptr_arr_ncat_ord = &ncat_ord[0]
+        cdef np.ndarray[char, ndim = 1] cols_ignore_c = np.zeros(cols_ignore.shape[0], dtype = ctypes.c_char)
+        cdef size_t cl_ix
         if cols_ignore.shape[0] > 0:
-            ptr_cols_ignore = &cols_ignore[0]
+            ptr_cols_ignore = &cols_ignore_c[0]
+            for cl_ix in range(cols_ignore.shape[0]):
+                cols_ignore_c[cl_ix] = <bool_t> cols_ignore[cl_ix]
 
         cdef bool_t found_outliers
         found_outliers = fit_outliers_models(

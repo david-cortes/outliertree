@@ -560,7 +560,7 @@ class OutlierTree:
 
     def _process_cols_ignore(self, df, cols_ignore):
         if cols_ignore is None:
-            return np.empty(0).astype(ctypes.c_char)
+            return np.empty(0).astype("bool")
         cols_ignore = np.array(cols_ignore).reshape(-1)
         cols_concat = np.r_[
                             self.cols_num_,
@@ -576,19 +576,19 @@ class OutlierTree:
             order_cols = [df_cols_lst.index(cl) for cl in cols_concat]
             cols_ignore = cols_ignore[np.array(order_cols)]
             #https://github.com/numpy/numpy/issues/13973
-            cols_ignore = cols_ignore.astype("bool").astype(int).astype(ctypes.c_char)
+            cols_ignore = cols_ignore.astype("bool")
             if np.any(cols_ignore):
                 return cols_ignore
             else:
-                return np.empty(0).astype(ctypes.c_char)
+                return np.empty(0).astype("bool")
         else:
             if np.any(~np.in1d(cols_ignore, df.columns)):
                 warnings.warn("'cols_ignore' contains column names not present in the input DataFrame.")
             cols_ignore = np.in1d(cols_concat, cols_ignore)
             if np.any(cols_ignore):
-                return cols_ignore.astype(int).astype(ctypes.c_char)
+                return cols_ignore
             else:
-                return np.empty(0).astype(ctypes.c_char)
+                return np.empty(0).astype("bool")
 
     def _get_ncat(self):
         ncat = np.zeros(self.cols_cat_.shape[0] + self.cols_bool_.shape[0], dtype = ctypes.c_int)
