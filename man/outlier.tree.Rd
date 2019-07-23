@@ -129,5 +129,5 @@ outliers.w.names[["rownum745"]]
 GritBot software: \url{https://www.rulequest.com/gritbot-info.html}
 }
 \seealso{
-\link{predict.outliertree} \link{extract.training.outliers}
+\link{predict.outliertree} \link{extract.training.outliers} \link{hypothyroid}
 }

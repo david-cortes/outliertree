@@ -72,7 +72,7 @@
 #' but when a column is the target of the split, they will be taken as missing - that is, it will not report
 #' infinite values as outliers. 
 #' @references GritBot software: \url{https://www.rulequest.com/gritbot-info.html}
-#' @seealso \link{predict.outliertree} \link{extract.training.outliers}
+#' @seealso \link{predict.outliertree} \link{extract.training.outliers} \link{hypothyroid}
 #' @examples 
 #' library(outliertree)
 #' data(hypothyroid)
