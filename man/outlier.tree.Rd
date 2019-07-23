@@ -5,7 +5,7 @@
 \title{Outlier Tree}
 \usage{
 outlier.tree(df, cols_ord = NULL, cols_ignore = NULL,
-  save_outliers = TRUE, outliers_print = 15, max_depth = 4,
+  save_outliers = FALSE, outliers_print = 10, max_depth = 4,
   min_gain = 0.1, z_norm = 2.67, z_outlier = 8,
   pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 75,
   categ_as_bin = TRUE, ord_as_bin = TRUE,
@@ -110,11 +110,24 @@ infinite values as outliers.
 \examples{
 library(outliertree)
 data(hypothyroid)
-model <- outlier.tree(hypothyroid, outliers_print = 10)
+model <- outlier.tree(hypothyroid, outliers_print=10, save_outliers=TRUE)
+
+### extract outlier info as R list
+outliers <- extract.training.outliers(model)
+summary(outliers)
+
+### information for row 745
+outliers[[745]]
+
+### use custom row names
+df.w.names <- hypothyroid
+row.names(df.w.names) <- paste0("rownum", 1:nrow(hypothyroid))
+outliers.w.names <- predict(model, df.w.names, return_outliers=TRUE)
+outliers.w.names[["rownum745"]]
 }
 \references{
 GritBot software: \url{https://www.rulequest.com/gritbot-info.html}
 }
 \seealso{
-\link{predict.outliertree}
+\link{predict.outliertree} \link{extract.training.outliers}
 }

@@ -578,7 +578,9 @@ list.to.outliers <- function(outliers_data) {
 }
 
 produce.empty.outliers <- function(row_names) {
-    empty_lst        <- rep_len(list(list()), NROW(row_names))
+    empty_lst        <- rep_len(list(list(suspicous_value = list(), group_statistics= list(), conditions = list(),
+                                          tree_depth = NA, uses_NA_branch = NA, outlier_score = NA)),
+                                NROW(row_names))
     names(empty_lst) <- row_names
     class(empty_lst) <- c("outlieroutputs", class(empty_lst))
     return(empty_lst)

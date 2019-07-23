@@ -191,7 +191,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                     }
                 }
             } else if (outl_col < (ncols_num + ncols_cat)) {
-                if (outl_col < ncols_cat_cat) {
+                if (outl_col < (ncols_num + ncols_cat_cat)) {
                     tmp_bool = Rcpp::LogicalVector(model_outputs.all_clusters[outl_col][outl_clust].subset_common.size(), false);
                     for (size_t cat = 0; cat < tmp_bool.size(); cat++) {
                         if (model_outputs.all_clusters[outl_col][outl_clust].subset_common[cat] == 0) {

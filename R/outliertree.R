@@ -72,14 +72,27 @@
 #' but when a column is the target of the split, they will be taken as missing - that is, it will not report
 #' infinite values as outliers. 
 #' @references GritBot software: \url{https://www.rulequest.com/gritbot-info.html}
-#' @seealso \link{predict.outliertree}
+#' @seealso \link{predict.outliertree} \link{extract.training.outliers}
 #' @examples 
 #' library(outliertree)
 #' data(hypothyroid)
-#' model <- outlier.tree(hypothyroid, outliers_print = 10)
+#' model <- outlier.tree(hypothyroid, outliers_print=10, save_outliers=TRUE)
+#' 
+#' ### extract outlier info as R list
+#' outliers <- extract.training.outliers(model)
+#' summary(outliers)
+#' 
+#' ### information for row 745
+#' outliers[[745]]
+#' 
+#' ### use custom row names
+#' df.w.names <- hypothyroid
+#' row.names(df.w.names) <- paste0("rownum", 1:nrow(hypothyroid))
+#' outliers.w.names <- predict(model, df.w.names, return_outliers=TRUE)
+#' outliers.w.names[["rownum745"]]
 #' @export
 outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
-                         save_outliers = TRUE, outliers_print = 15,
+                         save_outliers = FALSE, outliers_print = 10,
                          max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_outlier = 8.0,
                          pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 75,
                          categ_as_bin = TRUE, ord_as_bin = TRUE, cat_bruteforce_subset = FALSE,
