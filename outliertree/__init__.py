@@ -414,10 +414,14 @@ class OutlierTree:
 
         ### https://github.com/pandas-dev/pandas/issues/27490
         df_num  = df[df.columns[cols_num]].astype(ctypes.c_double)
-        df_ts   = pd.DataFrame(df[df.columns[cols_ts]].to_numpy().astype('datetime64[s]').astype(int), columns = df.columns[cols_ts])
         df_bool = df[df.columns[cols_bool]].astype(ctypes.c_int)
         df_cat  = df[df.columns[cols_str]].copy()
         df_ord  = df[df.columns[cols_ord]].copy()
+
+        ### Note: numpy represents NAs in timestamps as negative integers
+        np_ts = df[df.columns[cols_ts]].to_numpy().astype('datetime64[s]').astype(int).astype(ctypes.c_double)
+        np_ts[pd.isnull(df[df.columns[cols_ts]]).to_numpy()] = np.nan
+        df_ts = pd.DataFrame(np_ts, columns = df.columns[cols_ts])
 
         ### TODO: parallelize these parts using joblib
 
@@ -758,7 +762,7 @@ class OutlierTree:
                     if cond["comparison"] == "is NA":
                         ln_cond += "\n\t\t[%s] is NA" % cond["column"]
                     elif cond["comparison"] == "<=":
-                        if np.in1d(row.suspicous_value["column"], self.cols_num_).max():
+                        if np.in1d(cond["column"], self.cols_num_).max():
                             ln_cond += "\n\t\t[%s] <= [%.3f] (value: %.3f)" % (cond["column"],
                                                                                cond["value_comp"],
                                                                                cond["value_this"])
@@ -767,7 +771,7 @@ class OutlierTree:
                                                                            cond["value_comp"],
                                                                            cond["value_this"])
                     elif cond["comparison"] == ">":
-                        if np.in1d(row.suspicous_value["column"], self.cols_num_).max():
+                        if np.in1d(cond["column"], self.cols_num_).max():
                             ln_cond += "\n\t\t[%s] > [%.3f] (value: %.3f)" % (cond["column"],
                                                                               cond["value_comp"],
                                                                               cond["value_this"])
@@ -777,7 +781,7 @@ class OutlierTree:
                                                                           cond["value_this"])
                     
                     elif cond["comparison"] == "between":
-                        if np.in1d(row.suspicous_value["column"], self.cols_num_).max():
+                        if np.in1d(cond["column"], self.cols_num_).max():
                             ln_cond += "\n\t\t[%s] between (%.3f, %.3f] (value: %.3f)" % (cond["column"],
                                                                                           cond["value_comp"][0],
                                                                                           cond["value_comp"][1],
