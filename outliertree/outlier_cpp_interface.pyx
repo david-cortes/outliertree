@@ -270,7 +270,7 @@ cdef class OutlierCppObject:
                     colname = colnames_ord[outl_col - ncol_num - ncol_cat]
                     out_df.iat[row, 0] = {
                                             "column" : colnames_ord[outl_col - ncol_num - ncol_cat],
-                                            "value" : levs_ord[outl_col - ncol_num - ncol_cat][arr_cat[row, outl_col - ncol_num - ncol_cat]]
+                                            "value" : levs_ord[outl_col - ncol_num - ncol_cat][arr_ord[row, outl_col - ncol_num - ncol_cat]]
                                         }
 
                 ### info about the normal observations in tree branch

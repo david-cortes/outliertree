@@ -160,7 +160,7 @@ class OutlierTree:
         self._ts_min      = np.empty(0, dtype = int)
         self.flaggable_values = dict()
 
-    def fit(self, df, cols_ignore = None, outliers_print = 15, return_outliers = True):
+    def fit(self, df, cols_ignore = None, outliers_print = 10, return_outliers = True):
         """
         Fit Outlier Tree model to data.
 
@@ -419,9 +419,12 @@ class OutlierTree:
         df_ord  = df[df.columns[cols_ord]].copy()
 
         ### Note: numpy represents NAs in timestamps as negative integers
-        np_ts = df[df.columns[cols_ts]].to_numpy().astype('datetime64[s]').astype(int).astype(ctypes.c_double)
-        np_ts[pd.isnull(df[df.columns[cols_ts]]).to_numpy()] = np.nan
-        df_ts = pd.DataFrame(np_ts, columns = df.columns[cols_ts])
+        if np.any(cols_ts):
+            np_ts = df[df.columns[cols_ts]].to_numpy().astype('datetime64[s]').astype(int).astype(ctypes.c_double)
+            np_ts[pd.isnull(df[df.columns[cols_ts]]).to_numpy()] = np.nan
+            df_ts = pd.DataFrame(np_ts, columns = df.columns[cols_ts])
+        else:
+            df_ts = pd.DataFrame()
 
         ### TODO: parallelize these parts using joblib
 
@@ -847,16 +850,20 @@ class OutlierTree:
 
                     if cn["comparison"] == "<=":
                         n_le += 1
+                        if np.isinf(lowest_le) and (cn["value_comp"].__class__.__name__[:4] == "date"):
+                            lowest_le = cn["value_comp"]
                         if cn["value_comp"] < lowest_le:
                             lowest_le = cn["value_comp"]
                     elif cn["comparison"] == ">":
                         n_gt += 1
+                        if np.isinf(highest_gt) and (cn["value_comp"].__class__.__name__[:4] == "date"):
+                            highest_gt = cn["value_comp"]
                         if cn["value_comp"] > highest_gt:
                             highest_gt = cn["value_comp"]
                     elif cn["comparison"] == "in":
                         n_in += 1
                         if smallest_in is None:
-                            smallest_in = cn["value_comp"]
+                            smallest_in = np.array(cn["value_comp"])
                         else:
                             smallest_in = smallest_in[np.in1d(smallest_in, cn["value_comp"])]
                     elif cn["comparison"] == "=":
