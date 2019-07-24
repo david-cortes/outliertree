@@ -837,8 +837,8 @@ class OutlierTree:
                 n_in  = 0
                 n_eq  = 0
                 n_neq = 0
-                lowest_le   =  np.inf
-                highest_gt  = -np.inf
+                lowest_le   = None
+                highest_gt  = None
                 val_eq      = None
                 val_neq     = None
                 smallest_in = None
@@ -850,13 +850,13 @@ class OutlierTree:
 
                     if cn["comparison"] == "<=":
                         n_le += 1
-                        if np.isinf(lowest_le) and (cn["value_comp"].__class__.__name__[:4] == "date"):
+                        if lowest_le is None:
                             lowest_le = cn["value_comp"]
                         if cn["value_comp"] < lowest_le:
                             lowest_le = cn["value_comp"]
                     elif cn["comparison"] == ">":
                         n_gt += 1
-                        if np.isinf(highest_gt) and (cn["value_comp"].__class__.__name__[:4] == "date"):
+                        if highest_gt is None:
                             highest_gt = cn["value_comp"]
                         if cn["value_comp"] > highest_gt:
                             highest_gt = cn["value_comp"]
