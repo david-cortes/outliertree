@@ -9,7 +9,7 @@
 \url{http://archive.ics.uci.edu/ml/datasets/thyroid+disease}
 }
 \usage{
-hypothyroid
+data(hypothyroid)
 }
 \description{
 This data contains several obvious outliers from misspellings in data entry.

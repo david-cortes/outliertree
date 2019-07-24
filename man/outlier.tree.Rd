@@ -109,7 +109,11 @@ infinite values as outliers.
 }
 \examples{
 library(outliertree)
+
+### example dataset with interesting outliers
 data(hypothyroid)
+
+### fit the model and get a print of outliers
 model <- outlier.tree(hypothyroid, outliers_print=10, save_outliers=TRUE)
 
 ### extract outlier info as R list
