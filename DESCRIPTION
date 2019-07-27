@@ -13,9 +13,10 @@ Description: Will try to fit decision trees that try to "predict" values for eac
 	according to confidence intervals on this 1-d distribution, and need to have a large gap with respect to the next observation
 	in sorted order to be flagged as outliers. Since outliers are searched for in a decision tree branch, it will know the conditions
 	that make it a rare observation compared to others that meet the same conditions, and the conditions will always be correlated
-	with the target variable (as it's being predicted from them).
+	with the target variable (as it's being predicted from them). Loosely based on the 'GritBot' <https://www.rulequest.com/gritbot-info.html> software.
 License: GPL (>= 3)
 Imports: Rcpp (>= 1.0.1)
 Depends: R (>= 3.5.0)
 LinkingTo: Rcpp, Rcereal
+LazyData: true
 RoxygenNote: 6.1.1
