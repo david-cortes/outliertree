@@ -98,6 +98,10 @@ class OutlierTree:
         Names of the ordinal columns in the data passed to '.fit'.
     cols_ts_ : array(ncols_tiemstamp, )
         Names of the timestamp columns in the data passed to '.fit'.
+
+    References
+    ----------
+    [1] GritBot software : https://www.rulequest.com/gritbot-info.html
     """
 
     def __init__(self, max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_outlier = 8.0, pct_outliers = 0.01,
@@ -921,6 +925,10 @@ class OutlierTree:
             Path to folder where to save the generated files.
         file_name : str
             Prefix for the file names (before the dot).
+
+        References
+        ----------
+        [1] GritBot software : https://www.rulequest.com/gritbot-info.html
         """
         save_folder = os.path.expanduser(save_folder)
         assert os.path.exists(save_folder)
