@@ -46,9 +46,8 @@ _Note that it can also produce other types of conditions such as 'between' (for 
 
 * For R:
 ```r
-devtools::install_github("david-cortes/outliertree")
+install.packages("outliertree")
 ```
-(Coming to CRAN soon)
 
 
 * For Python:
@@ -132,7 +131,7 @@ outliers_model.print_outliers(new_outliers)
 
 # Documentation
 
-* For R : documentation is built-in in the package (e.g. `help(outliertree::outlier.tree)`) - PDF coming to CRAN soon.
+* For R : documentation is built-in in the package (e.g. `help(outliertree::outlier.tree)`) - PDF can be downloaded in [CRAN](https://cran.r-project.org/web/packages/outliertree/index.html).
 
 * For Python: documentation is available at [ReadTheDocs](http://outliertree.readthedocs.io/en/latest/) (and it's also built-in in the package as docstrings, e.g. `help(outliertree.OutlierTree.fit)`).
 
