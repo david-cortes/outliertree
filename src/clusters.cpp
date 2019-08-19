@@ -185,7 +185,7 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                 if (is_exp_transf) {
                     cluster.lower_lim = log(x[ix_arr[row + 1]] - min_gap * sd) * orig_sd + orig_mean;
                 } else if (is_log_transf) {
-                    cluster.lower_lim = exp(x[ix_arr[row + 1]] + min_gap * sd) + log_minval;
+                    cluster.lower_lim = exp(x[ix_arr[row + 1]] - min_gap * sd) + log_minval;
                 } else {
                     cluster.lower_lim = x[ix_arr[row + 1]] - min_gap * sd;
                 }

@@ -248,6 +248,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
 
     /* now run the procedure on each column separately */
     int tid;
+    nthreads = std::min(nthreads, (int)(ncols_numeric + ncols_categ + ncols_ord));
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic, 1) private(tid) shared(workspace, model_outputs, input_data, model_params, tot_cols)
     for (size_t_for col = 0; col < tot_cols; col++) {
 

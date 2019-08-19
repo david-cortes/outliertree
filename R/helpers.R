@@ -277,7 +277,7 @@ check.nthreads <- function(nthreads) {
     } else if (nthreads == "auto") {
         nthreads <- parallel::detectCores()
     } else if (nthreads < 1) {
-        nthreads <- 1
+        nthreads <- parallel::detectCores()
     }
     return(as.integer(nthreads))
 }
@@ -368,14 +368,14 @@ report.outliers <- function(lst, rnames, outliers_print) {
             } else {
                 if ("numeric" %in% class(group_statistics[[row_ix]]$lower_thr)) {
                     cat(sprintf("\tdistribution: %.3f%% <= %.3f - [mean: %.3f] - [sd: %.3f] - [norm. obs: %d]\n",
-                                group_statistics[[row_ix]]$pct_below * 100,
+                                group_statistics[[row_ix]]$pct_above * 100,
                                 group_statistics[[row_ix]]$lower_thr,
                                 group_statistics[[row_ix]]$mean,
                                 group_statistics[[row_ix]]$sd,
                                 group_statistics[[row_ix]]$n_obs))
                 } else {
                     cat(sprintf("\tdistribution: %.3f%% <= [%s] - [mean: %s] - [norm. obs: %d]\n",
-                                group_statistics[[row_ix]]$pct_below * 100,
+                                group_statistics[[row_ix]]$pct_above * 100,
                                 group_statistics[[row_ix]]$lower_thr,
                                 group_statistics[[row_ix]]$mean,
                                 group_statistics[[row_ix]]$n_obs))
