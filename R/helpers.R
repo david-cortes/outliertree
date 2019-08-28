@@ -456,7 +456,7 @@ report.outliers <- function(lst, rnames, outliers_print) {
             }
         }
         
-        cat("\n")
+        cat("\n\n")
     }
 }
 

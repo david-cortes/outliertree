@@ -812,7 +812,7 @@ class OutlierTree:
 
 
             print(ln_cond)
-            print("")
+            print("\n")
             cnt += 1
             if cnt >= max_outliers:
                 break
