@@ -78,7 +78,7 @@ bool find_new_outliers(double *restrict numeric_data,
     bool col_is_num;
 
     bool found_outliers = false;
-    #if defined(_OPENMP) && (_OPENMP < 200801)
+    #if defined(_OPENMP) && ((_OPENMP < 200801) || defined(_WIN32) || defined(_WIN64))
         std::vector<char> outliers_thread(nthreads, false);
     #endif
 
@@ -100,7 +100,7 @@ bool find_new_outliers(double *restrict numeric_data,
 
         /* Note: earlier versions of OpenMP (like v2 released in 2000 and still used by MSVC in 2019) don't support max reduction, hence this code */
         #ifdef _OPENMP
-            #if _OPENMP > 200801
+            #if _OPENMP > 200801 && !defined(_WIN32) && !defined(_WIN64)
                 #pragma omp parallel for schedule(dynamic) num_threads(nthreads) shared(model_outputs, nrows, prediction_data) firstprivate(col_is_num, col) private(num_val_this, cat_val_this) reduction(max:found_outliers)
             #else
                 #pragma omp parallel for schedule(dynamic) num_threads(nthreads) shared(model_outputs, outliers_thread, nrows, prediction_data) firstprivate(col_is_num, col) private(num_val_this, cat_val_this)
@@ -132,7 +132,7 @@ bool find_new_outliers(double *restrict numeric_data,
             }
 
             #ifdef _OPENMP
-                #if _OPENMP > 200801
+                #if _OPENMP > 200801 && !defined(_WIN32) && !defined(_WIN64)
                     found_outliers = follow_tree(model_outputs, prediction_data, 0, 0, row, col, col_is_num, num_val_this, cat_val_this);
                 #else
                     outliers_thread[omp_get_thread_num()] = follow_tree(model_outputs, prediction_data, 0, 0, row, col, col_is_num, num_val_this, cat_val_this)?
@@ -145,7 +145,7 @@ bool find_new_outliers(double *restrict numeric_data,
         }
     }
 
-    #if defined(_OPENMP) && (_OPENMP < 200801)
+    #if defined(_OPENMP) && ((_OPENMP < 200801) || defined(_WIN32) || defined(_WIN64))
         for (size_t tid = 0; tid < outliers_thread.size(); tid++) {
             if (outliers_thread[tid] != 0) return true;
         }
