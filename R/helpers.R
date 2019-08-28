@@ -367,14 +367,14 @@ report.outliers <- function(lst, rnames, outliers_print) {
                 }
             } else {
                 if ("numeric" %in% class(group_statistics[[row_ix]]$lower_thr)) {
-                    cat(sprintf("\tdistribution: %.3f%% <= %.3f - [mean: %.3f] - [sd: %.3f] - [norm. obs: %d]\n",
+                    cat(sprintf("\tdistribution: %.3f%% >= %.3f - [mean: %.3f] - [sd: %.3f] - [norm. obs: %d]\n",
                                 group_statistics[[row_ix]]$pct_above * 100,
                                 group_statistics[[row_ix]]$lower_thr,
                                 group_statistics[[row_ix]]$mean,
                                 group_statistics[[row_ix]]$sd,
                                 group_statistics[[row_ix]]$n_obs))
                 } else {
-                    cat(sprintf("\tdistribution: %.3f%% <= [%s] - [mean: %s] - [norm. obs: %d]\n",
+                    cat(sprintf("\tdistribution: %.3f%% >= [%s] - [mean: %s] - [norm. obs: %d]\n",
                                 group_statistics[[row_ix]]$pct_above * 100,
                                 group_statistics[[row_ix]]$lower_thr,
                                 group_statistics[[row_ix]]$mean,
@@ -438,7 +438,7 @@ report.outliers <- function(lst, rnames, outliers_print) {
                                    cat(sprintf("\t\t[%s] between (%.3f, %.3f] (value: %.3f)\n",
                                                cond$column, cond$value_comp[1], cond$value_comp[2], cond$value_this))
                                } else {
-                                   cat(sprintf("\t\t[%s] <= between (%s, %s] (value: %s)\n",
+                                   cat(sprintf("\t\t[%s] between (%s, %s] (value: %s)\n",
                                                cond$column, cond$value_comp[1], cond$value_comp[2], cond$value_this))
                                }
                        },
