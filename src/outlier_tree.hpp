@@ -100,7 +100,7 @@
 
 /* MSVC is stuck with an OpenMP version that's 19 years old at the time of writing and does not support unsigned iterators */
 #ifdef _OPENMP
-    #if _OPENMP < 200801 /* OpenMP < 3.0 */
+    #if (_OPENMP < 200801) || defined(_WIN32) || defined(_WIN64) /* OpenMP < 3.0 */
         #define size_t_for long
     #else
         #define size_t_for size_t

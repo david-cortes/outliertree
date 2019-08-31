@@ -1,7 +1,7 @@
 Package: outliertree
 Type: Package
 Title: Explainable Outlier Detection Through Decision Tree Conditioning
-Version: 1.0.2
+Version: 1.0.3
 Date: 2019-08-28
 Author: David Cortes
 Maintainer: David Cortes <david.cortes.rivera@gmail.com>
