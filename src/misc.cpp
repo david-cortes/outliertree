@@ -581,7 +581,7 @@ void check_more_two_values(double arr_num[], size_t nrows, size_t ncols, int nth
     std::vector<std::unordered_set<double>> seen_values(ncols);
 
     #pragma omp parallel for schedule(dynamic) num_threads(nthreads) shared(arr_num, nrows, ncols, too_few_values, seen_values)
-    for (size_t col = 0; col < ncols; col++) {
+    for (size_t_for col = 0; col < ncols; col++) {
         for (size_t row = 0; row < nrows; row++) {
             if (!isnan(arr_num[row + col * nrows]))
                 seen_values[col].insert(arr_num[row + col * nrows]);
