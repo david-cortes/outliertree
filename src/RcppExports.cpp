@@ -90,12 +90,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// check_few_values
+Rcpp::LogicalVector check_few_values(Rcpp::NumericVector arr_num, size_t nrows, size_t ncols, int nthreads);
+RcppExport SEXP _outliertree_check_few_values(SEXP arr_numSEXP, SEXP nrowsSEXP, SEXP ncolsSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type arr_num(arr_numSEXP);
+    Rcpp::traits::input_parameter< size_t >::type nrows(nrowsSEXP);
+    Rcpp::traits::input_parameter< size_t >::type ncols(ncolsSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(check_few_values(arr_num, nrows, ncols, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_outliertree_deserialize_OutlierTree", (DL_FUNC) &_outliertree_deserialize_OutlierTree, 1},
     {"_outliertree_check_null_ptr_model", (DL_FUNC) &_outliertree_check_null_ptr_model, 1},
     {"_outliertree_fit_OutlierTree", (DL_FUNC) &_outliertree_fit_OutlierTree, 30},
     {"_outliertree_predict_OutlierTree", (DL_FUNC) &_outliertree_predict_OutlierTree, 13},
+    {"_outliertree_check_few_values", (DL_FUNC) &_outliertree_check_few_values, 4},
     {NULL, NULL, 0}
 };
 

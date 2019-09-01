@@ -17,3 +17,7 @@ predict_OutlierTree <- function(ptr_model, nrows, nthreads, arr_num, arr_cat, ar
     .Call(`_outliertree_predict_OutlierTree`, ptr_model, nrows, nthreads, arr_num, arr_cat, arr_ord, cat_levels, ord_levels, colnames_num, colnames_cat, colnames_ord, min_date, min_ts)
 }
 
+check_few_values <- function(arr_num, nrows, ncols, nthreads) {
+    .Call(`_outliertree_check_few_values`, arr_num, nrows, ncols, nthreads)
+}
+

@@ -1,6 +1,6 @@
 import numpy as np, pandas as pd, re, warnings, ctypes, multiprocessing, os, operator
 from copy import deepcopy
-from ._outlier_cpp_interface import OutlierCppObject
+from ._outlier_cpp_interface import OutlierCppObject, check_few_values
 
 
 class OutlierTree:
@@ -436,9 +436,9 @@ class OutlierTree:
             df_num = None
         else:
             ### check that it doesn't contain booleans disguised as numeric or all the same value
-            for cl in range(df_num.shape[1]):
-                if np.unique(df_num[df_num.columns[cl]].loc[~pd.isnull(df_num[df_num.columns[cl]])]).shape[0] <= 2:
-                    raise ValueError("Column " + df_num.columns.values[cl] + " has numeric type but contains less than 3 different values.")
+            too_few_values = check_few_values(df_num.values, self.nthreads)
+            if np.any(too_few_values):
+                warnings.warn("Some numeric columns have less than 3 different values - head: " + str(df_num.columns[too_few_values][:3]))
             self.cols_num_ = df_num.columns.values.copy()
 
 

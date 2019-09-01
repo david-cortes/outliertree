@@ -40,8 +40,7 @@ SEXP deserialize_OutlierTree(Rcpp::RawVector src)
         cereal::BinaryInputArchive iarchive(ss);
         iarchive(*model_outputs);
     }
-    Rcpp::XPtr<ModelOutputs> ptr_model(model_outputs.release(), true);
-    return ptr_model;
+    return Rcpp::XPtr<ModelOutputs>(model_outputs.release(), true);
 }
 
 // [[Rcpp::export]]
@@ -1137,5 +1136,17 @@ Rcpp::List predict_OutlierTree(SEXP ptr_model, size_t nrows, int nthreads,
                                         min_ts);
     outp["found_outliers"] = Rcpp::LogicalVector(found_outliers);
     forget_row_outputs(*model_outputs);
+    return outp;
+}
+
+// [[Rcpp::export]]
+Rcpp::LogicalVector check_few_values(Rcpp::NumericVector arr_num, size_t nrows, size_t ncols, int nthreads)
+{
+    std::vector<char> too_few_vals(ncols, 0);
+    check_more_two_values(&arr_num[0], nrows, ncols, nthreads, too_few_vals.data());
+    Rcpp::LogicalVector outp(ncols);
+    for (size_t col = 0; col < ncols; col++) {
+        outp[col] = (bool) too_few_vals[col];
+    }
     return outp;
 }

@@ -575,3 +575,18 @@ void allocate_row_outputs(ModelOutputs &model_outputs, size_t nrows, size_t max_
     model_outputs.outlier_trees_final.shrink_to_fit();
     model_outputs.outlier_depth_final.shrink_to_fit();
 }
+
+void check_more_two_values(double arr_num[], size_t nrows, size_t ncols, int nthreads, char too_few_values[])
+{
+    std::vector<std::unordered_set<double>> seen_values(ncols);
+
+    #pragma omp parallel for schedule(dynamic) num_threads(nthreads) shared(arr_num, nrows, ncols, too_few_values, seen_values)
+    for (size_t col = 0; col < ncols; col++) {
+        for (size_t row = 0; row < nrows; row++) {
+            if (!isnan(arr_num[row + col * nrows]))
+                seen_values[col].insert(arr_num[row + col * nrows]);
+            if (seen_values[col].size() > 2) break;
+        }
+        if (seen_values[col].size() <= 2)too_few_values[col] = true;
+    }
+}

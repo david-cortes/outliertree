@@ -137,7 +137,7 @@ outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
     follow_all <- as.logical(follow_all)
     
     ### decompose data into C arrays and names, then pass to C++
-    model_data <- split.types(df, cols_ord, cols_ignore)
+    model_data <- split.types(df, cols_ord, cols_ignore, nthreads)
     model_data$obj_from_cpp <- fit_OutlierTree(model_data$arr_num, model_data$ncol_num,
                                                model_data$arr_cat, model_data$ncol_cat, model_data$ncat,
                                                model_data$arr_ord, model_data$ncol_ord, model_data$ncat_ord,

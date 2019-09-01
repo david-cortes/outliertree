@@ -7,7 +7,7 @@ check.is.df <- function(df) {
     return(df)
 }
 
-split.types <- function(df, cols_ord = NULL, cols_ignore = NULL) {
+split.types <- function(df, cols_ord = NULL, cols_ignore = NULL, nthreads = 1) {
     
     ### validate input data
     df <- check.is.df(df)
@@ -143,9 +143,12 @@ split.types <- function(df, cols_ord = NULL, cols_ignore = NULL) {
         outp$ncol_num <- length(c(outp$cols_num, outp$cols_date, outp$cols_ts))
         
         ### check that they are not binary
-        n_unique_num <- min(sapply(df[, c(outp$cols_num, outp$cols_date, outp$cols_ts), drop = FALSE],
-                                   function(x) length(unique(x[!is.na(x)]))), na.rm = TRUE)
-        if (n_unique_num < 3) { warning("Passed numeric columns with less than 3 different values.") }
+        too_few_vals <- check_few_values(outp$arr_num, outp$nrow, outp$ncol_num, nthreads)
+        if (any(too_few_vals)) {
+            warning(paste0("Passed numeric columns with less than 3 different values - head: ",
+                           paste(c(outp$cols_num, outp$cols_date, outp$cols_ts)[too_few_vals], collapse = ", ")))
+        }
+
     }
     
     if (NROW(outp$cols_cat) || NROW(outp$cols_bool)) {

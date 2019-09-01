@@ -113,6 +113,23 @@ cdef extern from "outlier_tree.hpp":
 
     void forget_row_outputs(ModelOutputs &model_outputs)
 
+    void check_more_two_values(double *arr_num, size_t nrows, size_t ncols, int nthreads, char *too_few_values)
+
+
+def check_few_values(np.ndarray[double, ndim = 2] arr, int nthreads = 1):
+    cdef size_t nrows = arr.shape[0]
+    cdef size_t ncols = arr.shape[1]
+    cdef np.ndarray[char, ndim = 1] too_few_values = np.zeros(ncols, dtype = ctypes.c_char)
+    cdef char *ptr_too_few_values = &too_few_values[0]
+    if not arr.flags['F_CONTIGUOUS']:
+        arr = np.asfortranarray(arr)
+    check_more_two_values(&arr[0, 0], nrows, ncols, nthreads, ptr_too_few_values)
+    too_few_values_bool = np.empty(ncols, dtype = "bool")
+    for col in range(ncols):
+        print("col ", col, " - value ", ptr_too_few_values[col])
+        too_few_values_bool[col] = <bool_t> ptr_too_few_values[col]
+    return too_few_values_bool
+
 
 cdef class OutlierCppObject:
     cdef ModelOutputs model_outputs

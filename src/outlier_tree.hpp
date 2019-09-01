@@ -38,6 +38,7 @@
 #include <memory>
 #include <algorithm>
 #include <numeric>
+#include <unordered_set>
 #include <math.h>
 #include <stddef.h>
 #include <limits.h>
@@ -755,3 +756,4 @@ void set_tree_as_categorical(ClusterTree &tree, size_t col, int ncat);
 void set_tree_as_ordinal(ClusterTree &tree, int split_lev, size_t col);
 void forget_row_outputs(ModelOutputs &model_outputs);
 void allocate_row_outputs(ModelOutputs &model_outputs, size_t nrows, size_t max_depth);
+void check_more_two_values(double arr_num[], size_t nrows, size_t ncols, int nthreads, char too_few_values[]);
