@@ -89,14 +89,10 @@
 
 
 /* Aliasing for compiler optimizations */
-#ifndef restrict
-    #ifdef __restrict
-        #define restrict __restrict
-    #elif defined(__restrict__)
-        #define restrict __restrict__
-    #else
-        #define restrict 
-    #endif
+#if defined(__GNUG__) || defined(__GNUC__) || defined(_MSC_VER) || defined(__clang__) || defined(__INTEL_COMPILER)
+    #define restrict __restrict
+#else
+    #define restrict 
 #endif
 
 /* MSVC is stuck with an OpenMP version that's 19 years old at the time of writing and does not support unsigned iterators */
