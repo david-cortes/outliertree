@@ -106,6 +106,10 @@
     #define size_t_for size_t
 #endif
 
+#ifndef _OPENMP
+    #define omp_get_thread_num() 0
+#endif
+
 
 /************************************************************
   Data types and structs that are returned from this module

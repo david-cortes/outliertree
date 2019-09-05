@@ -31,10 +31,6 @@
 ********************************************************************************************************************/
 #include "outlier_tree.hpp"
 
-#if !defined(_OPENMP) && !defined(omp_get_thread_num)
-    int omp_get_thread_num() {return 0; }
-#endif
-
 /*    Fit outliers model based on conditional distributions obtaines thorugh decision-tree splitting
 *    
 *    Note1: the function here will not perform any data validation - it must be done from outside already.
