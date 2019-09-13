@@ -126,7 +126,6 @@ def check_few_values(np.ndarray[double, ndim = 2] arr, int nthreads = 1):
     check_more_two_values(&arr[0, 0], nrows, ncols, nthreads, ptr_too_few_values)
     too_few_values_bool = np.empty(ncols, dtype = "bool")
     for col in range(ncols):
-        print("col ", col, " - value ", ptr_too_few_values[col])
         too_few_values_bool[col] = <bool_t> ptr_too_few_values[col]
     return too_few_values_bool
 

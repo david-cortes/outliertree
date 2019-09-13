@@ -29,6 +29,8 @@ class build_ext_subclass( build_ext ):
                 e.extra_compile_args = ['-fopenmp', '-O2', '-march=native', '-std=c++11']
                 e.extra_link_args = ['-fopenmp']
 
+                # e.extra_compile_args = ['-O2', '-march=native', '-std=c++11']
+
                 ### for testing (run with `LD_PRELOAD=libasan.so python script.py`)
                 # extra_compile_args=["-std=c++11", "-fsanitize=address", "-static-libasan", "-ggdb"],
                 # extra_link_args = ["-fsanitize=address", "-static-libasan"]
@@ -56,7 +58,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.0.6',
+    version = '1.0.7',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     author_email = 'david.cortes.rivera@gmail.com',
