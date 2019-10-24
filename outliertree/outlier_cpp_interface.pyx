@@ -1,5 +1,3 @@
-#cython: auto_pickle=True
-
 import  numpy as np
 cimport numpy as np
 from libcpp cimport bool as bool_t ###don't confuse it with Python bool
