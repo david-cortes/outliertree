@@ -206,8 +206,7 @@ typedef struct Cluster {
         this->has_NA_branch = has_NA_branch;
     }
 
-    #ifdef Rcpp_hpp
-    /* this is for serialization with Rcereal */
+    /* this is for serialization with cereal */
     template<class Archive>
     void serialize(Archive &archive)
     {
@@ -236,8 +235,9 @@ typedef struct Cluster {
                 this->score_categ
                 );
     }
+
+    /* this is for serialization with both cereal and cython auto-pickle */
     Cluster() {};
-    #endif
     
 } Cluster;
 
@@ -329,8 +329,7 @@ typedef struct ClusterTree {
         this->split_lev = cat_chosen;
     }
 
-    #ifdef Rcpp_hpp
-    /* this is for serialization with Rcereal */
+    /* this is for serialization with cereal */
     template<class Archive>
     void serialize(Archive &archive)
     {
@@ -351,8 +350,9 @@ typedef struct ClusterTree {
                 this->binary_branches
                 );
     }
+
+    /* this is for serialization with both cereal and cython auto-pickle */
     ClusterTree() {};
-    #endif
 
 } ClusterTree;
 
@@ -381,8 +381,7 @@ typedef struct ModelOutputs {
     size_t max_depth;                                   /* redundant info which speeds up prediction */
 
 
-    #ifdef Rcpp_hpp
-    /* this is for serialization with Rcereal */
+    /* this is for serialization with cereal */
     template<class Archive>
     void serialize(Archive &archive)
     {
@@ -410,8 +409,9 @@ typedef struct ModelOutputs {
                 this->max_depth
                 );
     }
+
+    /* this is for serialization with both cereal and cython auto-pickle */
     ModelOutputs() {};
-    #endif
 
 } ModelOutputs;
 
