@@ -72,7 +72,7 @@
 #' but when a column is the target of the split, they will be taken as missing - that is, it will not report
 #' infinite values as outliers. 
 #' @references GritBot software: \url{https://www.rulequest.com/gritbot-info.html}
-#' @seealso \link{predict.outliertree} \link{extract.training.outliers} \link{hypothyroid}
+#' @seealso \link{predict.outliertree} \link{extract.training.outliers} \link{hypothyroid} \link{unpack.outlier.tree}
 #' @examples 
 #' library(outliertree)
 #' 
@@ -199,7 +199,7 @@ outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
 #' @details Note that after loading a serialized object from `outlier.tree` through `readRDS` or `load`,
 #' it will only de-serialize the underlying C++ object upon running `predict` or `print`, so the first run will
 #' be slower, while subsequent runs will be faster as the C++ object will already be in-memory.
-#' @seealso \link{outlier.tree}
+#' @seealso \link{outlier.tree} \link{unpack.outlier.tree}
 #' @examples 
 #' library(outliertree)
 #' ### random data frame with an obvious outlier
@@ -321,4 +321,61 @@ extract.training.outliers <- function(outlier_tree_model) {
 check.outlierness.bounds <- function(outlier_tree_model) {
     check.is.model.obj(outlier_tree_model)
     return(outlier_tree_model$obj_from_cpp$bounds)
+}
+
+#' @title Unpack Outlier Tree model after de-serializing
+#' @description  After persisting an outlier tree model object through `saveRDS`, `save`, or restarting a session, the
+#' underlying C++ objects that constitute the outlier tree model and which live only on the C++ heap memory are not saved along,
+#' thus not restored after loading a saved model through `readRDS` or `load`.
+#' 
+#' The model object however keeps serialized versions of the C++ objects as raw bytes, from which the C++ objects can be
+#' reconstructed, and are done so automatically after calling `predict`, `print`, or `summary` on the
+#' freshly-loaded object from `readRDS` or `load`.
+#' 
+#' But due to R's environments system (as opposed to other systems such as Python which can use pass-by-reference), they will
+#' only be re-constructed in the environment that is calling `predict`, `print`, etc. and not in higher-up environments
+#' (i.e. if you call `predict` on the object from inside different functions, each function will have to reconstruct the
+#' C++ objects independently and they will only live within the function that called `predict`).
+#' 
+#' This function serves as an environment-level unpacker that will reconstruct the C++ object in the environment in which
+#' it is called (i.e. if you need to call `predict` from inside multiple functions, use this function before passing the
+#' freshly-loaded model object to those other functions, and then they will not need to reconstruct the C++ objects anymore),
+#' in the same way as `predict` or `print`, but without producing any outputs or messages.
+#' @param model An Outlier Tree object as returned by `outlier.tree`, which has been just loaded from a disk
+#' file through `readRDS`, `load`, or a session restart.
+#' @examples \dontrun{
+#' library(outliertree)
+#' set.seed(1)
+#' df <- as.data.frame(matrix(rnorm(1000), nrow = 200))
+#' otree <- outlier.tree(df, outliers_print = 0)
+#' saveRDS(otree, "otree.Rds")
+#' otree2 <- readRDS("otree.Rds")
+#' 
+#' ### will de-serialize inside, but object is short-lived
+#' wrap_predict <- function(model, data) {
+#'     pred <- predict(model, data, outliers_print = 0)
+#'     cat("pointer inside function is this: ")
+#'     print(model$obj_from_cpp$ptr_model)
+#'     return(pred)
+#' }
+#' temp <- wrap_predict(otree2, df)
+#' cat("pointer outside function is this: \n")
+#' print(otree2$obj_from_cpp$ptr_model) ### pointer to the C++ object
+#' 
+#' ### now unpack the C++ object beforehand
+#' unpack.outlier.tree(otree2)
+#' print("after unpacking beforehand")
+#' temp <- wrap_predict(otree2, df)
+#' cat("pointer outside function is this: \n")
+#' print(otree2$obj_from_cpp$ptr_model)
+#' }
+#' @export
+unpack.outlier.tree <- function(model)  {
+    check.is.model.obj(model)
+    if (check_null_ptr_model(model$obj_from_cpp$ptr_model)) {
+        ptr_new <- deserialize_OutlierTree(model$obj_from_cpp$serialized_obj)
+        eval.parent(substitute(model$obj_from_cpp$ptr_model <- ptr_new))
+        model$obj_from_cpp$ptr_model <- ptr_new
+    }
+    return(invisible(NULL))
 }
