@@ -22,12 +22,12 @@ class build_ext_subclass( build_ext ):
         elif (c == "clang") or (c == "clang++"):
             for e in self.extensions:
                 e.extra_compile_args = ['-fopenmp', '-O2', '-march=native', '-std=c++17']
-                e.extra_link_args = ['-fopenmp']
+                e.extra_link_args    = ['-fopenmp']
                 ### Note: when passing C++11 to CLANG, it complies about C++17 features in CYTHON_FALLTHROUGH
         else: # gcc
             for e in self.extensions:
                 e.extra_compile_args = ['-fopenmp', '-O2', '-march=native', '-std=c++11']
-                e.extra_link_args = ['-fopenmp']
+                e.extra_link_args    = ['-fopenmp']
 
                 # e.extra_compile_args = ['-O2', '-march=native', '-std=c++11']
 
@@ -58,7 +58,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.0.9',
+    version = '1.0.10',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     author_email = 'david.cortes.rivera@gmail.com',

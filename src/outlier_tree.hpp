@@ -757,3 +757,4 @@ void set_tree_as_ordinal(ClusterTree &tree, int split_lev, size_t col);
 void forget_row_outputs(ModelOutputs &model_outputs);
 void allocate_row_outputs(ModelOutputs &model_outputs, size_t nrows, size_t max_depth);
 void check_more_two_values(double arr_num[], size_t nrows, size_t ncols, int nthreads, char too_few_values[]);
+void dealloc_ModelOutputs(ModelOutputs &model_outputs);

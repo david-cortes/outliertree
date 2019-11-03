@@ -116,6 +116,8 @@ cdef extern from "outlier_tree.hpp":
 
     void check_more_two_values(double *arr_num, size_t nrows, size_t ncols, int nthreads, char *too_few_values)
 
+    void dealloc_ModelOutputs(ModelOutputs &model_outputs)
+
 
 def check_few_values(np.ndarray[double, ndim = 2] arr, int nthreads = 1):
     cdef size_t nrows = arr.shape[0]
@@ -136,6 +138,9 @@ cdef class OutlierCppObject:
 
     def __init__(self):
         self.model_outputs = ModelOutputs()
+
+    def __dealloc__(self):
+        dealloc_ModelOutputs(self.model_outputs)
 
     def get_model_outputs(self):
         return self.model_outputs
