@@ -472,7 +472,7 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
             if (split_info.left_branch.cnt < min_size || split_info.right_branch.cnt < min_size) continue;
 
             /* calculate the gain */
-            this_gain = numeric_gain(split_info, sd_y);
+            this_gain = numeric_gain(split_info, 1.0);
             if (this_gain > *gain) {
                 *gain = this_gain * sd_y;
                 if (!x_is_ordinal)
