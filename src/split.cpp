@@ -66,39 +66,49 @@ void flag_zero_counts(char split_subset[], size_t buffer_cat_cnt[], size_t ncat_
         if (buffer_cat_cnt[cat] == 0) split_subset[cat] = -1;
 }
 
-double calc_sd(size_t cnt, long double sum, long double sum_sq)
+long double calc_sd(size_t cnt, long double sum, long double sum_sq)
 {
     if (cnt < 3) return 0;
     return sqrtl( (sum_sq - (square(sum) / (long double) cnt) + SD_REG) / (long double) (cnt - 1) );
 }
 
-double calc_sd(NumericBranch &branch)
+long double calc_sd(NumericBranch &branch)
 {
     if (branch.cnt < 3) return 0;
     return sqrtl((branch.sum_sq - (square(branch.sum) / (long double) branch.cnt) + SD_REG) / (long double) (branch.cnt - 1));
 }
 
-double calc_sd(size_t ix_arr[], double x[], size_t st, size_t end)
+long double calc_sd(size_t ix_arr[], double *restrict x, size_t st, size_t end, double *restrict mean)
 {
-    long double sum = 0;
-    long double sum_sq = 0;
-    size_t cnt = end - st + 1;
+    long double running_mean = 0;
+    long double mean_prev    = 0;
+    long double running_ssq  = 0;
+    double xval;
     for (size_t row = st; row <= end; row++) {
-        sum    += x[ix_arr[row]];
-        sum_sq += square(x[ix_arr[row]]);
+        xval = x[ix_arr[row]];
+        running_mean += (xval - running_mean) / (long double)(row - st + 1);
+        running_ssq  += (xval - running_mean) * (xval - mean_prev);
+        mean_prev     = running_mean;
     }
-    return calc_sd(cnt, sum, sum_sq);
+    *mean = (double) running_mean;
+    return sqrtl(running_ssq / (long double)(end - st));
+
 }
 
-double numeric_gain(NumericSplit &split_info, double tot_sd)
+long double numeric_gain(NumericSplit &split_info, long double tot_sd)
 {
-    size_t tot = split_info.NA_branch.cnt + split_info.left_branch.cnt + split_info.right_branch.cnt;
+    long double tot = (long double)(split_info.NA_branch.cnt + split_info.left_branch.cnt + split_info.right_branch.cnt);
     long double residual = 
         ((long double) split_info.NA_branch.cnt)    * calc_sd(split_info.NA_branch)   +
         ((long double) split_info.left_branch.cnt)  * calc_sd(split_info.left_branch) +
         ((long double) split_info.right_branch.cnt) * calc_sd(split_info.right_branch);
 
-    return tot_sd - (residual / (long double)tot);
+    return tot_sd - (residual / tot);
+}
+
+long double numeric_gain(long double tot_sd, long double info_left, long double info_right, long double info_NA, long double cnt)
+{
+    return tot_sd - (info_left + info_right + info_NA) / cnt;
 }
 
 long double total_info(size_t categ_counts[], size_t ncat)
@@ -143,7 +153,7 @@ long double total_info(size_t *restrict ix_arr, int *restrict x, size_t st, size
     return info;
 }
 
-double categ_gain(CategSplit split_info, long double base_info)
+long double categ_gain(CategSplit split_info, long double base_info)
 {
     return (
             base_info -
@@ -153,7 +163,7 @@ double categ_gain(CategSplit split_info, long double base_info)
            ) / (long double) split_info.tot ;
 }
 
-double categ_gain(size_t *restrict categ_counts, size_t ncat, size_t *restrict ncat_col, size_t maxcat, long double base_info, size_t tot)
+long double categ_gain(size_t *restrict categ_counts, size_t ncat, size_t *restrict ncat_col, size_t maxcat, long double base_info, size_t tot)
 {
     long double info = 0;
     for (size_t cat = 0; cat < ncat; cat++) {
@@ -170,8 +180,8 @@ double categ_gain(size_t *restrict categ_counts, size_t ncat, size_t *restrict n
     return (base_info - info) / (long double) tot;
 }
 
-double categ_gain_from_split(size_t *restrict ix_arr, int *restrict x, size_t st, size_t st_non_na, size_t split_ix, size_t end,
-                             size_t ncat, size_t *restrict buffer_cat_cnt, long double base_info)
+long double categ_gain_from_split(size_t *restrict ix_arr, int *restrict x, size_t st, size_t st_non_na, size_t split_ix, size_t end,
+                                  size_t ncat, size_t *restrict buffer_cat_cnt, long double base_info)
 {
     long double gain = base_info;
     memset(buffer_cat_cnt, 0, ncat * sizeof(size_t));
@@ -221,6 +231,8 @@ double categ_gain_from_split(size_t *restrict ix_arr, int *restrict x, size_t st
 *        Whether 'x' can have missing values or not.
 *    - min_size (in)
 *        Minimum number of elements that can be in a split.
+*    - buffer_sd[n] (in)
+*        Buffer where to write temporary sd/information at each split point in a first pass.
 *    - gain (out)
 *        Gain calculated on the best split found. If no split is possible, will return -Inf.
 *    - split_point (out)
@@ -231,20 +243,24 @@ double categ_gain_from_split(size_t *restrict ix_arr, int *restrict x, size_t st
 *        Index at which the NA data is separated from the other branches
 */
 void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, double *restrict y,
-                             double sd_y, bool has_na, size_t min_size,
-                             double *restrict gain, double *restrict split_point, size_t *restrict split_left, size_t *restrict split_NA)
+                             long double sd_y, bool has_na, size_t min_size, long double *restrict buffer_sd,
+                             long double *restrict gain, double *restrict split_point, size_t *restrict split_left, size_t *restrict split_NA)
 {
 
     *gain = -HUGE_VAL;
     *split_point = -HUGE_VAL;
     size_t st_non_na;
-    double this_gain;
+    long double this_gain;
+    long double cnt_dbl = (long double)(end - st + 1);
+    long double running_mean = 0;
+    long double mean_prev    = 0;
+    long double running_ssq  = 0;
+    double xval;
+    long double info_left;
+    long double info_NA = 0;
 
     /* check that there are enough observations for a split */
     if ((end - st + 1) < (2 * min_size)) return;
-
-    /* summary about obs. in split is stored here */
-    NumericSplit split_info;
 
     /* move all NAs of X to the front */
     if (has_na) {
@@ -253,46 +269,48 @@ void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, dou
     *split_NA = st_non_na;
 
     /* assign NAs to their own branch */
-    split_info.NA_branch.cnt = st_non_na - st;
     if (st_non_na > st) {
 
         /* first check that it's still possible to split */
         if ((end - st_non_na + 1) < (2 * min_size)) return;
 
-        for (size_t i = st; i < st_non_na; i++) {
-            split_info.NA_branch.sum += y[ix_arr[i]];
-            split_info.NA_branch.sum_sq += square(y[ix_arr[i]]);
-        }
+        info_NA = (long double)(st_non_na - st) * calc_sd(ix_arr, y, st, st_non_na-1, &xval); /* last arg is not used */
     }
 
     /* sort the remaining non-NA values in ascending order */
     std::sort(ix_arr + st_non_na, ix_arr + end + 1, [&x](const size_t a, const size_t b){return x[a] < x[b];});
 
-    /* put all observations on the right branch */
-    split_info.right_branch.cnt = end - st_non_na + 1;
-    for (size_t i = st_non_na; i <= end; i++) {
-        split_info.right_branch.sum += y[ix_arr[i]];
-        split_info.right_branch.sum_sq += square(y[ix_arr[i]]);
+    /* calculate SD*N backwards first, then forwards */
+    for (size_t i = end; i >= st_non_na; i--) {
+        xval = y[ix_arr[i]];
+        running_mean += (xval - running_mean) / (long double)(end - i + 1);
+        running_ssq  += (xval - running_mean) * (xval - mean_prev);
+        mean_prev     =  running_mean;
+        buffer_sd[i]  = (long double)(end - i + 1) * sqrtl(running_ssq / (long double)(end - i));
+        /* could also avoid div by n-1, would be faster */
+
+        if (i == st_non_na) break; /* be aware unsigned integer overflow */
     }
 
     /* look for the best split point, by moving one observation at a time to the left branch*/
+    running_mean = 0;
+    running_ssq  = 0;
+    mean_prev    = 0;
     for (size_t i = st_non_na; i <= (end - min_size); i++) {
-        split_info.right_branch.cnt--;
-        split_info.right_branch.sum -= y[ix_arr[i]];
-        split_info.right_branch.sum_sq -= square(y[ix_arr[i]]);
-
-        split_info.left_branch.cnt++;
-        split_info.left_branch.sum += y[ix_arr[i]];
-        split_info.left_branch.sum_sq += square(y[ix_arr[i]]);
+        xval = y[ix_arr[i]];
+        running_mean += (xval - running_mean) / (long double)(i - st_non_na + 1);
+        running_ssq  += (xval - running_mean) * (xval - mean_prev);
+        mean_prev     =  running_mean;
 
         /* check that split meets minimum criteria (size on right branch is controlled in loop condition) */
-        if (split_info.left_branch.cnt < min_size) continue;
+        if ((i - st_non_na + 1) < min_size) continue;
 
         /* check that value is not repeated next -- note that condition in loop prevents out-of-bounds access */
         if (x[ix_arr[i]] == x[ix_arr[i + 1]]) continue;
 
         /* evaluate gain at this split point */
-        this_gain = numeric_gain(split_info, sd_y);
+        info_left = (long double)(i - st_non_na + 1) * sqrtl(running_ssq / (long double)(i - st_non_na));
+        this_gain = numeric_gain(sd_y, info_left, buffer_sd[i + 1], info_NA, cnt_dbl);
         if (this_gain > *gain) {
             *gain = this_gain;
             *split_point = avg_between(x[ix_arr[i]], x[ix_arr[i + 1]]);
@@ -348,17 +366,18 @@ void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, dou
 *    - split_point (out)
 *        Split level for ordinal X variables (left branch is <= this)
 */
-void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, double *restrict y, double sd_y,
+void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, double *restrict y, long double sd_y, double ymean,
                            bool x_is_ordinal, size_t ncat_x, size_t *restrict buffer_cat_cnt, long double *restrict buffer_cat_sum,
                            long double *restrict buffer_cat_sum_sq, size_t *restrict buffer_cat_sorted,
-                           bool has_na, size_t min_size, double *gain, char *restrict split_subset, int *restrict split_point)
+                           bool has_na, size_t min_size, long double *gain, char *restrict split_subset, int *restrict split_point)
 {
 
     /* output parameters and variables to use */
     *gain = -HUGE_VAL;
-    double this_gain;
+    long double this_gain;
     NumericSplit split_info;
     size_t st_cat = 0;
+    double sd_y_d = (double) sd_y;
 
     /* reset the buffers */
     memset(split_subset,      0, sizeof(char)   *  ncat_x);
@@ -374,12 +393,12 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
             /* NAs are encoded as negative integers, and go at the last slot */
             if (x[ix_arr[i]] < 0) {
                 buffer_cat_cnt[ncat_x]++;
-                buffer_cat_sum[ncat_x] += y[ix_arr[i]];
-                buffer_cat_sum_sq[ncat_x] += square(y[ix_arr[i]]);
+                buffer_cat_sum[ncat_x]    += z_score(y[ix_arr[i]], ymean, sd_y_d);
+                buffer_cat_sum_sq[ncat_x] += square(z_score(y[ix_arr[i]], ymean, sd_y_d));
             } else {
                 buffer_cat_cnt[ x[ix_arr[i]] ]++;
-                buffer_cat_sum[ x[ix_arr[i]] ] += y[ix_arr[i]];
-                buffer_cat_sum_sq[ x[ix_arr[i]] ] += square(y[ix_arr[i]]);
+                buffer_cat_sum[ x[ix_arr[i]] ]    += z_score(y[ix_arr[i]], ymean, sd_y_d);
+                buffer_cat_sum_sq[ x[ix_arr[i]] ] += square(z_score(y[ix_arr[i]], ymean, sd_y_d));
             }
         }
 
@@ -388,8 +407,8 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
         buffer_cat_cnt[ncat_x] = 0;
         for (size_t i = st; i <= end; i++) {
             buffer_cat_cnt[ x[ix_arr[i]] ]++;
-            buffer_cat_sum[ x[ix_arr[i]] ] += y[ix_arr[i]];
-            buffer_cat_sum_sq[ x[ix_arr[i]] ] += square(y[ix_arr[i]]);
+            buffer_cat_sum[ x[ix_arr[i]] ]    += z_score(y[ix_arr[i]], ymean, sd_y_d);
+            buffer_cat_sum_sq[ x[ix_arr[i]] ] += square(z_score(y[ix_arr[i]], ymean, sd_y_d));
         }
 
     }
@@ -407,7 +426,7 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
 
         split_info.left_branch = {buffer_cat_cnt[0], buffer_cat_sum[0], buffer_cat_sum_sq[0]};
         split_info.right_branch = {buffer_cat_cnt[1], buffer_cat_sum[1], buffer_cat_sum_sq[1]};
-        *gain = numeric_gain(split_info, sd_y);
+        *gain = numeric_gain(split_info, sd_y) * sd_y;
         split_subset[0] = 1;
     }
 
@@ -455,7 +474,7 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
             /* calculate the gain */
             this_gain = numeric_gain(split_info, sd_y);
             if (this_gain > *gain) {
-                *gain = this_gain;
+                *gain = this_gain * sd_y;
                 if (!x_is_ordinal)
                     subset_to_onehot(buffer_cat_sorted, cat, ncat_x, split_subset);
                 else
@@ -469,6 +488,7 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
     }
 
 }
+
 
 
 /*    Calculate gain from splitting a categorical column by a numeric column
@@ -511,13 +531,13 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
 */
 void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, int *restrict y,
                            size_t ncat_y, long double base_info, size_t *restrict buffer_cat_cnt,
-                           bool has_na, size_t min_size, double *restrict gain, double *restrict split_point,
+                           bool has_na, size_t min_size, long double *restrict gain, double *restrict split_point,
                            size_t *restrict split_left, size_t *restrict split_NA)
 {
     *gain = -HUGE_VAL;
     *split_point = -HUGE_VAL;
     size_t st_non_na;
-    double this_gain;
+    long double this_gain;
     CategSplit split_info;
     split_info.ncat = ncat_y;
     split_info.tot = end - st + 1;
@@ -620,12 +640,12 @@ void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, doubl
 void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_y, size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_ord_cnt,
-                       bool has_na, size_t min_size, double *gain, int *split_point)
+                       bool has_na, size_t min_size, long double *gain, int *split_point)
 {
     *gain = -HUGE_VAL;
     *split_point = -1;
     size_t st_non_na;
-    double this_gain;
+    long double this_gain;
     CategSplit split_info;
     split_info.ncat = ncat_y;
     split_info.tot = end - st + 1;
@@ -731,11 +751,11 @@ void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *rest
 void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_cat_sorted,
-                       bool has_na, size_t min_size, double *gain, char *restrict split_subset)
+                       bool has_na, size_t min_size, long double *gain, char *restrict split_subset)
 {
     *gain = -HUGE_VAL;
     size_t st_non_na;
-    double this_gain;
+    long double this_gain;
     size_t buffer_fixed_size[6] = {0};
     CategSplit split_info;
     size_t st_cat;
@@ -848,9 +868,9 @@ void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *rest
 void split_categx_categy_separate(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                                   size_t ncat_x, size_t ncat_y, long double base_info,
                                   size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab,
-                                  bool has_na, size_t min_size, double *gain)
+                                  bool has_na, size_t min_size, long double *gain)
 {
-    double this_gain = 0;
+    long double this_gain = 0;
     size_t st_non_na;
 
     /* move all NAs of X to the front */
@@ -936,10 +956,10 @@ void split_categx_categy_separate(size_t *restrict ix_arr, size_t st, size_t end
 void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                                 size_t ncat_x, size_t ncat_y, long double base_info,
                                 size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_split,
-                                bool has_na, size_t min_size, double *gain, char *restrict split_subset)
+                                bool has_na, size_t min_size, long double *gain, char *restrict split_subset)
 {
     *gain = -HUGE_VAL;
-    double this_gain;
+    long double this_gain;
     size_t best_subset;
     CategSplit split_info;
     split_info.tot = end - st + 1;

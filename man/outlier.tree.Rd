@@ -9,7 +9,8 @@ outlier.tree(df, cols_ord = NULL, cols_ignore = NULL,
   min_gain = 0.1, z_norm = 2.67, z_outlier = 8,
   pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 75,
   categ_as_bin = TRUE, ord_as_bin = TRUE,
-  cat_bruteforce_subset = FALSE, follow_all = FALSE, nthreads = -1)
+  cat_bruteforce_subset = FALSE, follow_all = FALSE,
+  nthreads = parallel::detectCores())
 }
 \arguments{
 \item{df}{Data Frame with normal data that might contain some outliers.}

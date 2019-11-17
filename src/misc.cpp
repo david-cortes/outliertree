@@ -122,52 +122,65 @@ void calculate_lowerlim_proportion(long double *restrict prop_small, long double
     }
 }
 
+
 /* Check if a numerical column has no variance (i.e. will not be splittable) */
 void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows, bool has_NA[], bool skip_col[], int nthreads)
 {
-    long double sum;
-    long double sum_sq;
+    long double running_mean;
+    long double mean_prev;
+    long double running_ssq;
     size_t cnt;
     size_t col_stop;
+    double xval;
 
-    #pragma omp parallel for schedule(static) num_threads(nthreads) private(sum, sum_sq, cnt, col_stop)
+    #pragma omp parallel for schedule(static) num_threads(nthreads) private(running_mean, mean_prev, running_ssq, cnt, col_stop, xval)
     for (size_t col = 0; col < ncols; col++) {
-        sum = 0;
-        sum_sq = 0;
+        running_mean = 0;
+        mean_prev = 0;
+        running_ssq = 0;
         cnt = 0;
         col_stop = (col + 1) * nrows;
         for (size_t row = col * nrows; row < col_stop; row++) {
-            if (!is_na_or_inf(numeric_data[row])) {
-                sum    += numeric_data[row];
-                sum_sq += square(numeric_data[row]);
-                cnt++;
+            xval = numeric_data[row];
+            if (!is_na_or_inf(xval)) {
+                running_mean += (xval - running_mean) / (long double)(++cnt);
+                running_ssq  += (xval - running_mean) * (xval - mean_prev);
+                mean_prev     = running_mean;
             } else {
                 has_NA[col] = true;
             }
         }
-        if (fabs(sum_sq - square(sum) / (long double)cnt) < 1e-1) skip_col[col] = true;
+        if (  (running_ssq / (long double)(cnt - 1))  < 1e-6 ) skip_col[col] = true;
     }
 }
 
 /* Calculate mean and standard deviation from the central half of the data, and adjust SD heuristically by x2.5 */
 void calc_central_mean_and_sd(size_t ix_arr[], size_t st, size_t end, double x[], size_t size_quarter, double *mean_central, double *sd_central)
 {
-    long double sum = 0;
-    long double sum_sq = 0;
+    long double running_mean = 0;
+    long double mean_prev    = 0;
+    long double running_ssq  = 0;
+    double xval;
+    size_t st_offset = st + size_quarter;
     if (ix_arr != NULL) {
-        for (size_t row = (st + size_quarter); row <= (end - size_quarter); row++) {
-            sum    += x[ix_arr[row]];
-            sum_sq += square(x[ix_arr[row]]);
+        for (size_t row = st_offset; row <= (end - size_quarter); row++) {
+            xval = x[ix_arr[row]];
+            running_mean += (xval - running_mean) / (long double)(row - st_offset + 1);
+            running_ssq  += (xval - running_mean) * (xval - mean_prev);
+            mean_prev     = running_mean;
         }
     } else {
-        for (size_t row = (st + size_quarter); row <= (end - size_quarter); row++) {
-            sum    += x[row];
-            sum_sq += square(x[row]);
+        for (size_t row = st_offset; row <= (end - size_quarter); row++) {
+            xval = x[row];
+            running_mean += (xval - running_mean) / (long double)(row - st_offset + 1);
+            running_ssq  += (xval - running_mean) * (xval - mean_prev);
+            mean_prev     = running_mean;
         }
     }
-    *mean_central = sum / (long double)(2 * size_quarter);
-    *sd_central = 2.5 * calc_sd(2 * size_quarter, sum, sum_sq);
+    *mean_central = (double) running_mean;
+    *sd_central   = 2.5 * sqrtl(running_ssq / (long double)(end - st - 2 * size_quarter));
 }
+
 
 /*    Check whether a numerical column has long tails, and whether a transformation is appropriate
 *    
@@ -434,6 +447,7 @@ void allocate_thread_workspace(Workspace &workspace, size_t nrows, int max_categ
     workspace.outlier_clusters.resize(nrows);
     workspace.outlier_trees.resize(nrows);
     workspace.outlier_depth.resize(nrows);
+    workspace.buffer_sd.resize(nrows);
 
     workspace.buffer_cat_sum.resize(max_categ + 1);
     workspace.buffer_cat_sum_sq.resize(max_categ + 1);

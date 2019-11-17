@@ -28,3 +28,4 @@ outliertree.egg-info/
 
 build/
 	*
+.Rproj.user

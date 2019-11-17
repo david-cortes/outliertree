@@ -449,7 +449,8 @@ typedef struct {
     std::vector<size_t> outlier_trees;    /* these hold the model outputs for 1 column before combining them */
     std::vector<size_t> outlier_depth;    /* these hold the model outputs for 1 column before combining them */
     size_t target_col_num;                /* if categorical or ordinal, gets subtracted the number of numeric columns (used to index other arrays) */
-    double sd_y;                          /* numerical only (standard deviation before splitting */
+    long double sd_y;                     /* numerical only (standard deviation before splitting) */
+    double mean_y;                        /* numerical only (used to standardize numbers for extra FP precision) */
     long double base_info;                /* categorical and ordinal (information before splitting and before binarizing) */
     long double base_info_orig;           /* categorical and ordinal (information before splitting and after binarizing if needed) */
     bool log_transf;                      /* numerical - whether the target variable underwent a logarithmic transformation */
@@ -477,12 +478,12 @@ typedef struct {
     int *temp_ptr_x;                      /* dynamic pointer */
 
     std::vector<char> buffer_subset_categ_best;  /* categorical split that gave the best gain */
-    double this_gain;                            /* buffer where to store gain */
+    long double this_gain;                       /* buffer where to store gain */
     double this_split_point;                     /* numeric split threshold */
     int this_split_lev;                          /* ordinal split threshold */
     size_t this_split_ix;                        /* index at which the data is partitioned */
     size_t this_split_NA;                        /* index at which the non-NA values start */
-    double best_gain;                            /* buffer where to store the info of the splitting column that produced the highest gain */
+    long double best_gain;                       /* buffer where to store the info of the splitting column that produced the highest gain */
     ColType column_type_best;                    /* buffer where to store the info of the splitting column that produced the highest gain */
     double split_point_best;                     /* buffer where to store the info of the splitting column that produced the highest gain */
     int split_lev_best;                          /* buffer where to store the info of the splitting column that produced the highest gain */
@@ -495,6 +496,7 @@ typedef struct {
     std::vector<size_t>      buffer_cat_sorted;      /* buffer arrays where to allocate values required by functions and not used outside them */
     std::vector<char>        buffer_subset_categ;    /* buffer arrays where to allocate values required by functions and not used outside them */
     std::vector<char>        buffer_subset_outlier;  /* buffer arrays where to allocate values required by functions and not used outside them */
+    std::vector<long double> buffer_sd;              /* used for a more numerically-stable two-pass gain calculation */
     
     bool drop_cluster;          /* for categorical and ordinal variables, not all clusters can flag observations as outliers, so those are not kept */
     bool already_split_main;    /* when binarizing categoricals/ordinals, avoid attempting the same split with numerical and ordinals that take the non-binarized data */
@@ -608,44 +610,45 @@ typedef struct {
 void subset_to_onehot(size_t ix_arr[], size_t n_true, size_t n_tot, bool onehot[]);
 size_t move_zero_count_to_front(size_t *restrict cat_sorted, size_t *restrict cat_cnt, size_t ncat_x);
 void flag_zero_counts(char split_subset[], size_t buffer_cat_cnt[], size_t ncat_x);
-double calc_sd(size_t cnt, long double sum, long double sum_sq);
-double calc_sd(NumericBranch &branch);
-double calc_sd(size_t ix_arr[], double x[], size_t st, size_t end);
-double numeric_gain(NumericSplit &split_info, double tot_sd);
+long double calc_sd(size_t cnt, long double sum, long double sum_sq);
+long double calc_sd(NumericBranch &branch);
+long double calc_sd(size_t ix_arr[], double *restrict x, size_t st, size_t end, double *restrict mean);
+long double numeric_gain(NumericSplit &split_info, long double tot_sd);
+long double numeric_gain(long double tot_sd, long double info_left, long double info_right, long double info_NA, long double cnt);
 long double total_info(size_t categ_counts[], size_t ncat);
 long double total_info(size_t categ_counts[], size_t ncat, size_t tot);
 long double total_info(size_t *restrict ix_arr, int *restrict x, size_t st, size_t end, size_t ncat, size_t *restrict buffer_cat_cnt);
-double categ_gain(CategSplit split_info, long double base_info);
-double categ_gain(size_t *restrict categ_counts, size_t ncat, size_t *restrict ncat_col, size_t maxcat, long double base_info, size_t tot);
-double categ_gain_from_split(size_t *restrict ix_arr, int *restrict x, size_t st, size_t st_non_na, size_t split_ix, size_t end,
-                             size_t ncat, size_t *restrict buffer_cat_cnt, long double base_info);
+long double categ_gain(CategSplit split_info, long double base_info);
+long double categ_gain(size_t *restrict categ_counts, size_t ncat, size_t *restrict ncat_col, size_t maxcat, long double base_info, size_t tot);
+long double categ_gain_from_split(size_t *restrict ix_arr, int *restrict x, size_t st, size_t st_non_na, size_t split_ix, size_t end,
+                                  size_t ncat, size_t *restrict buffer_cat_cnt, long double base_info);
 void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, double *restrict y,
-                             double sd_y, bool has_na, size_t min_size,
-                             double *restrict gain, double *restrict split_point, size_t *restrict split_left, size_t *restrict split_NA);
-void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, double *restrict y, double sd_y,
+                             long double sd_y, bool has_na, size_t min_size, long double *restrict buffer_sd,
+                             long double *restrict gain, double *restrict split_point, size_t *restrict split_left, size_t *restrict split_NA);
+void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, double *restrict y, long double sd_y, double ymean,
                            bool x_is_ordinal, size_t ncat_x, size_t *restrict buffer_cat_cnt, long double *restrict buffer_cat_sum,
                            long double *restrict buffer_cat_sum_sq, size_t *restrict buffer_cat_sorted,
-                           bool has_na, size_t min_size, double *gain, char *restrict split_subset, int *restrict split_point);
+                           bool has_na, size_t min_size, long double *gain, char *restrict split_subset, int *restrict split_point);
 void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, int *restrict y,
                            size_t ncat_y, long double base_info, size_t *restrict buffer_cat_cnt,
-                           bool has_na, size_t min_size, double *restrict gain, double *restrict split_point,
+                           bool has_na, size_t min_size, long double *restrict gain, double *restrict split_point,
                            size_t *restrict split_left, size_t *restrict split_NA);
 void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_y, size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_ord_cnt,
-                       bool has_na, size_t min_size, double *gain, int *split_point);
+                       bool has_na, size_t min_size, long double *gain, int *split_point);
 void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_cat_sorted,
-                       bool has_na, size_t min_size, double *gain, char *restrict split_subset);
+                       bool has_na, size_t min_size, long double *gain, char *restrict split_subset);
 void split_categx_categy_separate(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                                   size_t ncat_x, size_t ncat_y, long double base_info,
                                   size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab,
-                                  bool has_na, size_t min_size, double *gain);
+                                  bool has_na, size_t min_size, long double *gain);
 void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                                 size_t ncat_x, size_t ncat_y, long double base_info,
                                 size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_split,
-                                bool has_na, size_t min_size, double *gain, char *restrict split_subset);
+                                bool has_na, size_t min_size, long double *gain, char *restrict split_subset);
 
 
 

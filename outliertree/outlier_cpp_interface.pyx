@@ -137,6 +137,7 @@ cdef class OutlierCppObject:
     cdef ModelOutputs model_outputs
 
     def __init__(self):
+        dealloc_ModelOutputs(self.model_outputs)
         self.model_outputs = ModelOutputs()
 
     def __dealloc__(self):

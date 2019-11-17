@@ -100,7 +100,7 @@ outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
                          max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_outlier = 8.0,
                          pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 75,
                          categ_as_bin = TRUE, ord_as_bin = TRUE, cat_bruteforce_subset = FALSE,
-                         follow_all = FALSE, nthreads = -1)
+                         follow_all = FALSE, nthreads = parallel::detectCores())
 {
     ### validate inputs
     if ((categ_as_bin | ord_as_bin) & cat_bruteforce_subset) {

@@ -49,6 +49,16 @@ Rcpp::LogicalVector check_null_ptr_model(SEXP ptr_model)
     return Rcpp::LogicalVector(R_ExternalPtrAddr(ptr_model) == NULL);
 }
 
+double* set_R_nan_as_C_nan(double *restrict x_R, std::vector<double> &x_C, size_t n, int nthreads)
+{
+    x_C.assign(x_R, x_R + n);
+    #pragma omp parallel for schedule(static) num_threads(nthreads) shared(x_R, x_C, n)
+    for (size_t_for i = 0; i < n; i++)
+        if (isnan(x_R[i]))
+            x_C[i] = NAN;
+    return x_C.data();
+}
+
 
 /* for predicting outliers */
 Rcpp::List describe_outliers(ModelOutputs &model_outputs,
@@ -67,7 +77,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
     size_t ncols_num     = model_outputs.ncols_numeric;
     size_t ncols_cat     = model_outputs.ncols_categ;
     size_t ncols_num_num = model_outputs.ncols_numeric - min_date.size() - min_ts.size();
-    size_t ncols_date    = model_outputs.ncols_numeric - ncols_num_num - min_ts.size();
+    size_t ncols_date    = min_date.size();
     size_t ncols_cat_cat = cat_levels.size();
     Rcpp::List outp;
     
@@ -281,7 +291,12 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                 cond_clust["value_this"] = Rcpp::as<Rcpp::CharacterVector>(NA_STRING);
                             }
                         } else {
-                            cond_clust["value_this"] = Rcpp::wrap((bool)arr_cat[row + model_outputs.all_clusters[outl_col][outl_clust].col_num * nrows]);
+
+                            if (arr_cat[row + model_outputs.all_clusters[outl_col][outl_clust].col_num * nrows] >= 0) {
+                                cond_clust["value_this"] = Rcpp::wrap((bool)arr_cat[row + model_outputs.all_clusters[outl_col][outl_clust].col_num * nrows]);
+                            } else {
+                                cond_clust["value_this"] = Rcpp::LogicalVector(1, NA_LOGICAL);
+                            }
                         }
                         break;
                     }
@@ -317,9 +332,9 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                             case Categorical:
                             {
                                 if (model_outputs.all_clusters[outl_col][outl_clust].col_num < ncols_cat_cat) {
-                                    cond_clust["value_comp"] = Rcpp::wrap(NA_REAL);
+                                    cond_clust["value_comp"] = Rcpp::wrap(NA_STRING);
                                 } else {
-                                    cond_clust["value_comp"] = Rcpp::wrap(NA_LOGICAL);
+                                    cond_clust["value_comp"] = Rcpp::LogicalVector(1, NA_LOGICAL);
                                 }
                                 break;
                             }
@@ -416,7 +431,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                                                                               [model_outputs.all_clusters[outl_col][outl_clust].split_lev]);
                             } else {
                                 cond_clust["comparison"] = Rcpp::CharacterVector("=");
-                                cond_clust["value_comp"] = Rcpp::wrap((bool)model_outputs.all_clusters[outl_col][outl_clust].split_lev);
+                                cond_clust["value_comp"] = Rcpp::wrap((bool) model_outputs.all_clusters[outl_col][outl_clust].split_lev);
                             }
                         } else {
                             cond_clust["comparison"] = Rcpp::CharacterVector("=");
@@ -556,9 +571,9 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                             cond_clust["comparison"] = Rcpp::CharacterVector("is NA");
                                             cond_clust["value_comp"] = Rcpp::as<Rcpp::CharacterVector>(NA_STRING);
                                         } else {
-                                            cond_clust["value_this"] = Rcpp::wrap(NA_LOGICAL);
+                                            cond_clust["value_this"] = Rcpp::LogicalVector(1, NA_LOGICAL);
                                             cond_clust["comparison"] = Rcpp::CharacterVector("is NA");
-                                            cond_clust["value_comp"] = Rcpp::wrap(NA_LOGICAL);
+                                            cond_clust["value_comp"] = Rcpp::LogicalVector(1, NA_LOGICAL);
                                         }
                                         break;
                                     }
@@ -754,9 +769,9 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                             cond_clust["comparison"] = Rcpp::CharacterVector("is NA");
                                             cond_clust["value_comp"] = Rcpp::as<Rcpp::CharacterVector>(NA_STRING);
                                         } else {
-                                            cond_clust["value_this"] = Rcpp::wrap(NA_LOGICAL);
+                                            cond_clust["value_this"] = Rcpp::LogicalVector(1, NA_LOGICAL);
                                             cond_clust["comparison"] = Rcpp::CharacterVector("is NA");
-                                            cond_clust["value_comp"] = Rcpp::wrap(NA_LOGICAL);
+                                            cond_clust["value_comp"] = Rcpp::LogicalVector(1, NA_LOGICAL);
                                         }
                                         break;
                                     }
@@ -854,7 +869,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                 } else {
                                     cond_clust["value_this"] = Rcpp::wrap((bool) arr_cat[row + model_outputs.all_trees[outl_col][parent_tree].col_num * nrows]);
                                     cond_clust["comparison"] = Rcpp::CharacterVector("=");
-                                    cond_clust["value_comp"] = Rcpp::wrap(model_outputs.all_trees[outl_col][parent_tree].split_subset[1]);
+                                    cond_clust["value_comp"] = Rcpp::wrap((bool) model_outputs.all_trees[outl_col][parent_tree].split_subset[1]);
                                 }
                                 break;
                             }
@@ -875,7 +890,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                 } else {
                                     cond_clust["value_this"] = Rcpp::wrap((bool) arr_cat[row + model_outputs.all_trees[outl_col][parent_tree].col_num * nrows]);
                                     cond_clust["comparison"] = Rcpp::CharacterVector("=");
-                                    cond_clust["value_comp"] = Rcpp::wrap(model_outputs.all_trees[outl_col][parent_tree].split_subset[0]);
+                                    cond_clust["value_comp"] = Rcpp::wrap((bool) model_outputs.all_trees[outl_col][parent_tree].split_subset[0]);
                                 }
                                 break;
                             }
@@ -892,7 +907,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                     } else {
                                         cond_clust["value_this"] = Rcpp::wrap((bool) arr_cat[row + model_outputs.all_trees[outl_col][parent_tree].col_num * nrows]);
                                         cond_clust["comparison"] = Rcpp::CharacterVector("=");
-                                        cond_clust["value_comp"] = Rcpp::wrap(model_outputs.all_trees[outl_col][parent_tree].split_subset[1]);
+                                        cond_clust["value_comp"] = Rcpp::wrap((bool) model_outputs.all_trees[outl_col][parent_tree].split_subset[1]);
                                     }
                                 } else {
                                     cond_clust["value_this"] = Rcpp::CharacterVector(1, ord_levels[model_outputs.all_trees[outl_col][parent_tree].col_num]
@@ -916,7 +931,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                     } else {
                                         cond_clust["value_this"] = Rcpp::wrap((bool) arr_cat[row + model_outputs.all_trees[outl_col][parent_tree].col_num * nrows]);
                                         cond_clust["comparison"] = Rcpp::CharacterVector("=");
-                                        cond_clust["value_comp"] = Rcpp::wrap(model_outputs.all_trees[outl_col][parent_tree].split_subset[0]);
+                                        cond_clust["value_comp"] = Rcpp::wrap((bool) model_outputs.all_trees[outl_col][parent_tree].split_subset[0]);
                                     }
                                 } else {
                                     cond_clust["value_this"] = Rcpp::CharacterVector(1, ord_levels[model_outputs.all_trees[outl_col][parent_tree].col_num]
@@ -1064,9 +1079,12 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
         for (size_t cl = 0; cl < tot_cols; cl++) cols_ignore[cl] = (bool) cols_ignore_r[cl];
         cols_ignore_ptr = &cols_ignore[0];
     }
+    std::vector<double> Xcpp;
+    double *arr_num_C = set_R_nan_as_C_nan(&arr_num[0], Xcpp, arr_num.size(), nthreads);
+
     std::unique_ptr<ModelOutputs> model_outputs = std::unique_ptr<ModelOutputs>(new ModelOutputs);
     found_outliers = fit_outliers_models(*model_outputs,
-                                         &arr_num[0], ncols_numeric,
+                                         arr_num_C, ncols_numeric,
                                          &arr_cat[0], ncols_categ, &ncat[0],
                                          &arr_ord[0], ncols_ord,   &ncat_ord[0],
                                          nrows, cols_ignore_ptr, nthreads,
@@ -1083,7 +1101,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
     outp["serialized_obj"] = serialize_OutlierTree(model_outputs.get());
     if (return_outliers) {
         outp["outliers_info"] = describe_outliers(*model_outputs,
-                                                  &arr_num[0],
+                                                  arr_num_C,
                                                   &arr_cat[0],
                                                   &arr_ord[0],
                                                   cat_levels,
@@ -1120,11 +1138,14 @@ Rcpp::List predict_OutlierTree(SEXP ptr_model, size_t nrows, int nthreads,
                                Rcpp::NumericVector min_date,
                                Rcpp::NumericVector min_ts)
 {
+    std::vector<double> Xcpp;
+    double *arr_num_C = set_R_nan_as_C_nan(&arr_num[0], Xcpp, arr_num.size(), nthreads);
+
     ModelOutputs *model_outputs = static_cast<ModelOutputs*>(R_ExternalPtrAddr(ptr_model));
     bool found_outliers = find_new_outliers(&arr_num[0], &arr_cat[0], &arr_ord[0],
                                             nrows, nthreads, *model_outputs);
     Rcpp::List outp = describe_outliers(*model_outputs,
-                                        &arr_num[0],
+                                        arr_num_C,
                                         &arr_cat[0],
                                         &arr_ord[0],
                                         cat_levels,

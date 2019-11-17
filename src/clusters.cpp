@@ -110,20 +110,22 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     /*  TODO: this function could try to determine if the distribution is multimodal, and if so,
         take only the most extreme means/sd for outlier comparisons */
 
-    /*  TODO: statistics like SD, sum, sum_sq; are already available from the splitting function which
+    /*  TODO: statistics like SD, mean; are already available from the splitting function which
         is called right before this, so these should *only* need to be recalculated them if the column
         has undergone log or exp transform */
 
     /* NAs and Inf should have already been removed, and outliers with fewer conditionals already discarded */
     bool has_low_values  = false;
     bool has_high_values = false;
-    long double sum      = 0;
-    long double sum_sq   = 0;
+    long double running_mean = 0;
+    long double mean_prev    = 0;
+    long double running_ssq  = 0;
+    double xval;
     double mean;
     double sd;
     size_t cnt;
     size_t tail_size     = (size_t) calculate_max_outliers((long double)(end - st + 1), max_perc_outliers);
-    size_t st_non_tail   = st + tail_size;
+    size_t st_non_tail   = st  + tail_size;
     size_t end_non_tail  = end - tail_size;
     size_t st_normals    = 0;
     size_t end_normals   = 0;
@@ -135,11 +137,15 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     /* calculate statistics with tails and previous outliers excluded */
     cnt = end_non_tail - st_non_tail + 1;
     for (size_t row = st_non_tail; row <= end_non_tail; row++) {
-        sum    += x[ ix_arr[row] ];
-        sum_sq += square(x[ ix_arr[row] ]);
+        xval = x[ ix_arr[row] ];
+        running_mean += (xval - running_mean) / (long double)(row - st_non_tail + 1);
+        running_ssq  += (xval - running_mean) * (xval - mean_prev);
+        mean_prev     = running_mean;
+
     }
-    mean = sum / cnt;
-    sd = calc_sd(cnt, sum, sum_sq);
+    mean = (double) running_mean;
+    sd   = (double) sqrtl(running_ssq / (long double)(cnt - 1));
+
     /* adjust SD heuristically to account for reduced size, by (N + tail)/(N-tail) --- note that cnt = N-2*tail */
     sd *= (long double)(cnt + 3 * tail_size) / (long double)(cnt + tail_size);
     /* re-adjust if there's a one-sided tail and no transformation was applies */
@@ -148,28 +154,6 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     }
     cluster.cluster_mean = mean;
     cluster.cluster_sd = sd;
-
-    /* calculate the full mean and sd for cluster statistics */
-    if (is_log_transf || is_exp_transf) {
-
-        sum    = 0;
-        sum_sq = 0;
-        for (size_t row = st; row <= end; row++) {
-            sum    += orig_x[ix_arr[row]];
-            sum_sq += square(orig_x[ix_arr[row]]);
-        }
-
-    } else {
-
-        for (size_t row = st; row < st_non_tail; row++) {
-            sum    += x[ ix_arr[row] ];
-            sum_sq += square(x[ ix_arr[row] ]);
-        }
-        for (size_t row = end_non_tail + 1; row <= end; row++) {
-            sum    += x[ ix_arr[row] ];
-            sum_sq += square(x[ ix_arr[row] ]);
-        }
-    }
     cnt = end - st + 1;
 
     /* see if the minimum and/or maximum values qualify for outliers */
@@ -224,11 +208,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                     outlier_trees[ix_arr[row]] = tree_num;
                     outlier_depth[ix_arr[row]] = tree_depth;
                 }
-                sum    -= orig_x[ix_arr[row]];
-                sum_sq -= square(orig_x[ix_arr[row]]);
 
             }
-            cnt -= st_normals - st;
         }
     }
     if (!has_low_values) {
@@ -275,7 +256,7 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
         } else {
             for (size_t row = end; row > end_normals; row--) {
 
-                /*    assign outlier if it's a better cluster than previously assigned - Note that it might produce slight mismatches
+                /*  assign outlier if it's a better cluster than previously assigned - Note that it might produce slight mismatches
                     against the predict function (the latter is more trustable) due to the size of the cluster not yet being known
                     at the moment of determinining whether to overwrite previous in here */
                 if (
@@ -300,11 +281,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                     outlier_trees[ix_arr[row]] = tree_num;
                     outlier_depth[ix_arr[row]] = tree_depth;
                 }
-                sum    -= orig_x[ix_arr[row]];
-                sum_sq -= square(orig_x[ix_arr[row]]);
 
             }
-            cnt -= end - end_normals;
         }
     }
     if (!has_high_values) {
@@ -325,10 +303,27 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
         cluster.display_lim_high = orig_x[ix_arr[end]];
     }
 
-    /* save statistics for cluster */
-    cluster.display_mean = sum / cnt;
-    cluster.display_sd = calc_sd(cnt, sum, sum_sq);
-    cluster.cluster_size = cnt;
+    /* save displayed statistics for cluster */
+    if (has_high_values || has_low_values || is_log_transf || is_exp_transf) {
+        size_t st_disp  = has_low_values?  st_normals  : st;
+        size_t end_disp = has_high_values? end_normals : end;
+        running_mean = 0;
+        mean_prev    = 0;
+        running_ssq  = 0;
+        for (size_t row = st_disp; row <= end_disp; row++) {
+            xval = orig_x[ix_arr[row]];
+            running_mean += (xval - running_mean) / (long double)(row - st_disp + 1);
+            running_ssq  += (xval - running_mean) * (xval - mean_prev);
+            mean_prev     = running_mean;
+        }
+        cluster.cluster_size = end_disp - st_disp + 1;
+        cluster.display_mean = (double) running_mean;
+        cluster.display_sd   = (double) sqrtl(running_ssq / (long double)(cluster.cluster_size - 1));
+    } else {
+        cluster.display_mean = cluster.cluster_mean;
+        cluster.display_sd   = cluster.cluster_sd;
+        cluster.cluster_size = end - st + 1;
+    }
 
     /* report whether outliers were found or not */
     return has_low_values || has_high_values;

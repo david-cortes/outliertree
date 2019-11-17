@@ -419,19 +419,24 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
     workspace.col_has_outliers = false;
 
     /* check for problematic distributions */
-    long double sum = 0;
-    long double sum_sq = 0;
-    for (size_t row = workspace.st; row <= workspace.end; row++) {
-        sum    += workspace.target_numeric_col[workspace.ix_arr[row]];
-        sum_sq += square(workspace.target_numeric_col[workspace.ix_arr[row]]);
-    }
     std::sort(&workspace.ix_arr[0] + workspace.st, &workspace.ix_arr[0] + workspace.end + 1,
               [&workspace](const size_t a, const size_t b){return workspace.target_numeric_col[a] < workspace.target_numeric_col[b];});
 
+    long double running_mean = 0;
+    long double mean_prev    = 0;
+    long double running_ssq  = 0;
+    double xval;
+    for (size_t row = workspace.st; row <= workspace.end; row++) {
+        xval = workspace.target_numeric_col[workspace.ix_arr[row]];
+        running_mean += (xval - running_mean) / (long double)(row - workspace.st + 1);
+        running_ssq  += (xval - running_mean) * (xval - mean_prev);
+        mean_prev     = running_mean;
+    }
 
     check_for_tails(&workspace.ix_arr[0], workspace.st, workspace.end, workspace.target_numeric_col,
                     model_params.z_norm, model_params.max_perc_outliers,
-                    &workspace.buffer_transf_y[0], (double)(sum / (long double)input_data.nrows), calc_sd(input_data.nrows - workspace.st, sum, sum_sq),
+                    &workspace.buffer_transf_y[0], (double)running_mean,
+                    (double)sqrtl(running_ssq / (long double)(workspace.end - workspace.st)),
                     &workspace.left_tail, &workspace.right_tail,
                     &workspace.exp_transf, &workspace.log_transf);
 
@@ -441,8 +446,8 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
     /* apply log or exp transformation if necessary */
     if (workspace.exp_transf) {
 
-        workspace.orig_mean = (double)(sum / (long double)input_data.nrows);
-        workspace.orig_sd   = calc_sd(input_data.nrows - workspace.st, sum, sum_sq);
+        workspace.orig_mean = (double) running_mean;
+        workspace.orig_sd   = (double) sqrtl(running_ssq / (long double)(workspace.end - workspace.st));
         for (size_t row = workspace.st; row <= workspace.end; row++) {
             workspace.buffer_transf_y[workspace.ix_arr[row]] = exp(z_score(workspace.target_numeric_col[workspace.ix_arr[row]], workspace.orig_mean, workspace.orig_sd));
         }
@@ -469,16 +474,6 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
 
     }
 
-    /* recalculate sum/sum_sq if necessary */
-    if (workspace.log_transf || workspace.exp_transf) {
-        long double sum = 0;
-        long double sum_sq = 0;
-        for (size_t row = workspace.st; row <= workspace.end; row++) {
-            sum    += workspace.target_numeric_col[workspace.ix_arr[row]];
-            sum_sq += square(workspace.target_numeric_col[workspace.ix_arr[row]]);
-        }
-    }
-
     /* create a cluster with no conditions */
     workspace.clusters = &cluster_root;
     workspace.tree = &tree_root;
@@ -496,19 +491,16 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
                                                           model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
     workspace.tree->back().clusters.push_back(0);
 
-    /* remove outliers if any were found, and update statistics */
-    if (workspace.has_outliers) {
-
+    /* remove outliers if any were found */
+    if (workspace.has_outliers)
         workspace.st = move_outliers_to_front(&workspace.ix_arr[0], &workspace.outlier_scores[0], workspace.st, workspace.end);
-        for (size_t row = workspace.st - 1; row >= 0; row--) {
-            if (is_na_or_inf(workspace.target_numeric_col[workspace.ix_arr[row]])) break;
-            sum    -= workspace.target_numeric_col[workspace.ix_arr[row]];
-            sum_sq -= square(workspace.target_numeric_col[workspace.ix_arr[row]]);
-            if (row == 0) break;
-        }
 
-    }
-    workspace.sd_y = calc_sd(input_data.nrows - workspace.st, sum, sum_sq);
+    /* update statistics if they've changed */
+    if (workspace.has_outliers || workspace.exp_transf || workspace.log_transf)
+        workspace.sd_y = calc_sd(&workspace.ix_arr[0], workspace.target_numeric_col,
+                                 workspace.st, workspace.end, &workspace.mean_y);
+    else
+        workspace.sd_y = sqrtl(running_ssq / (long double)(workspace.end - workspace.st));
 
     if (model_params.max_depth > 0) recursive_split_numeric(workspace, input_data, model_params, 0, false);
 }
@@ -521,7 +513,8 @@ void recursive_split_numeric(Workspace &workspace,
     workspace.best_gain = -HUGE_VAL;
     workspace.column_type_best = NoType;
     workspace.lev_has_outliers = false;
-    if (curr_depth > 0) workspace.sd_y = calc_sd(&workspace.ix_arr[0], workspace.target_numeric_col, workspace.st, workspace.end);
+    if (curr_depth > 0) workspace.sd_y = calc_sd(&workspace.ix_arr[0], workspace.target_numeric_col,
+                                                 workspace.st, workspace.end, &workspace.mean_y);
 
     /* these are used to keep track of where to continue after calling a further recursion */
     size_t ix1, ix2, ix3;
@@ -542,7 +535,7 @@ void recursive_split_numeric(Workspace &workspace,
         if (input_data.skip_col[col]) continue;
         split_numericx_numericy(&workspace.ix_arr[0], workspace.st, workspace.end, input_data.numeric_data + col * input_data.nrows,
                                 workspace.target_numeric_col, workspace.sd_y, (bool)(input_data.has_NA[col]), model_params.min_size_numeric,
-                                &(workspace.this_gain), &(workspace.this_split_point),
+                                &workspace.buffer_sd[0], &(workspace.this_gain), &(workspace.this_split_point),
                                 &(workspace.this_split_ix), &(workspace.this_split_NA));
 
         /* if the gain is not insignificant, check clusters created by this split */
@@ -640,7 +633,7 @@ void recursive_split_numeric(Workspace &workspace,
         if (input_data.skip_col[col + input_data.ncols_numeric]) continue;
 
         split_categx_numericy(&workspace.ix_arr[0], workspace.st, workspace.end, input_data.categorical_data + col * input_data.nrows,
-                              workspace.target_numeric_col, workspace.sd_y, false, input_data.ncat[col], &workspace.buffer_cat_cnt[0],
+                              workspace.target_numeric_col, workspace.sd_y, workspace.mean_y, false, input_data.ncat[col], &workspace.buffer_cat_cnt[0],
                               &workspace.buffer_cat_sum[0], &workspace.buffer_cat_sum_sq[0], &workspace.buffer_cat_sorted[0],
                               (bool)(input_data.has_NA[col + input_data.ncols_numeric]), model_params.min_size_numeric,
                               &(workspace.this_gain), &workspace.buffer_subset_categ[0], NULL);
@@ -741,7 +734,7 @@ void recursive_split_numeric(Workspace &workspace,
 
         /* same code as for categorical, but this time with split level as int instead of boolean array as subset */
         split_categx_numericy(&workspace.ix_arr[0], workspace.st, workspace.end, input_data.ordinal_data + col * input_data.nrows,
-                              workspace.target_numeric_col, workspace.sd_y, true, input_data.ncat_ord[col], &workspace.buffer_cat_cnt[0],
+                              workspace.target_numeric_col, workspace.sd_y, workspace.mean_y, true, input_data.ncat_ord[col], &workspace.buffer_cat_cnt[0],
                               &workspace.buffer_cat_sum[0], &workspace.buffer_cat_sum_sq[0], &workspace.buffer_cat_sorted[0],
                               (bool)(input_data.has_NA[col + input_data.ncols_numeric + input_data.ncols_categ]), model_params.min_size_numeric,
                               &(workspace.this_gain), &workspace.buffer_subset_categ[0], &(workspace.this_split_lev));
