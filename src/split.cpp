@@ -426,7 +426,7 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
 
         split_info.left_branch = {buffer_cat_cnt[0], buffer_cat_sum[0], buffer_cat_sum_sq[0]};
         split_info.right_branch = {buffer_cat_cnt[1], buffer_cat_sum[1], buffer_cat_sum_sq[1]};
-        *gain = numeric_gain(split_info, sd_y) * sd_y;
+        *gain = numeric_gain(split_info, 1.0) * sd_y;
         split_subset[0] = 1;
     }
 
