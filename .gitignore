@@ -14,9 +14,12 @@ build/
 	*.*
 
 *.so
+*.o
+*.a
 *.lib
 *.obj
 *.dynlib
+*.dll
 *.pyd
 
 outliertree/

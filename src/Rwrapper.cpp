@@ -1059,7 +1059,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
                            size_t nrows, Rcpp::LogicalVector cols_ignore_r, int nthreads,
                            bool categ_as_bin, bool ord_as_bin, bool cat_bruteforce_subset,
                            size_t max_depth, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
-                           double min_gain, bool follow_all, double z_norm, double z_outlier,
+                           double min_gain, bool follow_all, bool gain_as_pct, double z_norm, double z_outlier,
                            bool return_outliers,
                            Rcpp::ListOf<Rcpp::StringVector> cat_levels,
                            Rcpp::ListOf<Rcpp::StringVector> ord_levels,
@@ -1090,7 +1090,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
                                          nrows, cols_ignore_ptr, nthreads,
                                          categ_as_bin, ord_as_bin, cat_bruteforce_subset,
                                          max_depth, max_perc_outliers, min_size_numeric, min_size_categ,
-                                         min_gain, follow_all, z_norm, z_outlier);
+                                         min_gain, gain_as_pct, follow_all, z_norm, z_outlier);
 
     outp["bounds"] = extract_outl_bounds(*model_outputs,
                                          cat_levels,

@@ -26,6 +26,7 @@
 #' for building approximate confidence intervals of proportions.
 #' @param z_outlier Minimum Z-value that can be considered as an outlier. There must be a large gap in the
 #' Z-value of the next observation in sorted order to consider it as outlier, given by (z_outlier - z_norm).
+#' Decreasing this parameter is likely to result in more observations being flagged as outliers.
 #' Ignored for categorical and ordinal columns.
 #' @param pct_outliers Approximate max percentage of outliers to expect in a given branch.
 #' @param min_size_numeric Minimum size that branches need to have when splitting a numeric column.
@@ -45,11 +46,14 @@
 #' @param follow_all Whether to continue branching from each split that meets the size and gain criteria.
 #' This will produce exponentially many more branches, and if depth is large, might take forever to finish.
 #' Will also produce a lot more spurious outiers. Not recommended.
+#' @param gain_as_pct Whether the minimum gain above should be taken in absolute terms, or as a percentage of
+#' the standard deviation (for numerical columns) or shannon entropy (for categorical columns). Taking it in
+#' absolute terms will prefer making more splits on columns that have a large variance, while taking it as a
+#' percentage might be more restrictive on them and might create deeper trees in some columns.
 #' @param nthreads Number of parallel threads to use. When fitting the model, it will only use up to one
 #' thread per column, while for prediction it will use up to one thread per row. The more threads that are
 #' used, the more memory will be required and allocated, so using more threads will not always lead to better
-#' speed. Passing zero or negative numbers will default to the maximum number of available CPU cores (but not
-#' if the object attribute is overwritten). Can be changed after the object is already initialized.
+#' speed. Can be changed after the object is already initialized.
 #' @return An object with the fitted model that can be used to detect more outliers in new data, and from
 #' which outliers in the training data can be extracted (when passing `save_outliers` = `TRUE`).
 #' @details Explainable outlier detection through decision-tree grouping. Tries to detect outliers by
@@ -80,7 +84,8 @@
 #' data(hypothyroid)
 #' 
 #' ### fit the model and get a print of outliers
-#' model <- outlier.tree(hypothyroid, outliers_print=10, save_outliers=TRUE)
+#' model <- outlier.tree(hypothyroid, outliers_print=10,
+#'   save_outliers=TRUE, nthreads=1)
 #' 
 #' ### extract outlier info as R list
 #' outliers <- extract.training.outliers(model)
@@ -100,7 +105,8 @@ outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
                          max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_outlier = 8.0,
                          pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 75,
                          categ_as_bin = TRUE, ord_as_bin = TRUE, cat_bruteforce_subset = FALSE,
-                         follow_all = FALSE, nthreads = parallel::detectCores())
+                         follow_all = FALSE, gain_as_pct = FALSE,
+                         nthreads = parallel::detectCores())
 {
     ### validate inputs
     if ((categ_as_bin | ord_as_bin) & cat_bruteforce_subset) {
@@ -125,16 +131,17 @@ outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
     if (outliers_print <= 0)     { outliers_print <- FALSE }
     if (outliers_print)          { outliers_print <- as.integer(outliers_print) }
     max_depth <- as.integer(max_depth)
-    min_gain <- as.numeric(min_gain)
-    z_norm <- as.numeric(z_norm)
+    min_gain  <- as.numeric(min_gain)
+    z_norm    <- as.numeric(z_norm)
     z_outlier <- as.numeric(z_outlier)
-    pct_outliers <- as.numeric(pct_outliers)
+    pct_outliers     <- as.numeric(pct_outliers)
     min_size_numeric <- as.integer(min_size_numeric)
-    min_size_categ <- as.integer(min_size_categ)
-    categ_as_bin <- as.logical(categ_as_bin)
-    ord_as_bin <- as.logical(ord_as_bin)
+    min_size_categ   <- as.integer(min_size_categ)
+    categ_as_bin     <- as.logical(categ_as_bin)
+    ord_as_bin  <- as.logical(ord_as_bin)
+    follow_all  <- as.logical(follow_all)
+    gain_as_pct <- as.logical(gain_as_pct)
     cat_bruteforce_subset <- as.logical(cat_bruteforce_subset)
-    follow_all <- as.logical(follow_all)
     
     ### decompose data into C arrays and names, then pass to C++
     model_data <- split.types(df, cols_ord, cols_ignore, nthreads)
@@ -144,7 +151,7 @@ outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
                                                model_data$nrow, model_data$cols_ign, nthreads,
                                                categ_as_bin, ord_as_bin, cat_bruteforce_subset,
                                                max_depth, pct_outliers, min_size_numeric, min_size_categ,
-                                               min_gain, follow_all, z_norm, z_outlier,
+                                               min_gain, follow_all, gain_as_pct, z_norm, z_outlier,
                                                as.logical(save_outliers | outliers_print),
                                                lapply(model_data$cat_levels, as.character),
                                                lapply(model_data$ord_levels, as.character),
@@ -222,7 +229,7 @@ outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
 #' )
 #'     
 #' ### fit model on training data
-#' outliers_model = outlier.tree(df, outliers_print = FALSE)
+#' outliers_model = outlier.tree(df, outliers_print=FALSE, nthreads=1)
 #' 
 #' ### find the test outlier
 #' test_outliers = predict(outliers_model, df_test,

@@ -105,7 +105,7 @@ cdef extern from "outlier_tree.hpp":
                                size_t nrows, char *cols_ignore, int nthreads,
                                bool_t categ_as_bin, bool_t ord_as_bin, bool_t cat_bruteforce_subset,
                                size_t max_conditions, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
-                               double min_gain, bool_t follow_all, double z_norm, double z_outlier)
+                               double min_gain, bool_t gain_as_pct, bool_t follow_all, double z_norm, double z_outlier)
 
     bool_t find_new_outliers(double *numeric_data,
                              int    *categorical_data,
@@ -158,7 +158,7 @@ cdef class OutlierCppObject:
                   colnames_num = [], colnames_cat = [], colnames_ord = [], levs_cat = [], levs_ord = [], ts_min = None,
                   bool_t return_outliers = 1, int nthreads = 1, bool_t categ_as_bin = 1, bool_t ord_as_bin = 1, bool_t cat_bruteforce_subset = 0,
                   size_t max_conditions = 4, double max_perc_outliers = 0.01, size_t min_size_numeric = 35, size_t min_size_categ = 75,
-                  double min_gain = 0.01, bool_t follow_all = 0, double z_norm = 2.67, double z_outlier = 8.0,
+                  double min_gain = 0.01, bool_t follow_all = 0, bool_t gain_as_pct = 0, double z_norm = 2.67, double z_outlier = 8.0,
                   out_df = None):
 
         cdef size_t nrows = np.max([arr_num.shape[0], arr_cat.shape[0], arr_ord.shape[0]])
@@ -198,7 +198,7 @@ cdef class OutlierCppObject:
                                                 nrows, ptr_cols_ignore, nthreads,
                                                 categ_as_bin, ord_as_bin, cat_bruteforce_subset,
                                                 max_conditions, max_perc_outliers, min_size_numeric, min_size_categ,
-                                                min_gain, follow_all, z_norm, z_outlier
+                                                min_gain, gain_as_pct, follow_all, z_norm, z_outlier
                                             )
 
         if not return_outliers:

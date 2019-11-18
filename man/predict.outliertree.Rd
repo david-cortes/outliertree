@@ -59,7 +59,7 @@ df_test = data.frame(
 )
     
 ### fit model on training data
-outliers_model = outlier.tree(df, outliers_print = FALSE)
+outliers_model = outlier.tree(df, outliers_print=FALSE, nthreads=1)
 
 ### find the test outlier
 test_outliers = predict(outliers_model, df_test,

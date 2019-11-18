@@ -437,7 +437,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                          size_t nrows, char *restrict cols_ignore = NULL, int nthreads = 1,
                          bool categ_as_bin = true, bool ord_as_bin = true, bool cat_bruteforce_subset = false,
                          size_t max_depth = 3, double max_perc_outliers = 0.01, size_t min_size_numeric = 25, size_t min_size_categ = 75,
-                         double min_gain = 1e-1, bool follow_all = false, double z_norm = 2.67, double z_outlier = 8.0);
+                         double min_gain = 1e-1, bool gain_as_pct = false, bool follow_all = false, double z_norm = 2.67, double z_outlier = 8.0);
 
 typedef struct {
     
@@ -507,18 +507,19 @@ typedef struct {
 
 /* info holders to shorten function call arguments */
 typedef struct {
-    bool categ_as_bin;
-    bool ord_as_bin;
-    bool cat_bruteforce_subset;
-    size_t max_depth;
-    double max_perc_outliers;
-    size_t min_size_numeric;
-    size_t min_size_categ;
-    double min_gain;
-    bool follow_all;
-    double z_norm;
-    double z_outlier;
-    double z_tail;
+    bool    categ_as_bin;
+    bool    ord_as_bin;
+    bool    cat_bruteforce_subset;
+    size_t  max_depth;
+    double  max_perc_outliers;
+    size_t  min_size_numeric;
+    size_t  min_size_categ;
+    double  min_gain;
+    bool    gain_as_pct;
+    bool    follow_all;
+    double  z_norm;
+    double  z_outlier;
+    double  z_tail;
     std::vector<long double> prop_small; /* this is not a parameter, but a shared array determined from the parameters and data */
 } ModelParams;
 

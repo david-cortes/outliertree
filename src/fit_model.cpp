@@ -101,6 +101,11 @@
 *        Same but for categoricals. Default value is 75.
 *    - min_gain (in)
 *        Minimum gain that a split must produce in order not to discard it. Default value is 0.01 (in GritBot it's 0.000001).
+*    - gain_as_pct (in)
+*        Whether the gain above should be taken in absolute terms (sd_full - (n1*sd1 + n2*sd2)/n), or as a percentage
+*        ( (sd_full - (n1*sd1 + n2*sd2)/n) / sd_full ) (Replace 'sd' with shannon entropy for categorical variables).
+*        Taking it in absolute terms will prefer making more splits on columns that have a large variance, while taking it
+*        as a percentage might be more restrictive on them and might create deeper trees in some columns.
 *    - follow_all (in)
 *        Whether to create new tree branches (and continue creating new splits from all of them) from every split that meets them
 *        minimum gain or not. Doing so (which GritBot doesn't) will make the procedure much slower, but can flag more observations
@@ -118,9 +123,9 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                          int    *restrict categorical_data, size_t ncols_categ,   int *restrict ncat,
                          int    *restrict ordinal_data,     size_t ncols_ord,     int *restrict ncat_ord,
                          size_t nrows, char *restrict cols_ignore, int nthreads,
-                         bool categ_as_bin, bool ord_as_bin, bool cat_bruteforce_subset,
+                         bool   categ_as_bin, bool ord_as_bin, bool cat_bruteforce_subset,
                          size_t max_depth, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
-                         double min_gain, bool follow_all, double z_norm, double z_outlier)
+                         double min_gain, bool gain_as_pct, bool follow_all, double z_norm, double z_outlier)
 {
 
     /* put parameters and data into structs to avoid passing too many function arguments each time */
@@ -128,7 +133,8 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     ModelParams model_params = {
                                 categ_as_bin, ord_as_bin, cat_bruteforce_subset, max_depth,
                                 max_perc_outliers, min_size_numeric, min_size_categ,
-                                min_gain, follow_all, z_norm, z_outlier, z_tail, std::vector<long double>()
+                                min_gain, gain_as_pct, follow_all, z_norm, z_outlier, z_tail,
+                                std::vector<long double>()
                             };
 
     size_t tot_cols = ncols_numeric + ncols_categ + ncols_ord;
@@ -537,6 +543,7 @@ void recursive_split_numeric(Workspace &workspace,
                                 workspace.target_numeric_col, workspace.sd_y, (bool)(input_data.has_NA[col]), model_params.min_size_numeric,
                                 &workspace.buffer_sd[0], &(workspace.this_gain), &(workspace.this_split_point),
                                 &(workspace.this_split_ix), &(workspace.this_split_NA));
+        if (model_params.gain_as_pct) workspace.this_gain /= workspace.sd_y;
 
         /* if the gain is not insignificant, check clusters created by this split */
         if (workspace.this_gain >= model_params.min_gain) {
@@ -637,6 +644,7 @@ void recursive_split_numeric(Workspace &workspace,
                               &workspace.buffer_cat_sum[0], &workspace.buffer_cat_sum_sq[0], &workspace.buffer_cat_sorted[0],
                               (bool)(input_data.has_NA[col + input_data.ncols_numeric]), model_params.min_size_numeric,
                               &(workspace.this_gain), &workspace.buffer_subset_categ[0], NULL);
+        if (model_params.gain_as_pct) workspace.this_gain /= workspace.sd_y;
 
         if (workspace.this_gain >= model_params.min_gain) {
 
@@ -738,6 +746,7 @@ void recursive_split_numeric(Workspace &workspace,
                               &workspace.buffer_cat_sum[0], &workspace.buffer_cat_sum_sq[0], &workspace.buffer_cat_sorted[0],
                               (bool)(input_data.has_NA[col + input_data.ncols_numeric + input_data.ncols_categ]), model_params.min_size_numeric,
                               &(workspace.this_gain), &workspace.buffer_subset_categ[0], &(workspace.this_split_lev));
+        if (model_params.gain_as_pct) workspace.this_gain /= workspace.sd_y;
 
         if (workspace.this_gain >= model_params.min_gain) {
 
@@ -1159,6 +1168,7 @@ void recursive_split_categ(Workspace &workspace,
                               &workspace.buffer_cat_cnt[0], (bool)(input_data.has_NA[col]), model_params.min_size_categ,
                               &(workspace.this_gain), &(workspace.this_split_point),
                               &(workspace.this_split_ix), &(workspace.this_split_NA));
+        if (model_params.gain_as_pct) workspace.this_gain /= workspace.base_info_orig;
 
         if (workspace.this_gain >= model_params.min_gain) {
             
@@ -1320,7 +1330,7 @@ void recursive_split_categ(Workspace &workspace,
 
         }
 
-
+        if (model_params.gain_as_pct) workspace.this_gain /= workspace.base_info_orig;
         if (workspace.this_gain >= model_params.min_gain) {
             
             /* NA branch */
@@ -1541,6 +1551,7 @@ void recursive_split_categ(Workspace &workspace,
                           workspace.base_info_orig, &workspace.buffer_cat_cnt[0], &workspace.buffer_crosstab[0], &workspace.buffer_cat_sorted[0],
                           (bool)(input_data.has_NA[col + input_data.ncols_numeric + input_data.ncols_categ]),
                           model_params.min_size_categ, &(workspace.this_gain), &(workspace.this_split_lev));
+        if (model_params.gain_as_pct) workspace.this_gain /= workspace.base_info_orig;
 
         if (workspace.this_gain >= model_params.min_gain) {
 

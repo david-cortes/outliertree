@@ -10,7 +10,7 @@ outlier.tree(df, cols_ord = NULL, cols_ignore = NULL,
   pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 75,
   categ_as_bin = TRUE, ord_as_bin = TRUE,
   cat_bruteforce_subset = FALSE, follow_all = FALSE,
-  nthreads = parallel::detectCores())
+  gain_as_pct = FALSE, nthreads = parallel::detectCores())
 }
 \arguments{
 \item{df}{Data Frame with normal data that might contain some outliers.}
@@ -47,6 +47,7 @@ for building approximate confidence intervals of proportions.}
 
 \item{z_outlier}{Minimum Z-value that can be considered as an outlier. There must be a large gap in the
 Z-value of the next observation in sorted order to consider it as outlier, given by (z_outlier - z_norm).
+Decreasing this parameter is likely to result in more observations being flagged as outliers.
 Ignored for categorical and ordinal columns.}
 
 \item{pct_outliers}{Approximate max percentage of outliers to expect in a given branch.}
@@ -74,11 +75,15 @@ and `cat_bruteforce_subset`.}
 This will produce exponentially many more branches, and if depth is large, might take forever to finish.
 Will also produce a lot more spurious outiers. Not recommended.}
 
+\item{gain_as_pct}{Whether the minimum gain above should be taken in absolute terms, or as a percentage of
+the standard deviation (for numerical columns) or shannon entropy (for categorical columns). Taking it in
+absolute terms will prefer making more splits on columns that have a large variance, while taking it as a
+percentage might be more restrictive on them and might create deeper trees in some columns.}
+
 \item{nthreads}{Number of parallel threads to use. When fitting the model, it will only use up to one
 thread per column, while for prediction it will use up to one thread per row. The more threads that are
 used, the more memory will be required and allocated, so using more threads will not always lead to better
-speed. Passing zero or negative numbers will default to the maximum number of available CPU cores (but not
-if the object attribute is overwritten). Can be changed after the object is already initialized.}
+speed. Can be changed after the object is already initialized.}
 }
 \value{
 An object with the fitted model that can be used to detect more outliers in new data, and from
@@ -115,7 +120,8 @@ library(outliertree)
 data(hypothyroid)
 
 ### fit the model and get a print of outliers
-model <- outlier.tree(hypothyroid, outliers_print=10, save_outliers=TRUE)
+model <- outlier.tree(hypothyroid, outliers_print=10,
+  save_outliers=TRUE, nthreads=1)
 
 ### extract outlier info as R list
 outliers <- extract.training.outliers(model)

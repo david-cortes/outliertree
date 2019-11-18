@@ -43,6 +43,7 @@ class OutlierTree:
     z_outlier : float
         Minimum Z-value that can be considered as an outlier. There must be a large gap in the Z-value of
         the next observation in sorted order to consider it as outlier, given by (z_outlier - z_norm).
+        Decreasing this parameter is likely to result in more observations being flagged as outliers.
         Ignored for categorical and ordinal columns.
     pct_outliers : float
         Approximate max percentage of outliers to expect in a given branch.
@@ -69,6 +70,11 @@ class OutlierTree:
         Whether to continue branching from each split that meets the size and gain criteria. This will
         produce exponentially many more branches, and if depth is large, might take forever to finish.
         Will also produce a lot more spurious outiers. Not recommended.
+    gain_as_pct : bool
+        Whether the minimum gain above should be taken in absolute terms, or as a percentage of the standard
+        deviation (for numerical columns) or shannon entropy (for categorical columns). Taking it in absolute
+        terms will prefer making more splits on columns that have a large variance, while taking it as a
+        percentage might be more restrictive on them and might create deeper trees in some columns.
     nthreads : int
         Number of parallel threads to use. When fitting the model, it will only use up to one thread per
         column, while for prediction it will use up to one thread per row. The more threads that are
@@ -106,7 +112,7 @@ class OutlierTree:
 
     def __init__(self, max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_outlier = 8.0, pct_outliers = 0.01,
                  min_size_numeric = 25, min_size_categ = 75, categ_as_bin = True, ord_as_bin = True,
-                 cat_bruteforce_subset = False, follow_all = False, nthreads = -1):
+                 cat_bruteforce_subset = False, follow_all = False, gain_as_pct = False, nthreads = -1):
 
         ### validate inputs
         assert max_depth >= 0
@@ -143,6 +149,7 @@ class OutlierTree:
         self.ord_as_bin = bool(ord_as_bin)
         self.cat_bruteforce_subset = bool(cat_bruteforce_subset)
         self.follow_all = bool(follow_all)
+        self.gain_as_pct = bool(gain_as_pct)
         self.nthreads = nthreads
 
         ### initialize info
@@ -246,7 +253,7 @@ class OutlierTree:
                                                             self.categ_as_bin, self.ord_as_bin, self.cat_bruteforce_subset,
                                                             self.max_depth, self.pct_outliers,
                                                             self.min_size_numeric, self.min_size_categ,
-                                                            self.min_gain, self.follow_all,
+                                                            self.min_gain, self.follow_all, self.gain_as_pct,
                                                             self.z_norm, self.z_outlier,
                                                             self._generate_empty_out_df(df.shape[0]) if (return_outliers or outliers_print) else None
                                                         )
@@ -688,6 +695,7 @@ class OutlierTree:
             raise ValueError("Invalid value passed for 'max_outliers'.")
 
         ### sort according to conditions
+        tot_outliers = (~pd.isnull(df_outliers.uses_NA_branch)).sum()
         df_outliers = df_outliers.sort_values(['uses_NA_branch', 'tree_depth', 'outlier_score'], ascending = True).head(max_outliers)
 
         ### check that there are actual outliers
@@ -702,6 +710,7 @@ class OutlierTree:
         ## TODO: should have the number of decimal places as a parameter
 
         ### pretty-print
+        print("Reporting top %d outliers [out of %d found]\n\n" % (df_outliers.shape[0], tot_outliers))
         for row in df_outliers.itertuples():
 
             ### first suspicious value
