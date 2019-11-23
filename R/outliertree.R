@@ -351,12 +351,15 @@ check.outlierness.bounds <- function(outlier_tree_model) {
 #' @param model An Outlier Tree object as returned by `outlier.tree`, which has been just loaded from a disk
 #' file through `readRDS`, `load`, or a session restart.
 #' @examples \dontrun{
+#' ### Warning: this example will generate a temporary .Rds
+#' ### file in the working directory from which it is run
 #' library(outliertree)
 #' set.seed(1)
 #' df <- as.data.frame(matrix(rnorm(1000), nrow = 200))
 #' otree <- outlier.tree(df, outliers_print = 0)
 #' saveRDS(otree, "otree.Rds")
 #' otree2 <- readRDS("otree.Rds")
+#' file.remove("otree.Rds")
 #' 
 #' ### will de-serialize inside, but object is short-lived
 #' wrap_predict <- function(model, data) {
