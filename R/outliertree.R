@@ -350,16 +350,17 @@ check.outlierness.bounds <- function(outlier_tree_model) {
 #' in the same way as `predict` or `print`, but without producing any outputs or messages.
 #' @param model An Outlier Tree object as returned by `outlier.tree`, which has been just loaded from a disk
 #' file through `readRDS`, `load`, or a session restart.
-#' @examples \dontrun{
+#' @examples 
 #' ### Warning: this example will generate a temporary .Rds
-#' ### file in the working directory from which it is run
+#' ### file in your temp folder, and will then delete it
 #' library(outliertree)
 #' set.seed(1)
 #' df <- as.data.frame(matrix(rnorm(1000), nrow = 200))
 #' otree <- outlier.tree(df, outliers_print = 0)
-#' saveRDS(otree, "otree.Rds")
-#' otree2 <- readRDS("otree.Rds")
-#' file.remove("otree.Rds")
+#' temp_file <- file.path(tempdir(), "otree.Rds")
+#' saveRDS(otree, temp_file)
+#' otree2 <- readRDS(temp_file)
+#' file.remove(temp_file)
 #' 
 #' ### will de-serialize inside, but object is short-lived
 #' wrap_predict <- function(model, data) {
@@ -378,7 +379,6 @@ check.outlierness.bounds <- function(outlier_tree_model) {
 #' temp <- wrap_predict(otree2, df)
 #' cat("pointer outside function is this: \n")
 #' print(otree2$obj_from_cpp$ptr_model)
-#' }
 #' @export
 unpack.outlier.tree <- function(model)  {
     check.is.model.obj(model)

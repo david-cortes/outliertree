@@ -30,16 +30,16 @@ freshly-loaded model object to those other functions, and then they will not nee
 in the same way as `predict` or `print`, but without producing any outputs or messages.
 }
 \examples{
-\dontrun{
 ### Warning: this example will generate a temporary .Rds
-### file in the working directory from which it is run
+### file in your temp folder, and will then delete it
 library(outliertree)
 set.seed(1)
 df <- as.data.frame(matrix(rnorm(1000), nrow = 200))
 otree <- outlier.tree(df, outliers_print = 0)
-saveRDS(otree, "otree.Rds")
-otree2 <- readRDS("otree.Rds")
-file.remove("otree.Rds")
+temp_file <- file.path(tempdir(), "otree.Rds")
+saveRDS(otree, temp_file)
+otree2 <- readRDS(temp_file)
+file.remove(temp_file)
 
 ### will de-serialize inside, but object is short-lived
 wrap_predict <- function(model, data) {
@@ -58,5 +58,4 @@ print("after unpacking beforehand")
 temp <- wrap_predict(otree2, df)
 cat("pointer outside function is this: \\n")
 print(otree2$obj_from_cpp$ptr_model)
-}
 }
