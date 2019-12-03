@@ -242,7 +242,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     for (size_t_for col = 0; col < tot_cols; col++) {
         if (input_data.skip_col[col]) continue;
         if (cols_ignore != NULL && cols_ignore[col]) continue;
-        model_outputs.all_clusters[col].reserve(tot_cols * (pow2(model_params.max_depth + 1)));
+        model_outputs.all_clusters[col].reserve(tot_cols * std::min(2 * input_data.nrows, pow2(model_params.max_depth + 1)));
         model_outputs.all_trees[col].reserve( square(model_params.max_depth) );
         /* this is not exact as categoricals and ordinals can also be split multiple times */
     }
@@ -258,7 +258,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
         if (input_data.skip_col[col] && col < input_data.ncols_numeric) continue;
         tid = omp_get_thread_num();
 
-        /* re-use thread-private memory is possible */
+        /* re-use thread-private memory if possible */
         if (!check_workspace_is_allocated(workspace[tid]))
             allocate_thread_workspace(workspace[tid], input_data.nrows, input_data.max_categ);
             
