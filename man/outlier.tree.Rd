@@ -120,8 +120,10 @@ library(outliertree)
 data(hypothyroid)
 
 ### fit the model and get a print of outliers
-model <- outlier.tree(hypothyroid, outliers_print=10,
-  save_outliers=TRUE, nthreads=1)
+model <- outlier.tree(hypothyroid,
+  outliers_print=10,
+  save_outliers=TRUE,
+  nthreads=1)
 
 ### extract outlier info as R list
 outliers <- extract.training.outliers(model)

@@ -84,8 +84,10 @@
 #' data(hypothyroid)
 #' 
 #' ### fit the model and get a print of outliers
-#' model <- outlier.tree(hypothyroid, outliers_print=10,
-#'   save_outliers=TRUE, nthreads=1)
+#' model <- outlier.tree(hypothyroid,
+#'   outliers_print=10,
+#'   save_outliers=TRUE,
+#'   nthreads=1)
 #' 
 #' ### extract outlier info as R list
 #' outliers <- extract.training.outliers(model)
@@ -356,7 +358,7 @@ check.outlierness.bounds <- function(outlier_tree_model) {
 #' library(outliertree)
 #' set.seed(1)
 #' df <- as.data.frame(matrix(rnorm(1000), nrow = 200))
-#' otree <- outlier.tree(df, outliers_print = 0)
+#' otree <- outlier.tree(df, outliers_print=0, nthreads=1)
 #' temp_file <- file.path(tempdir(), "otree.Rds")
 #' saveRDS(otree, temp_file)
 #' otree2 <- readRDS(temp_file)

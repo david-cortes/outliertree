@@ -35,7 +35,7 @@ in the same way as `predict` or `print`, but without producing any outputs or me
 library(outliertree)
 set.seed(1)
 df <- as.data.frame(matrix(rnorm(1000), nrow = 200))
-otree <- outlier.tree(df, outliers_print = 0)
+otree <- outlier.tree(df, outliers_print=0, nthreads=1)
 temp_file <- file.path(tempdir(), "otree.Rds")
 saveRDS(otree, temp_file)
 otree2 <- readRDS(temp_file)
