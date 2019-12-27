@@ -69,5 +69,5 @@ test_outliers = predict(outliers_model, df_test,
 test_outliers[[1]]
 }
 \seealso{
-\link{outlier.tree} \link{unpack.outlier.tree}
+\link{outlier.tree} \link{print.outlieroutputs} \link{unpack.outlier.tree}
 }

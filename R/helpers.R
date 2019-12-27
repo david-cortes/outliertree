@@ -571,12 +571,12 @@ outliers.to.list <- function(df, outliers_info) {
 
 list.to.outliers <- function(outliers_data) {
     return(list(
-        suspicous_value  = sapply(outliers_data, function(x) x$suspicous_value),
-        group_statistics = sapply(outliers_data, function(x) x$group_statistics),
-        conditions       = sapply(outliers_data, function(x) x$conditions),
-        tree_depth       = sapply(outliers_data, function(x) x$tree_depth),
-        uses_NA_branch   = sapply(outliers_data, function(x) x$uses_NA_branch),
-        outlier_score    = sapply(outliers_data, function(x) x$outlier_score)
+        suspicous_value  = sapply(outliers_data, function(x) x$suspicous_value, simplify = FALSE),
+        group_statistics = sapply(outliers_data, function(x) x$group_statistics, simplify = FALSE),
+        conditions       = sapply(outliers_data, function(x) x$conditions, simplify = FALSE),
+        tree_depth       = sapply(outliers_data, function(x) x$tree_depth, simplify = TRUE),
+        uses_NA_branch   = sapply(outliers_data, function(x) x$uses_NA_branch, simplify = TRUE),
+        outlier_score    = sapply(outliers_data, function(x) x$outlier_score, simplify = TRUE)
     ))
 }
 

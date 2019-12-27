@@ -208,7 +208,7 @@ outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
 #' @details Note that after loading a serialized object from `outlier.tree` through `readRDS` or `load`,
 #' it will only de-serialize the underlying C++ object upon running `predict` or `print`, so the first run will
 #' be slower, while subsequent runs will be faster as the C++ object will already be in-memory.
-#' @seealso \link{outlier.tree} \link{unpack.outlier.tree}
+#' @seealso \link{outlier.tree} \link{print.outlieroutputs} \link{unpack.outlier.tree}
 #' @examples 
 #' library(outliertree)
 #' ### random data frame with an obvious outlier
@@ -289,6 +289,27 @@ predict.outliertree <- function(object, newdata, outliers_print = 15, return_out
 #' data frame were null, or the row names they had if non-null). Pass `NULL` to print information
 #' about potentially all rows
 #' @param ... Not used.
+#' @return No return value.
+#' @seealso \link{outlier.tree} \link{predict.outliertree}
+#' @examples 
+#' ### Example re-printing results for selected rows
+#' library(outliertree)
+#' data("hypothyroid")
+#' 
+#' ### Fit model
+#' otree <- outlier.tree(hypothyroid,
+#'   nthreads=1,
+#'   outliers_print=0)
+#'   
+#' ### Store predictions
+#' pred <- predict(otree,
+#'   hypothyroid,
+#'   outliers_print=0,
+#'   return_outliers=TRUE)
+#'   
+#' ### Print stored predictions
+#' ### Rows 1790 and 531 are outliers, but 531 is not
+#' print(pred, only_these_rows = c(1790, 531, 530))
 #' @export 
 print.outlieroutputs <- function(x, outliers_print = 15, only_these_rows = NULL, ...) {
     if (NROW(x) == 0) { report.no.outliers(); return(invisible(NULL)); }
@@ -352,12 +373,13 @@ check.outlierness.bounds <- function(outlier_tree_model) {
 #' in the same way as `predict` or `print`, but without producing any outputs or messages.
 #' @param model An Outlier Tree object as returned by `outlier.tree`, which has been just loaded from a disk
 #' file through `readRDS`, `load`, or a session restart.
+#' @return No return value. Object is modified in-place.
 #' @examples 
 #' ### Warning: this example will generate a temporary .Rds
 #' ### file in your temp folder, and will then delete it
 #' library(outliertree)
 #' set.seed(1)
-#' df <- as.data.frame(matrix(rnorm(1000), nrow = 200))
+#' df <- as.data.frame(matrix(rnorm(1000), nrow = 250))
 #' otree <- outlier.tree(df, outliers_print=0, nthreads=1)
 #' temp_file <- file.path(tempdir(), "otree.Rds")
 #' saveRDS(otree, temp_file)

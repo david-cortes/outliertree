@@ -10,6 +10,9 @@ unpack.outlier.tree(model)
 \item{model}{An Outlier Tree object as returned by `outlier.tree`, which has been just loaded from a disk
 file through `readRDS`, `load`, or a session restart.}
 }
+\value{
+No return value. Object is modified in-place.
+}
 \description{
 After persisting an outlier tree model object through `saveRDS`, `save`, or restarting a session, the
 underlying C++ objects that constitute the outlier tree model and which live only on the C++ heap memory are not saved along,
@@ -34,7 +37,7 @@ in the same way as `predict` or `print`, but without producing any outputs or me
 ### file in your temp folder, and will then delete it
 library(outliertree)
 set.seed(1)
-df <- as.data.frame(matrix(rnorm(1000), nrow = 200))
+df <- as.data.frame(matrix(rnorm(1000), nrow = 250))
 otree <- outlier.tree(df, outliers_print=0, nthreads=1)
 temp_file <- file.path(tempdir(), "otree.Rds")
 saveRDS(otree, temp_file)
