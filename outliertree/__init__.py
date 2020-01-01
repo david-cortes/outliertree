@@ -51,21 +51,18 @@ class OutlierTree:
         Minimum size that branches need to have when splitting a numeric column.
     min_size_categ : int
         Minimum size that branches need to have when splitting a categorical or ordinal column.
-    categ_as_bin : bool
-        Whether to make categorical-by-categorical binary splits by binarizing each category in the
-        column and then attempting splits by grouping categories into subsets. Alternative is to
-        create one branch per category of the column being split from. Ignored when there is only one
-        or fewer categorical columns. Can only pass one of 'categ_as_bin' and 'cat_bruteforce_subset'.
-    ord_as_bin : bool
-        Same as 'categ_as_bin', but for ordinal columns, and cumulative (i.e. it splits by '<=', not '=').
-        Ignored when there are no ordinal columns or no categorical columns.
-    cat_bruteforce_subset : bool
-        Whether to make categorical-by-categorical binary splits by trying all the possible combinations
-        of columns in each subset (that is, it evaluates 2^n potential splits every time). Note that trying
-        this when there are many categories in a column will result in exponential computation time that
-        might never finish. Alternative is to create one branch per category of the column being split from.
-        Ignored when there is only one or fewer categorical columns. Can only pass one of 'categ_as_bin'
-        and 'cat_bruteforce_subset'.
+    categ_split : str
+        How to produce categorical-by-categorical splits. Options are:
+
+        ``"binarize"``:
+            Will binarize the target variable according to whether it's equal to each present category
+            within it (greater/less for ordinal), and split each binarized variable separately.
+        ``"bruteforce"``:
+            Will evaluate each possible binary split of the categories (that is, it evaluates 2^n potential
+            splits every time). Note that trying this when there are many categories in a column will result
+            in exponential computation time that might never finish.
+        ``"separate"``:
+            Will create one branch per category of the splitting variable (this is how GritBot handles them).
     follow_all : bool
         Whether to continue branching from each split that meets the size and gain criteria. This will
         produce exponentially many more branches, and if depth is large, might take forever to finish.
@@ -107,29 +104,31 @@ class OutlierTree:
 
     References
     ----------
-    [1] GritBot software : https://www.rulequest.com/gritbot-info.html
+    .. [1] GritBot software : https://www.rulequest.com/gritbot-info.html
     """
-
     def __init__(self, max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_outlier = 8.0, pct_outliers = 0.01,
-                 min_size_numeric = 25, min_size_categ = 75, categ_as_bin = True, ord_as_bin = True,
-                 cat_bruteforce_subset = False, follow_all = False, gain_as_pct = False, nthreads = -1):
+                 min_size_numeric = 25, min_size_categ = 50, categ_split = "binarize",
+                 follow_all = False, gain_as_pct = False, nthreads = -1):
 
         ### validate inputs
         assert max_depth >= 0
         assert isinstance(max_depth, int)
         assert isinstance(min_gain, float)
         assert z_norm > 0
+        if isinstance(z_norm, int):
+            z_norm = float(z_norm)
         assert isinstance(z_norm, float)
         assert z_outlier > z_norm
+        if isinstance(z_outlier, int):
+            z_outlier = float(z_outlier)
         assert isinstance(z_outlier, float)
         assert pct_outliers > 0
         assert pct_outliers < 0.1
         assert min_size_numeric >= 10
         assert min_size_categ >= 10
+        assert categ_split in  ["binarize", "bruteforce", "separate"]
         assert isinstance(min_size_numeric, int)
         assert isinstance(min_size_categ, int)
-        if (categ_as_bin or ord_as_bin) and cat_bruteforce_subset:
-            raise ValueError("Can only pass one of {'categ_as_bin', 'ord_as_bin'} and 'cat_bruteforce_subset'.")
         if nthreads is None:
             nthreads = 1 
         if nthreads <= 0:
@@ -138,21 +137,19 @@ class OutlierTree:
         assert isinstance(nthreads, int)
 
         ### store them
-        self.max_depth = max_depth
-        self.min_gain = min_gain
-        self.z_norm = z_norm
-        self.z_outlier = z_outlier
-        self.pct_outliers = pct_outliers
-        self.min_size_numeric = min_size_numeric
-        self.min_size_categ = min_size_categ
-        self.categ_as_bin = bool(categ_as_bin)
-        self.ord_as_bin = bool(ord_as_bin)
-        self.cat_bruteforce_subset = bool(cat_bruteforce_subset)
-        self.follow_all = bool(follow_all)
-        self.gain_as_pct = bool(gain_as_pct)
-        self.nthreads = nthreads
+        self.max_depth         =  max_depth
+        self.min_gain          =  min_gain
+        self.z_norm            =  z_norm
+        self.z_outlier         =  z_outlier
+        self.pct_outliers      =  pct_outliers
+        self.min_size_numeric  =  min_size_numeric
+        self.min_size_categ    =  min_size_categ
+        self.categ_split       =  categ_split
+        self.follow_all        =  bool(follow_all)
+        self.gain_as_pct       =  bool(gain_as_pct)
+        self.nthreads          =  nthreads
 
-        ### initialize info
+        ### initialize internal object
         self._reset_object()
         self._outlier_cpp_obj = OutlierCppObject()
 
@@ -171,7 +168,7 @@ class OutlierTree:
         self._ts_min      = np.empty(0, dtype = int)
         self.flaggable_values = dict()
 
-    def fit(self, df, cols_ignore = None, outliers_print = 10, return_outliers = True):
+    def fit(self, df, cols_ignore = None, outliers_print = 10, return_outliers = False):
         """
         Fit Outlier Tree model to data.
 
@@ -250,7 +247,8 @@ class OutlierTree:
                                                             self._ts_min.reshape(-1),
                                                             return_outliers or outliers_print,
                                                             self.nthreads,
-                                                            self.categ_as_bin, self.ord_as_bin, self.cat_bruteforce_subset,
+                                                            self.categ_split == "binarize", self.categ_split == "binarize",
+                                                            self.categ_split == "bruteforce",
                                                             self.max_depth, self.pct_outliers,
                                                             self.min_size_numeric, self.min_size_categ,
                                                             self.min_gain, self.follow_all, self.gain_as_pct,
@@ -937,7 +935,7 @@ class OutlierTree:
 
         References
         ----------
-        [1] GritBot software : https://www.rulequest.com/gritbot-info.html
+        .. [1] GritBot software : https://www.rulequest.com/gritbot-info.html
         """
         save_folder = os.path.expanduser(save_folder)
         assert os.path.exists(save_folder)

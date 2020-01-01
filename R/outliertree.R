@@ -1,19 +1,6 @@
 #' @title Outlier Tree
 #' @description Fit Outlier Tree model to normal data with perhaps some outliers.
 #' @param df  Data Frame with normal data that might contain some outliers.
-#' @param cols_ord Character vector indicating which categorical columns are ordinal.
-#' Ordinal columns must be passed as factors.
-#' @param cols_ignore Vector containing columns which will not be split, but will be evaluated for usage
-#' in splitting other columns. Can pass either a logical (boolean) vector with the same number of columns
-#' as `df`, or a character vector of column names (must match with those of `df`).
-#' Pass `NULL` to use all columns.
-#' @param save_outliers Whether to store outliers detected in `df` in the object that is returned.
-#' These outliers can then be extracted from the returned object through function
-#' `extract.training.outliers`.
-#' @param outliers_print Maximum number of flagged outliers in the training data to print after fitting
-#' the model. Pass zero or `NULL` to avoid printing any. Outliers can be printed from resulting data frame
-#' afterwards through the `predict` method, or through the `print` method (on the extracted outliers, not on
-#' the model object) if passing `save_outliers` = `TRUE`.
 #' @param max_depth Maximum depth of the trees to grow. Can also pass zero, in which case it will only look
 #' for outliers with no conditions (i.e. takes each column as a 1-d distribution and looks for outliers in
 #' there independently of the values in other columns).
@@ -31,18 +18,21 @@
 #' @param pct_outliers Approximate max percentage of outliers to expect in a given branch.
 #' @param min_size_numeric Minimum size that branches need to have when splitting a numeric column.
 #' @param min_size_categ Minimum size that branches need to have when splitting a categorical or ordinal column.
-#' @param categ_as_bin Whether to make categorical-by-categorical binary splits by binarizing each category
-#' in the column and then attempting splits by grouping categories into subsets. Alternative is to create
-#' one branch per category of the column being split from. Ignored when there is only one or fewer categorical
-#' columns. Can only pass one of `categ_as_bin` and `cat_bruteforce_subset`.
-#' @param ord_as_bin Same as `categ_as_bin`, but for ordinal columns, and cumulative (i.e. it splits by "<=",
-#' not "="). Ignored when there are no ordinal columns or no categorical columns.
-#' @param cat_bruteforce_subset Whether to make categorical-by-categorical binary splits by trying all the
-#' possible combinations of columns in each subset (that is, it evaluates 2^n potential splits every time).
-#' Note that trying this when there are many categories in a column will result in exponential computation
-#' time that might never finish. Alternative is to create one branch per category of the column being split
-#' from. Ignored when there is only one or fewer categorical columns. Can only pass one of `categ_as_bin`
-#' and `cat_bruteforce_subset`.
+#' @param categ_split How to produce categorical-by-categorical splits. Options are:
+#' \itemize{
+#'   \item `"binarize"` : Will binarize the target variable according to whether it's equal to each present category
+#'   within it (greater/less for ordinal), and split each binarized variable separately.
+#'   \item `"bruteforce"` : Will evaluate each possible binary split of the categories (that is, it evaluates 2^n potential
+#'   splits every time). Note that trying this when there are many categories in a column will result
+#'   in exponential computation time that might never finish.
+#'   \item `"separate"` : Will create one branch per category of the splitting variable (this is how GritBot handles them).
+#' }
+#' @param cols_ord Character vector indicating which categorical columns are ordinal.
+#' Ordinal columns must be passed as factors.
+#' @param cols_ignore Vector containing columns which will not be split, but will be evaluated for usage
+#' in splitting other columns. Can pass either a logical (boolean) vector with the same number of columns
+#' as `df`, or a character vector of column names (must match with those of `df`).
+#' Pass `NULL` to use all columns.
 #' @param follow_all Whether to continue branching from each split that meets the size and gain criteria.
 #' This will produce exponentially many more branches, and if depth is large, might take forever to finish.
 #' Will also produce a lot more spurious outiers. Not recommended.
@@ -50,6 +40,13 @@
 #' the standard deviation (for numerical columns) or shannon entropy (for categorical columns). Taking it in
 #' absolute terms will prefer making more splits on columns that have a large variance, while taking it as a
 #' percentage might be more restrictive on them and might create deeper trees in some columns.
+#' @param save_outliers Whether to store outliers detected in `df` in the object that is returned.
+#' These outliers can then be extracted from the returned object through function
+#' `extract.training.outliers`.
+#' @param outliers_print Maximum number of flagged outliers in the training data to print after fitting
+#' the model. Pass zero or `NULL` to avoid printing any. Outliers can be printed from resulting data frame
+#' afterwards through the `predict` method, or through the `print` method (on the extracted outliers, not on
+#' the model object) if passing `save_outliers` = `TRUE`.
 #' @param nthreads Number of parallel threads to use. When fitting the model, it will only use up to one
 #' thread per column, while for prediction it will use up to one thread per row. The more threads that are
 #' used, the more memory will be required and allocated, so using more threads will not always lead to better
@@ -102,17 +99,17 @@
 #' outliers.w.names <- predict(model, df.w.names, return_outliers=TRUE)
 #' outliers.w.names[["rownum745"]]
 #' @export
-outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
-                         save_outliers = FALSE, outliers_print = 10,
-                         max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_outlier = 8.0,
-                         pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 75,
-                         categ_as_bin = TRUE, ord_as_bin = TRUE, cat_bruteforce_subset = FALSE,
+outlier.tree <- function(df, max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_outlier = 8.0,
+                         pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 50,
+                         categ_split = "binarize", cols_ord = NULL, cols_ignore = NULL,
                          follow_all = FALSE, gain_as_pct = FALSE,
+                         save_outliers = FALSE, outliers_print = 10,
                          nthreads = parallel::detectCores())
 {
     ### validate inputs
-    if ((categ_as_bin | ord_as_bin) & cat_bruteforce_subset) {
-        stop("Can only pass one of 'categ_as_bin/ord_as_bin' and 'cat_bruteforce_subset'.")
+    allowed_cs <- c("binarize", "bruteforce", "separate")
+    if (NROW(categ_split) != 1 || !(categ_split %in% allowed_cs)) {
+        stop(paste0("'categ_split' must be one of ", paste(allowed_cs, collapse = ", ")))
     }
     if (max_depth < 0) { stop("'max_depth' must be >= 0.") }
     if (!("numeric" %in% class(min_gain)))     { stop("'min_gain' must be a decimal number.")     }
@@ -139,19 +136,18 @@ outlier.tree <- function(df, cols_ord = NULL, cols_ignore = NULL,
     pct_outliers     <- as.numeric(pct_outliers)
     min_size_numeric <- as.integer(min_size_numeric)
     min_size_categ   <- as.integer(min_size_categ)
-    categ_as_bin     <- as.logical(categ_as_bin)
-    ord_as_bin  <- as.logical(ord_as_bin)
+    categ_split      <- categ_split
     follow_all  <- as.logical(follow_all)
     gain_as_pct <- as.logical(gain_as_pct)
-    cat_bruteforce_subset <- as.logical(cat_bruteforce_subset)
-    
+
     ### decompose data into C arrays and names, then pass to C++
     model_data <- split.types(df, cols_ord, cols_ignore, nthreads)
     model_data$obj_from_cpp <- fit_OutlierTree(model_data$arr_num, model_data$ncol_num,
                                                model_data$arr_cat, model_data$ncol_cat, model_data$ncat,
                                                model_data$arr_ord, model_data$ncol_ord, model_data$ncat_ord,
                                                model_data$nrow, model_data$cols_ign, nthreads,
-                                               categ_as_bin, ord_as_bin, cat_bruteforce_subset,
+                                               categ_split == "binarize", categ_split == "binarize",
+                                               categ_split == "bruteforce",
                                                max_depth, pct_outliers, min_size_numeric, min_size_categ,
                                                min_gain, follow_all, gain_as_pct, z_norm, z_outlier,
                                                as.logical(save_outliers | outliers_print),

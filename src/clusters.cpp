@@ -131,6 +131,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     size_t end_normals   = 0;
     double min_gap = z_outlier - z_norm;
 
+    /* TODO: here it's not necessary to sort the whole data, only top/bottom N */
+
     /* sort the data */
     std::sort(ix_arr + st, ix_arr + end + 1, [&x](const size_t a, const size_t b){return x[a] < x[b];});
 

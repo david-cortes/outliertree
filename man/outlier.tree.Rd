@@ -4,33 +4,15 @@
 \alias{outlier.tree}
 \title{Outlier Tree}
 \usage{
-outlier.tree(df, cols_ord = NULL, cols_ignore = NULL,
-  save_outliers = FALSE, outliers_print = 10, max_depth = 4,
-  min_gain = 0.1, z_norm = 2.67, z_outlier = 8,
-  pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 75,
-  categ_as_bin = TRUE, ord_as_bin = TRUE,
-  cat_bruteforce_subset = FALSE, follow_all = FALSE,
-  gain_as_pct = FALSE, nthreads = parallel::detectCores())
+outlier.tree(df, max_depth = 4, min_gain = 0.1, z_norm = 2.67,
+  z_outlier = 8, pct_outliers = 0.01, min_size_numeric = 25,
+  min_size_categ = 50, categ_split = "binarize", cols_ord = NULL,
+  cols_ignore = NULL, follow_all = FALSE, gain_as_pct = FALSE,
+  save_outliers = FALSE, outliers_print = 10,
+  nthreads = parallel::detectCores())
 }
 \arguments{
 \item{df}{Data Frame with normal data that might contain some outliers.}
-
-\item{cols_ord}{Character vector indicating which categorical columns are ordinal.
-Ordinal columns must be passed as factors.}
-
-\item{cols_ignore}{Vector containing columns which will not be split, but will be evaluated for usage
-in splitting other columns. Can pass either a logical (boolean) vector with the same number of columns
-as `df`, or a character vector of column names (must match with those of `df`).
-Pass `NULL` to use all columns.}
-
-\item{save_outliers}{Whether to store outliers detected in `df` in the object that is returned.
-These outliers can then be extracted from the returned object through function
-`extract.training.outliers`.}
-
-\item{outliers_print}{Maximum number of flagged outliers in the training data to print after fitting
-the model. Pass zero or `NULL` to avoid printing any. Outliers can be printed from resulting data frame
-afterwards through the `predict` method, or through the `print` method (on the extracted outliers, not on
-the model object) if passing `save_outliers` = `TRUE`.}
 
 \item{max_depth}{Maximum depth of the trees to grow. Can also pass zero, in which case it will only look
 for outliers with no conditions (i.e. takes each column as a 1-d distribution and looks for outliers in
@@ -56,20 +38,23 @@ Ignored for categorical and ordinal columns.}
 
 \item{min_size_categ}{Minimum size that branches need to have when splitting a categorical or ordinal column.}
 
-\item{categ_as_bin}{Whether to make categorical-by-categorical binary splits by binarizing each category
-in the column and then attempting splits by grouping categories into subsets. Alternative is to create
-one branch per category of the column being split from. Ignored when there is only one or fewer categorical
-columns. Can only pass one of `categ_as_bin` and `cat_bruteforce_subset`.}
+\item{categ_split}{How to produce categorical-by-categorical splits. Options are:
+\itemize{
+  \item `"binarize"` : Will binarize the target variable according to whether it's equal to each present category
+  within it (greater/less for ordinal), and split each binarized variable separately.
+  \item `"bruteforce"` : Will evaluate each possible binary split of the categories (that is, it evaluates 2^n potential
+  splits every time). Note that trying this when there are many categories in a column will result
+  in exponential computation time that might never finish.
+  \item `"separate"` : Will create one branch per category of the splitting variable (this is how GritBot handles them).
+}}
 
-\item{ord_as_bin}{Same as `categ_as_bin`, but for ordinal columns, and cumulative (i.e. it splits by "<=",
-not "="). Ignored when there are no ordinal columns or no categorical columns.}
+\item{cols_ord}{Character vector indicating which categorical columns are ordinal.
+Ordinal columns must be passed as factors.}
 
-\item{cat_bruteforce_subset}{Whether to make categorical-by-categorical binary splits by trying all the
-possible combinations of columns in each subset (that is, it evaluates 2^n potential splits every time).
-Note that trying this when there are many categories in a column will result in exponential computation
-time that might never finish. Alternative is to create one branch per category of the column being split
-from. Ignored when there is only one or fewer categorical columns. Can only pass one of `categ_as_bin`
-and `cat_bruteforce_subset`.}
+\item{cols_ignore}{Vector containing columns which will not be split, but will be evaluated for usage
+in splitting other columns. Can pass either a logical (boolean) vector with the same number of columns
+as `df`, or a character vector of column names (must match with those of `df`).
+Pass `NULL` to use all columns.}
 
 \item{follow_all}{Whether to continue branching from each split that meets the size and gain criteria.
 This will produce exponentially many more branches, and if depth is large, might take forever to finish.
@@ -79,6 +64,15 @@ Will also produce a lot more spurious outiers. Not recommended.}
 the standard deviation (for numerical columns) or shannon entropy (for categorical columns). Taking it in
 absolute terms will prefer making more splits on columns that have a large variance, while taking it as a
 percentage might be more restrictive on them and might create deeper trees in some columns.}
+
+\item{save_outliers}{Whether to store outliers detected in `df` in the object that is returned.
+These outliers can then be extracted from the returned object through function
+`extract.training.outliers`.}
+
+\item{outliers_print}{Maximum number of flagged outliers in the training data to print after fitting
+the model. Pass zero or `NULL` to avoid printing any. Outliers can be printed from resulting data frame
+afterwards through the `predict` method, or through the `print` method (on the extracted outliers, not on
+the model object) if passing `save_outliers` = `TRUE`.}
 
 \item{nthreads}{Number of parallel threads to use. When fitting the model, it will only use up to one
 thread per column, while for prediction it will use up to one thread per row. The more threads that are
