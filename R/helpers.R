@@ -385,9 +385,15 @@ report.outliers <- function(lst, rnames, outliers_print) {
                 }
             }
         } else if ("categs_common" %in% names(group_statistics[[row_ix]])) {
-            cat(sprintf("\tdistribution: %.3f%% in [%s]\n",
-                        group_statistics[[row_ix]]$pct_common * 100,
-                        paste(group_statistics[[row_ix]]$categs_common, collapse = ", ")))
+            if (NROW(group_statistics[[row_ix]]$categs_common) == 1) {
+                cat(sprintf("\tdistribution: %.3f%% = [%s]\n",
+                            group_statistics[[row_ix]]$pct_common * 100,
+                            group_statistics[[row_ix]]$categs_common))
+            } else {
+                cat(sprintf("\tdistribution: %.3f%% in [%s]\n",
+                            group_statistics[[row_ix]]$pct_common * 100,
+                            paste(group_statistics[[row_ix]]$categs_common, collapse = ", ")))
+            }
             if (NROW(conditions[[row_ix]])) {
                 cat(sprintf("\t( [norm. obs: %d] - [prior_prob: %.3f%%] - [next smallest: %.3f%%] )\n",
                             group_statistics[[row_ix]]$n_obs,

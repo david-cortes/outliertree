@@ -326,6 +326,8 @@ class OutlierTree:
         if not self.is_fitted_:
             raise ValueError("Can only call '.predict' after the model has already been fit to some data.")
         outliers_print = self._check_outliers_print(outliers_print)
+        if df.__class__.__name__ == "Series":
+            df = df.to_frame().T
         self._check_valid_data(df)
         self._check_contains_original_cols(df)
         arr_num, arr_cat, arr_ord = self._split_types_new_df(df)
@@ -456,6 +458,9 @@ class OutlierTree:
             for cl in range(df_cat.shape[1]):
                 df_cat[df_cat.columns[cl]], encoding_this = pd.factorize(df_cat[df_cat.columns[cl]])
                 df_cat[df_cat.columns[cl]] = df_cat[df_cat.columns[cl]].astype(ctypes.c_int)
+                # https://github.com/pandas-dev/pandas/issues/30618
+                if encoding_this.__class__.__name__ == "CategoricalIndex":
+                    encoding_this = encoding_this.to_numpy()
                 self._cat_mapping.append(encoding_this)
 
         ### Booleans are taken as categoricals
@@ -687,6 +692,8 @@ class OutlierTree:
         max_outliers : int
             Maximum number of outliers to print.
         """
+        if df_outliers.__class__.__name__ == "Series":
+            df_outliers = df_outliers.to_frame().T
         self._check_valid_outliers_df(df_outliers)
         max_outliers = self._check_outliers_print(max_outliers)
         if not max_outliers:
@@ -749,8 +756,12 @@ class OutlierTree:
 
             elif "categs_common" in row.group_statistics:
                 ## categorical
-                ln_group += "\tdistribution: %.3f%% in [%s]" % (row.group_statistics["pct_common"] * 100,
-                                                                ", ".join([str(cat) for cat in row.group_statistics["categs_common"]]))
+                if len(row.group_statistics["categs_common"]) == 1:
+                    ln_group += "\tdistribution: %.3f%% = [%s]" % (row.group_statistics["pct_common"] * 100,
+                                                                   str(row.group_statistics["categs_common"][0]))
+                else:
+                    ln_group += "\tdistribution: %.3f%% in [%s]" % (row.group_statistics["pct_common"] * 100,
+                                                                    ", ".join([str(cat) for cat in row.group_statistics["categs_common"]]))
                 if len(row.conditions) > 0:
                     ln_group += "\n\t( [norm. obs: %d] - [prior_prob: %.3f%%] - [next smallest: %.3f%%] )" % (row.group_statistics["n_obs"],
                                                                                                               row.group_statistics["prior_prob"] * 100,
