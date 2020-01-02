@@ -124,9 +124,9 @@ bool find_new_outliers(double *restrict numeric_data,
 
             } else {
                 
-                cat_val_this = prediction_data.ordinal_data[row + (col - model_outputs.ncols_numeric) * nrows];
+                cat_val_this = prediction_data.ordinal_data[row + (col - model_outputs.ncols_numeric - model_outputs.ncols_categ) * nrows];
                 if (cat_val_this < 0) continue;
-                if (cat_val_this >= model_outputs.ncat_ord[col - model_outputs.ncols_numeric]) continue;
+                if (cat_val_this >= model_outputs.ncat_ord[col - model_outputs.ncols_numeric - model_outputs.ncols_categ]) continue;
                 if (!model_outputs.cat_outlier_any_cl[col - model_outputs.ncols_numeric][cat_val_this]) continue;
 
             }
