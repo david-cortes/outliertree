@@ -1759,16 +1759,19 @@ void recursive_split_categ(Workspace &workspace,
 
         if (spl1 == SingleCateg) {
 
+            /* TODO: this should be done instead in a loop per category looking for the start and end positions
+               in ix_arr of each category using std::lower_bound */
+
             /* TODO: it's not necessary to backup everything like when using 'follow_all', only need 'best_col' and 'temp_ptr_x' */
             state_backup = std::unique_ptr<RecursionState>(new RecursionState);
             for (int cat = 1; cat < input_data.ncat[workspace.col_best]; cat++) {
 
-                /*    TODO: this is inefficient when some categories are not present, should instead at first do a pass over 'ix_arr'
+                /*  TODO: this is inefficient when some categories are not present, should instead at first do a pass over 'ix_arr'
                     to calculate the start and end indices of each category, then loop over that array instead */
                 for (size_t row = ix1 + 1; row < ix3; row++) {
                     if (workspace.temp_ptr_x[ workspace.ix_arr[row] ] == cat) {
                         if ((row - ix1) >= 2 * model_params.min_size_categ) {
-                            (*workspace.tree)[tree_from].binary_branches[cat] = workspace.tree->size();
+                            (*workspace.tree)[tree_from].binary_branches[cat-1] = workspace.tree->size();
                             workspace.tree->emplace_back(tree_from, spl1);
                             backup_recursion_state(workspace, *state_backup);
                             workspace.st = ix1;
@@ -1788,7 +1791,7 @@ void recursive_split_categ(Workspace &workspace,
             }
             /* last category is given by the end index */
             if ((ix3 - ix1) >= 2 * model_params.min_size_categ) {
-                (*workspace.tree)[tree_from].binary_branches.push_back(workspace.tree->size());
+                (*workspace.tree)[tree_from].binary_branches[input_data.ncat[workspace.col_best]-1] = workspace.tree->size();
                 workspace.tree->emplace_back(tree_from, spl1);
                 workspace.st = ix1;
                 workspace.end = ix3;
