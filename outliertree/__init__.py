@@ -32,7 +32,8 @@ class OutlierTree:
     min_gain : float
         Minimum gain that a split has to produce in order to consider it (both in terms of looking
         for outliers in each branch, and in considering whether to continue branching from them).
-        Note that default value for GritBot is 1e-6.
+        Note that default value for GritBot is 1e-6, with 'gain_as_pct' = 'False'. Recommended to pass
+        higher values (e.g. 1e-1) when using 'gain_as_pct' = 'False'.
     z_norm : float
         Maximum Z-value (from standard normal distribution) that can be considered as a normal observation.
         Note that simply having values above this will not automatically flag observations as outliers,
@@ -71,10 +72,12 @@ class OutlierTree:
         produce exponentially many more branches, and if depth is large, might take forever to finish.
         Will also produce a lot more spurious outiers. Not recommended.
     gain_as_pct : bool
-        Whether the minimum gain above should be taken in absolute terms, or as a percentage of the standard
-        deviation (for numerical columns) or shannon entropy (for categorical columns). Taking it in absolute
-        terms will prefer making more splits on columns that have a large variance, while taking it as a
-        percentage might be more restrictive on them and might create deeper trees in some columns.
+        Whether the minimum gain above should be taken in absolute terms, or as a percentage of
+        the standard deviation (for numerical columns) or shannon entropy (for categorical columns). Taking it in
+        absolute terms will prefer making more splits on columns that have a large variance, while taking it as a
+        percentage might be more restrictive on them and might create deeper trees in some columns. For GritBot
+        this parameter would always be 'False'. Recommended to pass higher values for 'min_gain' when passing 'False'
+        here. Not that when 'gain_as_pct' = 'False', the results will be sensitive to the scales of variables.
     nthreads : int
         Number of parallel threads to use. When fitting the model, it will only use up to one thread per
         column, while for prediction it will use up to one thread per row. The more threads that are
@@ -109,9 +112,9 @@ class OutlierTree:
     ----------
     .. [1] GritBot software : https://www.rulequest.com/gritbot-info.html
     """
-    def __init__(self, max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_outlier = 8.0, pct_outliers = 0.01,
+    def __init__(self, max_depth = 4, min_gain = 1e-3, z_norm = 2.67, z_outlier = 8.0, pct_outliers = 0.01,
                  min_size_numeric = 25, min_size_categ = 50, categ_split = "binarize",
-                 follow_all = False, gain_as_pct = False, nthreads = -1):
+                 follow_all = False, gain_as_pct = True, nthreads = -1):
 
         ### validate inputs
         assert max_depth >= 0

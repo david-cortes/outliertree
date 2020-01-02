@@ -6,7 +6,8 @@
 #' there independently of the values in other columns).
 #' @param min_gain Minimum gain that a split has to produce in order to consider it (both in terms of looking
 #' for outliers in each branch, and in considering whether to continue branching from them). Note that default
-#' value for GritBot is 1e-6.
+#' value for GritBot is 1e-6, with `gain_as_pct` = `FALSE`. Recommended to pass higher values (e.g. 1e-1) when using
+#' `gain_as_pct` = `FALSE`.
 #' @param z_norm Maximum Z-value (from standard normal distribution) that can be considered as a normal
 #' observation. Note that simply having values above this will not automatically flag observations as outliers,
 #' nor does it assume that columns follow normal distributions. Also used for categorical and ordinal columns
@@ -41,7 +42,9 @@
 #' @param gain_as_pct Whether the minimum gain above should be taken in absolute terms, or as a percentage of
 #' the standard deviation (for numerical columns) or shannon entropy (for categorical columns). Taking it in
 #' absolute terms will prefer making more splits on columns that have a large variance, while taking it as a
-#' percentage might be more restrictive on them and might create deeper trees in some columns.
+#' percentage might be more restrictive on them and might create deeper trees in some columns. For GritBot
+#' this parameter would always be `FALSE`. Recommended to pass higher values for `min_gain` when passing `FALSE`
+#' here. Not that when `gain_as_pct` = `FALSE`, the results will be sensitive to the scales of variables.
 #' @param save_outliers Whether to store outliers detected in `df` in the object that is returned.
 #' These outliers can then be extracted from the returned object through function
 #' `extract.training.outliers`.
@@ -101,10 +104,10 @@
 #' outliers.w.names <- predict(model, df.w.names, return_outliers=TRUE)
 #' outliers.w.names[["rownum745"]]
 #' @export
-outlier.tree <- function(df, max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_outlier = 8.0,
+outlier.tree <- function(df, max_depth = 4, min_gain = 1e-3, z_norm = 2.67, z_outlier = 8.0,
                          pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 50,
                          categ_split = "binarize", cols_ignore = NULL,
-                         follow_all = FALSE, gain_as_pct = FALSE,
+                         follow_all = FALSE, gain_as_pct = TRUE,
                          save_outliers = FALSE, outliers_print = 10,
                          nthreads = parallel::detectCores())
 {

@@ -29,7 +29,7 @@ row [2229] - suspicious column: [T3] - suspicious vale: [10.600]
 (this dataset is also bundled into the R package - e.g. `data(hypothyroid)`)
 
 
-Example outlier from [Titanic dataset](https://www.kaggle.com/c/titanic):
+Example outliers from [Titanic dataset](https://www.kaggle.com/c/titanic):
 ```
 row [885] - suspicious column: [Fare] - suspicious value: [29.125]
 	distribution: 97.849% <= 15.500 - [mean: 7.887] - [sd: 1.173] - [norm. obs: 91]
@@ -38,8 +38,7 @@ row [885] - suspicious column: [Fare] - suspicious value: [29.125]
 		[SibSp] = [0]
 		[Embarked] = [Q]
 ```
-(i.e. it's saying that this person paid too much for the kind of accomodation he had)
-(Getting this observation flagged as outlier requires passing parameter min_gain <= 0.01)
+(i.e. it's saying that the this person paid too much for the kind of accomodation he had)
 
 _Note that it can also produce other types of conditions such as 'between' (for numeric intervals) or 'in' (for categorical subsets)_
 
