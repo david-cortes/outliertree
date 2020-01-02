@@ -15,10 +15,9 @@ class OutlierTree:
     Splits are based on gain, while outlierness is based on confidence intervals. Similar in spirit to the GritBot software
     developed by RuleQuest research.
 
-    Supports columns of types numeric, categorical, and ordinal (for this last one, will
-    consider their order when splitting other columns from them, but not when splitting to "predict" them), and can handle missing values
+    Supports columns of types numeric, categorical, and ordinal. Can handle missing values
     in any of them. Can also pass timestamps that will get converted to numeric but shown as timestamps in the output.
-    Offers option to set columns to be used only to split other columns but not to look at outliers in them.
+    Offers option to set columns to be used only for generating conditions without looking at outliers in them.
 
     Infinite values will be taken into consideration when the column is used to split another column (that is, +inf will go into
     the branch that is greater than something, -inf into the other branch), but when a column is the target of the split, they

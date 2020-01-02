@@ -7,23 +7,18 @@ check.is.df <- function(df) {
     return(df)
 }
 
-split.types <- function(df, cols_ord = NULL, cols_ignore = NULL, nthreads = 1) {
+split.types <- function(df, cols_ignore = NULL, nthreads = 1) {
     
     ### validate input data
     df <- check.is.df(df)
     if (NROW(df) < 25)  { stop("Input data has too few row.") }
-    supported_types <- c("numeric", "integer", "character", "factor", "logical", "Date", "POSIXct")
+    supported_types <- c("numeric", "integer", "character", "factor", "ordered", "logical", "Date", "POSIXct")
     coltypes_df     <- Reduce(c, lapply(df, class))
     if (length(setdiff(unique(coltypes_df), c(supported_types, "POSIXt"))) > 0) {
         stop(paste0("Input data can only have the collowing column types: ",
                     paste(supported_types, collapse = ", "),
                     " - got passed the following: ",
                     paste(setdiff(unique(coltypes_df), supported_types), collapse = ", ")))
-    }
-    if (!is.null(cols_ord)) {
-        if (any(!(cols_ord %in% names(df)))) {
-            stop("Ordinal columns passed are not present in data.frame.")
-        }
     }
     if (!is.null(cols_ignore)) {
         if ("character" %in% class(cols_ignore)) {
@@ -50,6 +45,7 @@ split.types <- function(df, cols_ord = NULL, cols_ignore = NULL, nthreads = 1) {
     cols_integer <- all_cols[sapply(df, function(x) "integer"   %in% class(x))]
     cols_boolean <- all_cols[sapply(df, function(x) "logical"   %in% class(x))]
     cols_factor  <- all_cols[sapply(df, function(x) "factor"    %in% class(x))]
+    cols_ord     <- all_cols[sapply(df, function(x) "ordered"   %in% class(x))]
     cols_txt     <- all_cols[sapply(df, function(x) "character" %in% class(x))]
     cols_date    <- all_cols[sapply(df, function(x) "Date"      %in% class(x))]
     cols_ts      <- all_cols[sapply(df, function(x) "POSIXct"   %in% class(x))]
@@ -72,11 +68,8 @@ split.types <- function(df, cols_ord = NULL, cols_ignore = NULL, nthreads = 1) {
     if (is.null(outp$cols_date)) { outp$cols_date <- as.character() }
     if (is.null(outp$cols_ts))   { outp$cols_ts   <- as.character() }
     
-    if (!is.null(cols_ord)) {
-        if (!length(cols_factor) || any(!(cols_ord %in% cols_factor))) {
-            stop("Ordinal columns in data.frame must be of type 'factor'.")
-        }
-        outp$cols_cat <- setdiff(outp$cols_cat, cols_ord)
+    if (NROW(outp$cols_cat) && NROW(outp$cols_ord)) {
+        outp$cols_cat <- setdiff(outp$cols_cat, outp$cols_ord)
     }
     
     if (NROW(cols_date)) {
@@ -231,7 +224,7 @@ split.types.new <- function(df, model_data) {
                           !is.na(df[[model_data$cols_ord[[cl]]]])
             df[[model_data$cols_ord[[cl]]]] <- factor(df[[model_data$cols_ord[cl]]], unname(unlist(model_data$ord_levels[[cl]])))
             df[[model_data$cols_ord[[cl]]]] <- ifelse(is.na(df[[model_data$cols_ord[[cl]]]]),
-                                                    -1, as.integer(df[[model_data$cols_ord[[cl]]]]) - 1)
+                                                      -1, as.integer(df[[model_data$cols_ord[[cl]]]]) - 1)
             if (any(new_levels)) {
                 df[[model_data$cols_ord[[cl]]]][new_levels] <- length(model_data$ord_levels[[cl]])
                 throw_new_lev_warn <- TRUE

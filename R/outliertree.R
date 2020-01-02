@@ -1,6 +1,6 @@
 #' @title Outlier Tree
 #' @description Fit Outlier Tree model to normal data with perhaps some outliers.
-#' @param df  Data Frame with normal data that might contain some outliers.
+#' @param df  Data Frame with normal data that might contain some outliers. See details for allowed column types.
 #' @param max_depth Maximum depth of the trees to grow. Can also pass zero, in which case it will only look
 #' for outliers with no conditions (i.e. takes each column as a 1-d distribution and looks for outliers in
 #' there independently of the values in other columns).
@@ -27,8 +27,6 @@
 #'   in exponential computation time that might never finish.
 #'   \item `"separate"` : Will create one branch per category of the splitting variable (this is how GritBot handles them).
 #' }
-#' @param cols_ord Character vector indicating which categorical columns are ordinal.
-#' Ordinal columns must be passed as factors.
 #' @param cols_ignore Vector containing columns which will not be split, but will be evaluated for usage
 #' in splitting other columns. Can pass either a logical (boolean) vector with the same number of columns
 #' as `df`, or a character vector of column names (must match with those of `df`).
@@ -62,11 +60,11 @@
 #' Splits are based on gain, while outlierness is based on confidence intervals. Similar in spirit to the GritBot
 #' software developed by RuleQuest research.
 #' 
-#' Supports columns of types numeric, categorical, and ordinal (for this last one, will consider their order when
-#' splitting other columns from them, but not when splitting to "predict" them), and can handle missing values
-#' in any of them. Can also pass dates/timestamps that will get converted to numeric but shown as dates/timestamps
-#' in the output. Offers option to set columns to be used only to split other columns but not to look at outliers
-#' in them.
+#' Supports columns of types numeric (either as type `numeric` or `integer`), categorical (either as type `character` or
+#' `factor` with unordered levels), boolean (as type `logical`), and ordinal (as type `factor` with ordered levels as checked by
+#' `is.ordered`). Can handle missing values in any of them. Can also pass dates/timestamps that will get converted to
+#' numeric but shown as dates/timestamps in the output. Offers option to set columns to be used only for generating
+#' conditions without looking at outliers in them.
 #' 
 #' Infinite values will be taken into consideration when the column is used to split another column
 #' (that is, +inf will go into the branch that is greater than something, -inf into the other branch),
@@ -101,7 +99,7 @@
 #' @export
 outlier.tree <- function(df, max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_outlier = 8.0,
                          pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 50,
-                         categ_split = "binarize", cols_ord = NULL, cols_ignore = NULL,
+                         categ_split = "binarize", cols_ignore = NULL,
                          follow_all = FALSE, gain_as_pct = FALSE,
                          save_outliers = FALSE, outliers_print = 10,
                          nthreads = parallel::detectCores())
@@ -141,7 +139,7 @@ outlier.tree <- function(df, max_depth = 4, min_gain = 1e-1, z_norm = 2.67, z_ou
     gain_as_pct <- as.logical(gain_as_pct)
 
     ### decompose data into C arrays and names, then pass to C++
-    model_data <- split.types(df, cols_ord, cols_ignore, nthreads)
+    model_data <- split.types(df, cols_ignore, nthreads)
     model_data$obj_from_cpp <- fit_OutlierTree(model_data$arr_num, model_data$ncol_num,
                                                model_data$arr_cat, model_data$ncol_cat, model_data$ncat,
                                                model_data$arr_ord, model_data$ncol_ord, model_data$ncat_ord,
