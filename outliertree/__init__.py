@@ -47,9 +47,13 @@ class OutlierTree:
     pct_outliers : float
         Approximate max percentage of outliers to expect in a given branch.
     min_size_numeric : int
-        Minimum size that branches need to have when splitting a numeric column.
+        Minimum size that branches need to have when splitting a numeric column. In order to look for
+        outliers in a given branch for a numeric column, it must have a minimum of twice this number
+        of observations.
     min_size_categ : int
-        Minimum size that branches need to have when splitting a categorical or ordinal column.
+        Minimum size that branches need to have when splitting a categorical or ordinal column. In order to look for
+        outliers in a given branch for a categorical, ordinal, or boolean column, it must have a minimum of twice
+        this number of observations.
     categ_split : str
         How to produce categorical-by-categorical splits. Options are:
 

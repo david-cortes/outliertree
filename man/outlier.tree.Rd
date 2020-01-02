@@ -33,9 +33,13 @@ Ignored for categorical and ordinal columns.}
 
 \item{pct_outliers}{Approximate max percentage of outliers to expect in a given branch.}
 
-\item{min_size_numeric}{Minimum size that branches need to have when splitting a numeric column.}
+\item{min_size_numeric}{Minimum size that branches need to have when splitting a numeric column. In order to look for
+outliers in a given branch for a numeric column, it must have a minimum of twice this number
+of observations.}
 
-\item{min_size_categ}{Minimum size that branches need to have when splitting a categorical or ordinal column.}
+\item{min_size_categ}{Minimum size that branches need to have when splitting a categorical or ordinal column. In order to
+look for outliers in a given branch for a categorical, ordinal, or boolean column, it must have a minimum of twice
+this number of observations.}
 
 \item{categ_split}{How to produce categorical-by-categorical splits. Options are:
 \itemize{
