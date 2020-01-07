@@ -2,7 +2,7 @@ Package: outliertree
 Type: Package
 Title: Explainable Outlier Detection Through Decision Tree Conditioning
 Version: 1.1.0
-Date: 2019-11-17
+Date: 2020-01-06
 Author: David Cortes
 Maintainer: David Cortes <david.cortes.rivera@gmail.com>
 URL: https://github.com/david-cortes/outliertree
@@ -10,10 +10,11 @@ BugReports: https://github.com/david-cortes/outliertree/issues
 Description: Will try to fit decision trees that try to "predict" values for each column based on the values of each other column.
 	Along the way, each time a split is evaluated, it will take the observations that fall into each branch as a homogeneous
 	cluster in which it will search for outliers in the 1-d distribution of the column being predicted. Outliers are determined
-	according to confidence intervals on this 1-d distribution, and need to have a large gap with respect to the next observation
+	according to confidence intervals in this 1-d distribution, and need to have a large gap with respect to the next observation
 	in sorted order to be flagged as outliers. Since outliers are searched for in a decision tree branch, it will know the conditions
 	that make it a rare observation compared to others that meet the same conditions, and the conditions will always be correlated
-	with the target variable (as it's being predicted from them). Loosely based on the 'GritBot' <https://www.rulequest.com/gritbot-info.html> software.
+	with the target variable (as it's being predicted from them). Full procedure is described in Cortes (2020) <arXiv:2001.00636>.
+	Loosely based on the 'GritBot' <https://www.rulequest.com/gritbot-info.html> software.
 License: GPL (>= 3)
 Imports: Rcpp (>= 1.0.1)
 Depends: R (>= 3.5.0)

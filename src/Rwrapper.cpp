@@ -169,14 +169,16 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                 } else if (outl_col < (ncols_num_num + ncols_date)) {
                     if (arr_num[row + outl_col * nrows] >= model_outputs.all_clusters[outl_col][outl_clust].upper_lim) {
                         lst_stats[row] = Rcpp::List::create(
-                            Rcpp::_["upper_thr"] = Rcpp::Date(model_outputs.all_clusters[outl_col][outl_clust].display_lim_high - 1 + min_date[outl_col - ncols_num_num]),
+                            Rcpp::_["upper_thr"] = Rcpp::Date(model_outputs.all_clusters[outl_col][outl_clust].display_lim_high
+                                                              - 1 + min_date[outl_col - ncols_num_num]),
                             Rcpp::_["pct_below"] = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_below),
                             Rcpp::_["mean"]      = Rcpp::Date(model_outputs.all_clusters[outl_col][outl_clust].display_mean - 1 + min_date[outl_col - ncols_num_num]),
                             Rcpp::_["n_obs"]     = Rcpp::wrap((int)model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
                         );
                     } else {
                         lst_stats[row] = Rcpp::List::create(
-                            Rcpp::_["lower_thr"] = Rcpp::Date(model_outputs.all_clusters[outl_col][outl_clust].display_lim_low - 1 + min_date[outl_col - ncols_num_num]),
+                            Rcpp::_["lower_thr"] = Rcpp::Date(model_outputs.all_clusters[outl_col][outl_clust].display_lim_low
+                                                              - 1 + min_date[outl_col - ncols_num_num]),
                             Rcpp::_["pct_above"] = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_above),
                             Rcpp::_["mean"]      = Rcpp::Date(model_outputs.all_clusters[outl_col][outl_clust].display_mean - 1 + min_date[outl_col - ncols_num_num]),
                             Rcpp::_["n_obs"]     = Rcpp::wrap((int)model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
@@ -185,16 +187,20 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                 } else {
                     if (arr_num[row + outl_col * nrows] >= model_outputs.all_clusters[outl_col][outl_clust].upper_lim) {
                         lst_stats[row] = Rcpp::List::create(
-                            Rcpp::_["upper_thr"] = Rcpp::Datetime(model_outputs.all_clusters[outl_col][outl_clust].display_lim_high - 1 + min_ts[outl_col - ncols_num_num - ncols_date]),
+                            Rcpp::_["upper_thr"] = Rcpp::Datetime(model_outputs.all_clusters[outl_col][outl_clust].display_lim_high
+                                                                  - 1 + min_ts[outl_col - ncols_num_num - ncols_date]),
                             Rcpp::_["pct_below"] = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_below),
-                            Rcpp::_["mean"]      = Rcpp::Datetime(model_outputs.all_clusters[outl_col][outl_clust].display_mean - 1 + min_ts[outl_col - ncols_num_num - ncols_date]),
+                            Rcpp::_["mean"]      = Rcpp::Datetime(model_outputs.all_clusters[outl_col][outl_clust].display_mean
+                                                                  - 1 + min_ts[outl_col - ncols_num_num - ncols_date]),
                             Rcpp::_["n_obs"]     = Rcpp::wrap((int)model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
                         );
                     } else {
                         lst_stats[row] = Rcpp::List::create(
-                            Rcpp::_["lower_thr"] = Rcpp::Datetime(model_outputs.all_clusters[outl_col][outl_clust].display_lim_low - 1 + min_ts[outl_col - ncols_num_num - ncols_date]),
+                            Rcpp::_["lower_thr"] = Rcpp::Datetime(model_outputs.all_clusters[outl_col][outl_clust].display_lim_low
+                                                                  - 1 + min_ts[outl_col - ncols_num_num - ncols_date]),
                             Rcpp::_["pct_above"] = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_above),
-                            Rcpp::_["mean"]      = Rcpp::Datetime(model_outputs.all_clusters[outl_col][outl_clust].display_mean - 1 + min_ts[outl_col - ncols_num_num - ncols_date]),
+                            Rcpp::_["mean"]      = Rcpp::Datetime(model_outputs.all_clusters[outl_col][outl_clust].display_mean
+                                                                  - 1 + min_ts[outl_col - ncols_num_num - ncols_date]),
                             Rcpp::_["n_obs"]     = Rcpp::wrap((int)model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
                         );
                     }
@@ -208,14 +214,26 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                             }
                         }
                     if (model_outputs.all_clusters[outl_col][outl_clust].split_type != Root) {
-                        lst_stats[row] = Rcpp::List::create(
-                            Rcpp::_["categs_common"]      = Rcpp::as<Rcpp::CharacterVector>(cat_levels[outl_col - ncols_num][tmp_bool]),
-                            Rcpp::_["pct_common"]         = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset),
-                            Rcpp::_["pct_next_most_comm"] = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_next_most_comm),
-                            Rcpp::_["prior_prob"]         = Rcpp::wrap(model_outputs.prop_categ[model_outputs.start_ix_cat_counts[outl_col - ncols_num] +
-                                                                       arr_cat[row + (outl_col - ncols_num) * nrows]]),
-                            Rcpp::_["n_obs"]              = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
-                        );
+                        if (model_outputs.all_clusters[outl_col][outl_clust].categ_maj < 0) {
+                            lst_stats[row] = Rcpp::List::create(
+                                Rcpp::_["categs_common"]      = Rcpp::as<Rcpp::CharacterVector>(cat_levels[outl_col - ncols_num][tmp_bool]),
+                                Rcpp::_["pct_common"]         = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset),
+                                Rcpp::_["pct_next_most_comm"] = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_next_most_comm),
+                                Rcpp::_["prior_prob"]         = Rcpp::wrap(model_outputs.prop_categ[model_outputs.start_ix_cat_counts[outl_col - ncols_num] +
+                                                                           arr_cat[row + (outl_col - ncols_num) * nrows]]),
+                                Rcpp::_["n_obs"]              = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
+                            );
+                        } else {
+                            lst_stats[row] = Rcpp::List::create(
+                                Rcpp::_["categ_maj"]   = Rcpp::as<Rcpp::CharacterVector>(cat_levels[outl_col - ncols_num][
+                                                                                                model_outputs.all_clusters[outl_col][outl_clust].categ_maj
+                                                                                                ]),
+                                Rcpp::_["pct_common"]  = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset),
+                                Rcpp::_["prior_prob"]  = Rcpp::wrap(model_outputs.prop_categ[model_outputs.start_ix_cat_counts[outl_col - ncols_num] +
+                                                                    arr_cat[row + (outl_col - ncols_num) * nrows]]),
+                                Rcpp::_["n_obs"]       = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
+                            );
+                        }
                     } else {
                         lst_stats[row] = Rcpp::List::create(
                             Rcpp::_["categs_common"]      = Rcpp::as<Rcpp::CharacterVector>(cat_levels[outl_col - ncols_num][tmp_bool]),
@@ -240,14 +258,26 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                     }
                 }
                 if (model_outputs.all_clusters[outl_col][outl_clust].split_type != Root) {
-                    lst_stats[row] = Rcpp::List::create(
-                        Rcpp::_["categs_common"]      = Rcpp::as<Rcpp::CharacterVector>(ord_levels[outl_col - ncols_num - ncols_cat][tmp_bool]),
-                        Rcpp::_["pct_common"]         = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset),
-                        Rcpp::_["pct_next_most_comm"] = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_next_most_comm),
-                        Rcpp::_["prior_prob"]         = Rcpp::wrap(model_outputs.prop_categ[model_outputs.start_ix_cat_counts[outl_col - ncols_num] +
-                                                                   arr_ord[row + (outl_col - ncols_num - ncols_cat) * nrows]]),
-                        Rcpp::_["n_obs"]              = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
-                    );
+                    if (model_outputs.all_clusters[outl_col][outl_clust].categ_maj < 0) {
+                        lst_stats[row] = Rcpp::List::create(
+                            Rcpp::_["categs_common"]      = Rcpp::as<Rcpp::CharacterVector>(ord_levels[outl_col - ncols_num - ncols_cat][tmp_bool]),
+                            Rcpp::_["pct_common"]         = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset),
+                            Rcpp::_["pct_next_most_comm"] = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_next_most_comm),
+                            Rcpp::_["prior_prob"]         = Rcpp::wrap(model_outputs.prop_categ[model_outputs.start_ix_cat_counts[outl_col - ncols_num] +
+                                                                       arr_ord[row + (outl_col - ncols_num - ncols_cat) * nrows]]),
+                            Rcpp::_["n_obs"]              = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
+                        );
+                    } else {
+                        lst_stats[row] = Rcpp::List::create(
+                            Rcpp::_["categ_maj"]   = Rcpp::as<Rcpp::CharacterVector>(ord_levels[outl_col - ncols_num - ncols_cat][
+                                                                                        model_outputs.all_clusters[outl_col][outl_clust].categ_maj
+                                                                                        ]),
+                            Rcpp::_["pct_common"]  = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset),
+                            Rcpp::_["prior_prob"]  = Rcpp::wrap(model_outputs.prop_categ[model_outputs.start_ix_cat_counts[outl_col - ncols_num] +
+                                                                arr_ord[row + (outl_col - ncols_num - ncols_cat) * nrows]]),
+                            Rcpp::_["n_obs"]       = Rcpp::wrap(model_outputs.all_clusters[outl_col][outl_clust].cluster_size)
+                        );
+                    }
                 } else {
                     lst_stats[row] = Rcpp::List::create(
                         Rcpp::_["categs_common"]      = Rcpp::as<Rcpp::CharacterVector>(ord_levels[outl_col - ncols_num - ncols_cat][tmp_bool]),
@@ -1057,7 +1087,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
                            Rcpp::IntegerVector arr_cat, size_t ncols_categ,   Rcpp::IntegerVector ncat,
                            Rcpp::IntegerVector arr_ord, size_t ncols_ord,     Rcpp::IntegerVector ncat_ord,
                            size_t nrows, Rcpp::LogicalVector cols_ignore_r, int nthreads,
-                           bool categ_as_bin, bool ord_as_bin, bool cat_bruteforce_subset,
+                           bool categ_as_bin, bool ord_as_bin, bool cat_bruteforce_subset, bool categ_from_maj,
                            size_t max_depth, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
                            double min_gain, bool follow_all, bool gain_as_pct, double z_norm, double z_outlier,
                            bool return_outliers,
@@ -1088,7 +1118,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
                                          &arr_cat[0], ncols_categ, &ncat[0],
                                          &arr_ord[0], ncols_ord,   &ncat_ord[0],
                                          nrows, cols_ignore_ptr, nthreads,
-                                         categ_as_bin, ord_as_bin, cat_bruteforce_subset,
+                                         categ_as_bin, ord_as_bin, cat_bruteforce_subset, categ_from_maj,
                                          max_depth, max_perc_outliers, min_size_numeric, min_size_categ,
                                          min_gain, gain_as_pct, follow_all, z_norm, z_outlier);
 

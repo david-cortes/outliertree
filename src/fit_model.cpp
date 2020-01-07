@@ -6,10 +6,12 @@
 *    are observations that seem too distant from the others in a 1-D distribution for the column that the split tries
 *    to "predict" (will not generate a score for each observation).
 *    Splits are based on gain, while outlierness is based on confidence intervals.
-*    Similar in spirit to the GritBot software developed by RuleQuest research.
+*    Similar in spirit to the GritBot software developed by RuleQuest research. Reference article is:
+*      Cortes, David. "Explainable outlier detection through decision tree conditioning."
+*      arXiv preprint arXiv:2001.00636 (2020).
 *    
 *    
-*    Copyright 2019 David Cortes.
+*    Copyright 2020 David Cortes.
 *    
 *    Written for C++11 standard and OpenMP 2.0 or later. Code is meant to be wrapped into scripting languages
 *    such as R or Python.
@@ -90,6 +92,11 @@
 *        is also false, then when splitting a categorical or ordinal variable by another categorical, it will have
 *        one branch per category of the splitting column. Ignored when splitting by numerical and ordinal.
 *        Will be ignored when passing 'categ_as_bin' = true.
+*    - categ_from_maj (in)
+*        Whether to flag outliers in categorical variables according to the number of observations not belonging to
+*        the majority class (formula will be (n-n_maj)/(n * p_prior) < 1/(z_outlier^2) for each category). If passing
+*        'false', will instead look for outliers in categorical variables based on being a minority and having a gap
+*        with respect to other categories, even if there is no dominant majority.
 *    - max_depth (in)
 *        Max depth of decision trees that generate conditional distributions (subsets of the data) in which to look
 *        for outliers.
@@ -123,7 +130,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                          int    *restrict categorical_data, size_t ncols_categ,   int *restrict ncat,
                          int    *restrict ordinal_data,     size_t ncols_ord,     int *restrict ncat_ord,
                          size_t nrows, char *restrict cols_ignore, int nthreads,
-                         bool   categ_as_bin, bool ord_as_bin, bool cat_bruteforce_subset,
+                         bool   categ_as_bin, bool ord_as_bin, bool cat_bruteforce_subset, bool categ_from_maj,
                          size_t max_depth, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
                          double min_gain, bool gain_as_pct, bool follow_all, double z_norm, double z_outlier)
 {
@@ -131,8 +138,8 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     /* put parameters and data into structs to avoid passing too many function arguments each time */
     double z_tail = z_outlier - z_norm;
     ModelParams model_params = {
-                                categ_as_bin, ord_as_bin, cat_bruteforce_subset, max_depth,
-                                max_perc_outliers, min_size_numeric, min_size_categ,
+                                categ_as_bin, ord_as_bin, cat_bruteforce_subset, categ_from_maj,
+                                max_depth, max_perc_outliers, min_size_numeric, min_size_categ,
                                 min_gain, gain_as_pct, follow_all, z_norm, z_outlier, z_tail,
                                 std::vector<long double>()
                             };
@@ -177,7 +184,8 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
 
     /* determine maximum number of categories in a column, allocate arrays for category counts and proportions */
     model_outputs.start_ix_cat_counts[0] = 0;
-    input_data.max_categ = calculate_category_indices(&model_outputs.start_ix_cat_counts[0], input_data.ncat, input_data.ncols_categ, (bool*) &input_data.skip_col[ncols_numeric]);
+    input_data.max_categ = calculate_category_indices(&model_outputs.start_ix_cat_counts[0], input_data.ncat, input_data.ncols_categ,
+                                                      (bool*) &input_data.skip_col[ncols_numeric]);
     input_data.max_categ = calculate_category_indices(&model_outputs.start_ix_cat_counts[input_data.ncols_categ], input_data.ncat_ord, input_data.ncols_ord,
                                                       (bool*) &input_data.skip_col[input_data.ncols_numeric + input_data.ncols_categ], input_data.max_categ);
 
@@ -1001,6 +1009,7 @@ void process_categ_col(std::vector<Cluster> &cluster_root,
     workspace.col_has_outliers = false;
     workspace.col_is_bin = workspace.ncat_this <= 2;
     workspace.prop_small_this = &model_params.prop_small[ model_outputs.start_ix_cat_counts[workspace.target_col_num] ];
+    workspace.prior_prob = &model_outputs.prop_categ[ model_outputs.start_ix_cat_counts[workspace.target_col_num] ];
 
     /* create cluster root and reset outlier scores for this column */
     workspace.clusters = &cluster_root;
@@ -1180,11 +1189,12 @@ void recursive_split_categ(Workspace &workspace,
                 workspace.clusters->emplace_back(Numeric, col, IsNa, -HUGE_VAL, true);
                 workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                               &workspace.ix_arr[0], workspace.st, workspace.this_split_NA - 1,
-                                                              workspace.ncat_this,
+                                                              workspace.ncat_this, model_params.categ_from_maj,
                                                               &workspace.outlier_scores[0], &workspace.outlier_clusters[0], &workspace.outlier_trees[0],
                                                               &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
                                                               workspace.clusters->size() - 1, tree_from, curr_depth + 1,
-                                                              model_params.max_perc_outliers, model_params.z_norm, workspace.prop_small_this,
+                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                              workspace.prop_small_this, workspace.prior_prob,
                                                               &workspace.buffer_cat_cnt[0], &workspace.buffer_cat_sum[0],
                                                               &workspace.buffer_crosstab[0], &workspace.buffer_subset_outlier[0], &(workspace.drop_cluster));
                 workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
@@ -1209,11 +1219,12 @@ void recursive_split_categ(Workspace &workspace,
             workspace.clusters->emplace_back(Numeric, col, LessOrEqual, workspace.this_split_point, is_NA_branch);
             workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                           &workspace.ix_arr[0], workspace.this_split_NA, workspace.this_split_ix,
-                                                          workspace.ncat_this,
+                                                          workspace.ncat_this, model_params.categ_from_maj,
                                                           &workspace.outlier_scores[0], &workspace.outlier_clusters[0], &workspace.outlier_trees[0],
                                                           &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
                                                           workspace.clusters->size() - 1, tree_from, curr_depth + 1,
-                                                          model_params.max_perc_outliers, model_params.z_norm, workspace.prop_small_this,
+                                                          model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                          workspace.prop_small_this, workspace.prior_prob,
                                                           &workspace.buffer_cat_cnt[0], &workspace.buffer_cat_sum[0],
                                                           &workspace.buffer_crosstab[0], &workspace.buffer_subset_outlier[0], &(workspace.drop_cluster));
             workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
@@ -1238,11 +1249,12 @@ void recursive_split_categ(Workspace &workspace,
             workspace.clusters->emplace_back(Numeric, col, Greater, workspace.this_split_point, is_NA_branch);
             workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                           &workspace.ix_arr[0], workspace.this_split_ix + 1, workspace.end,
-                                                          workspace.ncat_this,
+                                                          workspace.ncat_this, model_params.categ_from_maj,
                                                           &workspace.outlier_scores[0], &workspace.outlier_clusters[0], &workspace.outlier_trees[0],
                                                           &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
                                                           workspace.clusters->size() - 1, tree_from, curr_depth + 1,
-                                                          model_params.max_perc_outliers, model_params.z_norm, workspace.prop_small_this,
+                                                          model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                          workspace.prop_small_this, workspace.prior_prob,
                                                           &workspace.buffer_cat_cnt[0], &workspace.buffer_cat_sum[0],
                                                           &workspace.buffer_crosstab[0], &workspace.buffer_subset_outlier[0], &(workspace.drop_cluster));
             workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
@@ -1341,11 +1353,12 @@ void recursive_split_categ(Workspace &workspace,
                 workspace.clusters->emplace_back(Categorical, col, IsNa, (char*)NULL, (int)0, true);
                 workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                               &workspace.ix_arr[0], workspace.st, workspace.this_split_NA - 1,
-                                                              workspace.ncat_this,
+                                                              workspace.ncat_this, model_params.categ_from_maj,
                                                               &workspace.outlier_scores[0], &workspace.outlier_clusters[0], &workspace.outlier_trees[0],
                                                               &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
                                                               workspace.clusters->size() - 1, tree_from, curr_depth + 1,
-                                                              model_params.max_perc_outliers, model_params.z_norm, workspace.prop_small_this,
+                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                              workspace.prop_small_this, workspace.prior_prob,
                                                               &workspace.buffer_cat_cnt[0], &workspace.buffer_cat_sum[0],
                                                               &workspace.buffer_crosstab[0], &workspace.buffer_subset_outlier[0], &(workspace.drop_cluster));
                 workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
@@ -1373,8 +1386,7 @@ void recursive_split_categ(Workspace &workspace,
                           [&workspace](const size_t a, const size_t b){return workspace.temp_ptr_x[a] < workspace.temp_ptr_x[b];});
                 workspace.this_split_ix = workspace.this_split_NA;
 
-                /*    TODO: should instead at first do a pass over 'ix_arr' to calculate the start and end indices of each category,
-                    then loop over that array, and save it for later if it's the best column */
+                /* TODO: should instead use std::lower_bound to calculate the start and end indices of each category */
                 for (size_t row = workspace.this_split_NA + 1; row <= workspace.end; row++) {
 
                     /* if the next observation is in a different category, then the split ends here */
@@ -1383,14 +1395,15 @@ void recursive_split_categ(Workspace &workspace,
                         if ((row - workspace.this_split_ix) >= model_params.min_size_categ) {
 
                             (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
-                            workspace.clusters->emplace_back(col, workspace.temp_ptr_x[workspace.this_split_ix], input_data.ncat[col], is_NA_branch);
+                            workspace.clusters->emplace_back(col, workspace.temp_ptr_x[row-1], input_data.ncat[col], is_NA_branch);
                             workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                                           &workspace.ix_arr[0], workspace.this_split_ix, row - 1,
-                                                                          workspace.ncat_this,
+                                                                          workspace.ncat_this, model_params.categ_from_maj,
                                                                           &workspace.outlier_scores[0], &workspace.outlier_clusters[0], &workspace.outlier_trees[0],
                                                                           &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
                                                                           workspace.clusters->size() - 1, tree_from, curr_depth + 1,
-                                                                          model_params.max_perc_outliers, model_params.z_norm, workspace.prop_small_this,
+                                                                          model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                                          workspace.prop_small_this, workspace.prior_prob,
                                                                           &workspace.buffer_cat_cnt[0], &workspace.buffer_cat_sum[0],
                                                                           &workspace.buffer_crosstab[0], &workspace.buffer_subset_outlier[0], &(workspace.drop_cluster));
                             workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
@@ -1412,16 +1425,20 @@ void recursive_split_categ(Workspace &workspace,
                     }
                 }
                 /* last category is given by the end indices */
-                if ((workspace.end - workspace.this_split_ix) > model_params.min_size_categ) {
+                if (
+                        (workspace.end - workspace.this_split_ix) > model_params.min_size_categ &
+                        workspace.temp_ptr_x[workspace.end] != workspace.temp_ptr_x[workspace.this_split_ix]
+                    ) {
                     (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
                     workspace.clusters->emplace_back(col, workspace.temp_ptr_x[workspace.end], input_data.ncat[col], is_NA_branch);
                     workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                                   &workspace.ix_arr[0], workspace.this_split_ix, workspace.end,
-                                                                  workspace.ncat_this,
+                                                                  workspace.ncat_this, model_params.categ_from_maj,
                                                                   &workspace.outlier_scores[0], &workspace.outlier_clusters[0], &workspace.outlier_trees[0],
                                                                   &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
                                                                   workspace.clusters->size() - 1, tree_from, curr_depth + 1,
-                                                                  model_params.max_perc_outliers, model_params.z_norm, workspace.prop_small_this,
+                                                                  model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                                  workspace.prop_small_this, workspace.prior_prob,
                                                                   &workspace.buffer_cat_cnt[0], &workspace.buffer_cat_sum[0],
                                                                   &workspace.buffer_crosstab[0], &workspace.buffer_subset_outlier[0], &(workspace.drop_cluster));
                     workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
@@ -1474,11 +1491,12 @@ void recursive_split_categ(Workspace &workspace,
                 workspace.clusters->emplace_back(Categorical, col, InSubset, &workspace.buffer_subset_categ[0], input_data.ncat[col], is_NA_branch);
                 workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                               &workspace.ix_arr[0], workspace.this_split_NA, workspace.this_split_ix - 1,
-                                                              workspace.ncat_this,
+                                                              workspace.ncat_this, model_params.categ_from_maj,
                                                               &workspace.outlier_scores[0], &workspace.outlier_clusters[0], &workspace.outlier_trees[0],
                                                               &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
                                                               workspace.clusters->size() - 1, tree_from, curr_depth + 1,
-                                                              model_params.max_perc_outliers, model_params.z_norm, workspace.prop_small_this,
+                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                              workspace.prop_small_this, workspace.prior_prob,
                                                               &workspace.buffer_cat_cnt[0], &workspace.buffer_cat_sum[0],
                                                               &workspace.buffer_crosstab[0], &workspace.buffer_subset_outlier[0], &(workspace.drop_cluster));
                 workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
@@ -1502,11 +1520,12 @@ void recursive_split_categ(Workspace &workspace,
                 workspace.clusters->emplace_back(Categorical, col, NotInSubset, &workspace.buffer_subset_categ[0], input_data.ncat[col], is_NA_branch);
                 workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                               &workspace.ix_arr[0], workspace.this_split_ix, workspace.end,
-                                                              workspace.ncat_this,
+                                                              workspace.ncat_this, model_params.categ_from_maj,
                                                               &workspace.outlier_scores[0], &workspace.outlier_clusters[0], &workspace.outlier_trees[0],
                                                               &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
                                                               workspace.clusters->size() - 1, tree_from, curr_depth + 1,
-                                                              model_params.max_perc_outliers, model_params.z_norm, workspace.prop_small_this,
+                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                              workspace.prop_small_this, workspace.prior_prob,
                                                               &workspace.buffer_cat_cnt[0], &workspace.buffer_cat_sum[0],
                                                               &workspace.buffer_crosstab[0], &workspace.buffer_subset_outlier[0], &(workspace.drop_cluster));
                 workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
@@ -1566,11 +1585,12 @@ void recursive_split_categ(Workspace &workspace,
                 workspace.clusters->emplace_back(Ordinal, col, IsNa, (int)0, true);
                 workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                               &workspace.ix_arr[0], workspace.st, workspace.this_split_NA - 1,
-                                                              workspace.ncat_this,
+                                                              workspace.ncat_this, model_params.categ_from_maj,
                                                               &workspace.outlier_scores[0], &workspace.outlier_clusters[0], &workspace.outlier_trees[0],
                                                               &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
                                                               workspace.clusters->size() - 1, tree_from, curr_depth + 1,
-                                                              model_params.max_perc_outliers, model_params.z_norm, workspace.prop_small_this,
+                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                              workspace.prop_small_this, workspace.prior_prob,
                                                               &workspace.buffer_cat_cnt[0], &workspace.buffer_cat_sum[0],
                                                               &workspace.buffer_crosstab[0], &workspace.buffer_subset_outlier[0], &(workspace.drop_cluster));
                 workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
@@ -1595,11 +1615,12 @@ void recursive_split_categ(Workspace &workspace,
             workspace.clusters->emplace_back(Ordinal, col, LessOrEqual, workspace.this_split_lev, is_NA_branch);
             workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                           &workspace.ix_arr[0], workspace.this_split_NA, workspace.this_split_ix - 1,
-                                                          workspace.ncat_this,
+                                                          workspace.ncat_this, model_params.categ_from_maj,
                                                           &workspace.outlier_scores[0], &workspace.outlier_clusters[0], &workspace.outlier_trees[0],
                                                           &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
                                                           workspace.clusters->size() - 1, tree_from, curr_depth + 1,
-                                                          model_params.max_perc_outliers, model_params.z_norm, workspace.prop_small_this,
+                                                          model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                          workspace.prop_small_this, workspace.prior_prob,
                                                           &workspace.buffer_cat_cnt[0], &workspace.buffer_cat_sum[0],
                                                           &workspace.buffer_crosstab[0], &workspace.buffer_subset_outlier[0], &(workspace.drop_cluster));
             workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
@@ -1623,11 +1644,12 @@ void recursive_split_categ(Workspace &workspace,
             workspace.clusters->emplace_back(Ordinal, col, Greater, workspace.this_split_lev, is_NA_branch);
             workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                           &workspace.ix_arr[0], workspace.this_split_ix, workspace.end,
-                                                          workspace.ncat_this,
+                                                          workspace.ncat_this, model_params.categ_from_maj,
                                                           &workspace.outlier_scores[0], &workspace.outlier_clusters[0], &workspace.outlier_trees[0],
                                                           &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
                                                           workspace.clusters->size() - 1, tree_from, curr_depth + 1,
-                                                          model_params.max_perc_outliers, model_params.z_norm, workspace.prop_small_this,
+                                                          model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                          workspace.prop_small_this, workspace.prior_prob,
                                                           &workspace.buffer_cat_cnt[0], &workspace.buffer_cat_sum[0],
                                                           &workspace.buffer_crosstab[0], &workspace.buffer_subset_outlier[0], &(workspace.drop_cluster));
             workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
@@ -1801,7 +1823,7 @@ void recursive_split_categ(Workspace &workspace,
             }
 
         } else {
-            /* subset split */
+            /* numeric, ordinal, and subset split */
 
             /* left branch */
             if ((ix2 - ix1) >= 2 * model_params.min_size_categ) {

@@ -397,6 +397,13 @@ report.outliers <- function(lst, rnames, outliers_print) {
                             group_statistics[[row_ix]]$n_obs,
                             group_statistics[[row_ix]]$pct_next_most_comm * 100))
             }
+        }  else if ("categ_maj" %in% names(group_statistics[[row_ix]])) {
+            cat(sprintf("\tdistribution: %.3f%% = [%s]\n",
+                        group_statistics[[row_ix]]$pct_common * 100,
+                        group_statistics[[row_ix]]$categ_maj))
+            cat(sprintf("\t( [norm. obs: %d] - [prior_prob: %.3f%%] )\n",
+                        group_statistics[[row_ix]]$n_obs,
+                        group_statistics[[row_ix]]$prior_prob * 100))
         } else {
             cat(sprintf("\tdistribution: %.3f%% different [norm. obs: %d]",
                         group_statistics[[row_ix]]$pct_other * 100,

@@ -6,10 +6,12 @@
 *    are observations that seem too distant from the others in a 1-D distribution for the column that the split tries
 *    to "predict" (will not generate a score for each observation).
 *    Splits are based on gain, while outlierness is based on confidence intervals.
-*    Similar in spirit to the GritBot software developed by RuleQuest research.
+*    Similar in spirit to the GritBot software developed by RuleQuest research. Reference article is:
+*      Cortes, David. "Explainable outlier detection through decision tree conditioning."
+*      arXiv preprint arXiv:2001.00636 (2020).
 *    
 *    
-*    Copyright 2019 David Cortes.
+*    Copyright 2020 David Cortes.
 *    
 *    Written for C++11 standard and OpenMP 2.0 or later. Code is meant to be wrapped into scripting languages
 *    such as R or Python.
@@ -72,7 +74,8 @@
 */
 void find_outlier_categories(size_t categ_counts[], size_t ncateg, size_t tot, double max_perc_outliers,
                              long double perc_threshold[], size_t buffer_ix[], long double buffer_perc[],
-                             double z_norm, char is_outlier[], bool *found_outliers, bool *new_is_outlier, double *next_most_comm)
+                             double z_norm, char is_outlier[], bool *found_outliers, bool *new_is_outlier,
+                             double *next_most_comm)
 {
     //TODO: must also establish bounds for new, unseen categories
 
@@ -189,6 +192,78 @@ void find_outlier_categories(size_t categ_counts[], size_t ncateg, size_t tot, d
     }
 
 }
+
+/*    Check whether to consider any category as outlier, based on majority category and prior probabilties
+*    
+*    Function is to be applied to some subset of the data obtained by splitting by one or more columns.
+*    For outliers before any split there is a separate function. This is an alternative to the "tail"
+*    approach above which is more in line with GritBot.
+*    
+*    Parameters:
+*    - categ_counts[ncateg] (in)
+*        Counts of each category in the subset (including non-present categories).
+*    - ncateg (in)
+*        Number of categories for this column (including non-present categories).
+*    - tot (in)
+*        Number of rows in the subset.
+*    - max_perc_outliers (in)
+*        Model parameter. Default value is 0.01.
+*    - prior_prob[ncateg] (in)
+*        Proportions that each category had in the full data.
+*    - z_outlier (in)
+*        Model parameter. Default value is 8.0
+*    - is_outlier[ncateg] (out)
+*        Array where to define whether any category is an outlier. Values will be as follows:
+*            (-1) -> Category had zero count, but would be an outlier if it appeared among this group
+*              0  -> Category is not an outlier
+*            (+1) -> Category is an outlier
+*    - found_outliers (out)
+*        Whether there were any outliers identified among the counts.
+*    - new_is_outlier (out)
+*        Whether any of the categories with zero count would be flagged as outlier if they appeared in this group.
+*    - categ_maj (out)
+*        Category to which the majority of the observations belong.
+*/
+void find_outlier_categories_by_maj(size_t categ_counts[], size_t ncateg, size_t tot, double max_perc_outliers,
+                                    long double prior_prob[], double z_outlier, char is_outlier[],
+                                    bool *found_outliers, bool *new_is_outlier, int *categ_maj)
+{
+    /* initialize parameters as needed */
+    *found_outliers = false;
+    *new_is_outlier = false;
+    memset(is_outlier, 0, ncateg * sizeof(char));
+    size_t max_outliers = (size_t) calculate_max_outliers((long double)tot, max_perc_outliers);
+    long double tot_dbl = (long double) (tot + 1);
+    size_t n_non_maj;
+    long double thr_prop = (double)1 / square(z_outlier);
+
+    /* check if any can be considered as outlier */
+    size_t *ptr_maj = std::max_element(categ_counts, categ_counts + ncateg);
+    *categ_maj = (int)(ptr_maj - categ_counts);
+    n_non_maj = tot - *ptr_maj;
+    if (n_non_maj > max_outliers)
+        return;
+
+    /* determine proportions and check for outlierness */
+    long double n_non_maj_dbl = (long double) n_non_maj;
+    for (size_t cat = 0; cat < ncateg; cat++) {
+
+        if ((int)cat == *categ_maj) continue;
+
+        if ( (n_non_maj_dbl / (tot_dbl * prior_prob[cat])) < thr_prop ) {
+            if (categ_counts[cat]) {
+                is_outlier[cat] = 1;
+                *found_outliers = true;
+            } else {
+                is_outlier[cat] = -1;
+                *new_is_outlier = true;
+            }
+        }
+    }
+
+    /* TODO: implement formula for flagging unsen categories (not in the sample, nor the full data) as outliers */
+}
+
 
 /*    Check whether to consider any category as outlier before splitting, based on prior counts
 *    

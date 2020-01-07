@@ -8,7 +8,7 @@ Will try to fit decision trees that try to "predict" values for each column base
 
 As such, it will only be able to detect outliers that can be described through a decision tree logic, and unlike other methods such as [Isolation Forests](https://github.com/david-cortes/isotree), will not be able to assign an outlier score to each observation, nor to detect outliers that are just overall rare, but will always provide a human-readable justification when it flags an outlier.
 
-ArXiv report to come in the future.
+Procedure is described in more detail in [Explainable outlier detection through decision tree conditioning](http://arxiv.org/abs/2001.00636).
 
 # Example outputs
 
@@ -29,7 +29,7 @@ row [2229] - suspicious column: [T3] - suspicious vale: [10.600]
 (this dataset is also bundled into the R package - e.g. `data(hypothyroid)`)
 
 
-Example outliers from [Titanic dataset](https://www.kaggle.com/c/titanic):
+Example outlier from [Titanic dataset](https://www.kaggle.com/c/titanic):
 ```
 row [885] - suspicious column: [Fare] - suspicious value: [29.125]
 	distribution: 97.849% <= 15.500 - [mean: 7.887] - [sd: 1.173] - [norm. obs: 91]
@@ -136,3 +136,9 @@ outliers_model.print_outliers(new_outliers)
 * For Python: documentation is available at [ReadTheDocs](http://outliertree.readthedocs.io/en/latest/) (and it's also built-in in the package as docstrings, e.g. `help(outliertree.OutlierTree.fit)`).
 
 * For C++: documentation is available in the source files (not in the header).
+
+# References
+
+* Cortes, David. "Explainable outlier detection through decision tree conditioning." arXiv preprint arXiv:2001.00636 (2020).
+* [GritBot software](https://www.rulequest.com/gritbot-info.html) .
+

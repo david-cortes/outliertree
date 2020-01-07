@@ -67,6 +67,19 @@ class OutlierTree:
             in exponential computation time that might never finish.
         ``"separate"``:
             Will create one branch per category of the splitting variable (this is how GritBot handles them).
+    categ_outliers : str
+        How to look for outliers in categorical variables. Options are:
+
+        ``"tail"``:
+            Will try to flag outliers if there is a large gap between proportions in sorted order, and this
+            gap is unexpected given the prior probabilities. Such criteria tends to sometimes flag too many
+            uninteresting outliers, but is able to detect more cases and recognize outliers when there is no
+            single dominant category.
+        ``"majority"``:
+            Will calculate an equivalent to z-value according to the number of observations that do not
+            belong to the non-majority class, according to formula '(n-n_maj)/(n * p_prior) < 1/z_outlier^2'.
+            Such criteria  tends to miss many interesting outliers and will only be able to flag outliers in
+            large sample sizes. This is the approach used by GritBot.
     follow_all : bool
         Whether to continue branching from each split that meets the size and gain criteria. This will
         produce exponentially many more branches, and if depth is large, might take forever to finish.
@@ -111,9 +124,10 @@ class OutlierTree:
     References
     ----------
     .. [1] GritBot software : https://www.rulequest.com/gritbot-info.html
+    .. [2] Cortes, David. "Explainable outlier detection through decision tree conditioning." arXiv preprint arXiv:2001.00636 (2020).
     """
-    def __init__(self, max_depth = 4, min_gain = 1e-3, z_norm = 2.67, z_outlier = 8.0, pct_outliers = 0.01,
-                 min_size_numeric = 25, min_size_categ = 50, categ_split = "binarize",
+    def __init__(self, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_outlier = 8.0, pct_outliers = 0.01,
+                 min_size_numeric = 25, min_size_categ = 50, categ_split = "binarize", categ_outliers = "tail",
                  follow_all = False, gain_as_pct = True, nthreads = -1):
 
         ### validate inputs
@@ -133,6 +147,7 @@ class OutlierTree:
         assert min_size_numeric >= 10
         assert min_size_categ >= 10
         assert categ_split in  ["binarize", "bruteforce", "separate"]
+        assert categ_outliers in ["tail", "majority"]
         assert isinstance(min_size_numeric, int)
         assert isinstance(min_size_categ, int)
         if nthreads is None:
@@ -151,6 +166,7 @@ class OutlierTree:
         self.min_size_numeric  =  min_size_numeric
         self.min_size_categ    =  min_size_categ
         self.categ_split       =  categ_split
+        self.categ_outliers    =  categ_outliers
         self.follow_all        =  bool(follow_all)
         self.gain_as_pct       =  bool(gain_as_pct)
         self.nthreads          =  nthreads
@@ -161,6 +177,28 @@ class OutlierTree:
 
         ### kind of a parameter
         self._min_rows = 20
+
+    def __str__(self):
+        msg = "OutlierTree model\n"
+        if not self.is_fitted_:
+            msg += "Object has not been fit to data."
+        else:
+            if self.cols_num_.shape[0]:
+                msg += "\tNumeric variables: %d\n" % self.cols_num_.shape[0]
+            if self.cols_ts_.shape[0]:
+                msg += "\tTimestamp variables: %d\n" % self.cols_ts_.shape[0]
+            if self.cols_cat_.shape[0]:
+                msg += "\tCategorical variables: %d\n" % self.cols_cat_.shape[0]
+            if self.cols_bool_.shape[0]:
+                msg += "\tBoolean variables: %d\n" % self.cols_bool_.shape[0]
+            if self.cols_ord_.shape[0]:
+                msg += "\tOrdinal variables: %d\n" % self.cols_ord_.shape[0]
+            nclust, ntrees = self._outlier_cpp_obj.get_n_clust_and_trees()
+            msg += "\nConsists of %d clusters, spread across %d tree branches\n" % (nclust, ntrees)
+        return msg
+
+    def __repr__(self):
+        return self.__str__()
 
     def _reset_object(self):
         self.is_fitted_   = False
@@ -254,7 +292,7 @@ class OutlierTree:
                                                             return_outliers or outliers_print,
                                                             self.nthreads,
                                                             self.categ_split == "binarize", self.categ_split == "binarize",
-                                                            self.categ_split == "bruteforce",
+                                                            self.categ_split == "bruteforce", self.categ_outliers == "majority",
                                                             self.max_depth, self.pct_outliers,
                                                             self.min_size_numeric, self.min_size_categ,
                                                             self.min_gain, self.follow_all, self.gain_as_pct,
@@ -682,7 +720,7 @@ class OutlierTree:
     def _print_no_outliers(self):
         print("No outliers found in input data.\n")
 
-    def print_outliers(self, df_outliers, max_outliers = 15):
+    def print_outliers(self, df_outliers, max_outliers = 10):
         """
         Print outliers in readable format
 
@@ -775,6 +813,11 @@ class OutlierTree:
                 else:
                     ln_group += "\n\t( [norm. obs: %d] - [next smallest: %.3f%%] )" % (row.group_statistics["n_obs"],
                                                                                        row.group_statistics["pct_next_most_comm"] * 100)
+            elif "categ_maj" in row.group_statistics:
+                ln_group += "\tdistribution: %.3f%% = [%s]" % (row.group_statistics["pct_common"] * 100,
+                                                               str(row.group_statistics["categ_maj"]))
+                ln_group += "\n\t( [norm. obs: %d] - [prior_prob: %.3f%%] )" % (row.group_statistics["n_obs"],
+                                                                                row.group_statistics["prior_prob"] * 100)
             else:
                 ## boolean
                 ln_group += "\tdistribution: %.3f%% different [norm. obs: %d]" % (row.group_statistics["pct_other"] * 100,

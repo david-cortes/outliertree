@@ -43,8 +43,8 @@ pred <- predict(otree,
   return_outliers=TRUE)
   
 ### Print stored predictions
-### Rows 1790 and 531 are outliers, but 531 is not
-print(pred, only_these_rows = c(1790, 531, 530))
+### Row 531 is an outlier, but 532 is not
+print(pred, only_these_rows = c(531, 532))
 }
 \seealso{
 \link{outlier.tree} \link{predict.outliertree}

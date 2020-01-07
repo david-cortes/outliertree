@@ -32,6 +32,17 @@
 #'   in exponential computation time that might never finish.
 #'   \item `"separate"` : Will create one branch per category of the splitting variable (this is how GritBot handles them).
 #' }
+#' @param categ_outliers How to look for outliers in categorical variables. Options are:
+#' \itemize{
+#'   \item `"tail"` : Will try to flag outliers if there is a large gap between proportions in sorted order, and this
+#'   gap is unexpected given the prior probabilities. Such criteria tends to sometimes flag too many
+#'   uninteresting outliers, but is able to detect more cases and recognize outliers when there is no
+#'   single dominant category.
+#'   \item `"majority"` : Will calculate an equivalent to z-value according to the number of observations that do not
+#'   belong to the non-majority class, according to formula '(n-n_maj)/(n * p_prior) < 1/z_outlier^2'.
+#'   Such criteria  tends to miss many interesting outliers and will only be able to flag outliers in
+#'   large sample sizes. This is the approach used by GritBot.
+#' }
 #' @param cols_ignore Vector containing columns which will not be split, but will be evaluated for usage
 #' in splitting other columns. Can pass either a logical (boolean) vector with the same number of columns
 #' as `df`, or a character vector of column names (must match with those of `df`).
@@ -77,7 +88,10 @@
 #' (that is, +inf will go into the branch that is greater than something, -inf into the other branch),
 #' but when a column is the target of the split, they will be taken as missing - that is, it will not report
 #' infinite values as outliers. 
-#' @references GritBot software: \url{https://www.rulequest.com/gritbot-info.html}
+#' @references \itemize{
+#'   \item GritBot software: \url{https://www.rulequest.com/gritbot-info.html}
+#'   \item Cortes, David. "Explainable outlier detection through decision tree conditioning." arXiv preprint arXiv:2001.00636 (2020).
+#' }
 #' @seealso \link{predict.outliertree} \link{extract.training.outliers} \link{hypothyroid} \link{unpack.outlier.tree}
 #' @examples 
 #' library(outliertree)
@@ -104,9 +118,9 @@
 #' outliers.w.names <- predict(model, df.w.names, return_outliers=TRUE)
 #' outliers.w.names[["rownum745"]]
 #' @export
-outlier.tree <- function(df, max_depth = 4, min_gain = 1e-3, z_norm = 2.67, z_outlier = 8.0,
+outlier.tree <- function(df, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_outlier = 8.0,
                          pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 50,
-                         categ_split = "binarize", cols_ignore = NULL,
+                         categ_split = "binarize", categ_outliers = "tail", cols_ignore = NULL,
                          follow_all = FALSE, gain_as_pct = TRUE,
                          save_outliers = FALSE, outliers_print = 10,
                          nthreads = parallel::detectCores())
@@ -115,6 +129,10 @@ outlier.tree <- function(df, max_depth = 4, min_gain = 1e-3, z_norm = 2.67, z_ou
     allowed_cs <- c("binarize", "bruteforce", "separate")
     if (NROW(categ_split) != 1 || !(categ_split %in% allowed_cs)) {
         stop(paste0("'categ_split' must be one of ", paste(allowed_cs, collapse = ", ")))
+    }
+    allowed_co <- c("tail", "majority")
+    if (NROW(categ_outliers) != 1 || !(categ_outliers %in% allowed_co)) {
+        stop(paste0("'categ_outliers' must be one of ", paste(allowed_co, collapse = ", ")))
     }
     if (max_depth < 0) { stop("'max_depth' must be >= 0.") }
     if (!("numeric" %in% class(min_gain)))     { stop("'min_gain' must be a decimal number.")     }
@@ -142,6 +160,7 @@ outlier.tree <- function(df, max_depth = 4, min_gain = 1e-3, z_norm = 2.67, z_ou
     min_size_numeric <- as.integer(min_size_numeric)
     min_size_categ   <- as.integer(min_size_categ)
     categ_split      <- categ_split
+    categ_outliers   <- categ_outliers
     follow_all  <- as.logical(follow_all)
     gain_as_pct <- as.logical(gain_as_pct)
 
@@ -152,7 +171,7 @@ outlier.tree <- function(df, max_depth = 4, min_gain = 1e-3, z_norm = 2.67, z_ou
                                                model_data$arr_ord, model_data$ncol_ord, model_data$ncat_ord,
                                                model_data$nrow, model_data$cols_ign, nthreads,
                                                categ_split == "binarize", categ_split == "binarize",
-                                               categ_split == "bruteforce",
+                                               categ_split == "bruteforce", categ_outliers == "majority",
                                                max_depth, pct_outliers, min_size_numeric, min_size_categ,
                                                min_gain, follow_all, gain_as_pct, z_norm, z_outlier,
                                                as.logical(save_outliers | outliers_print),
@@ -309,8 +328,8 @@ predict.outliertree <- function(object, newdata, outliers_print = 15, return_out
 #'   return_outliers=TRUE)
 #'   
 #' ### Print stored predictions
-#' ### Rows 1790 and 531 are outliers, but 531 is not
-#' print(pred, only_these_rows = c(1790, 531, 530))
+#' ### Row 531 is an outlier, but 532 is not
+#' print(pred, only_these_rows = c(531, 532))
 #' @export 
 print.outlieroutputs <- function(x, outliers_print = 15, only_these_rows = NULL, ...) {
     if (NROW(x) == 0) { report.no.outliers(); return(invisible(NULL)); }

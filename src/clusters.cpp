@@ -6,10 +6,12 @@
 *    are observations that seem too distant from the others in a 1-D distribution for the column that the split tries
 *    to "predict" (will not generate a score for each observation).
 *    Splits are based on gain, while outlierness is based on confidence intervals.
-*    Similar in spirit to the GritBot software developed by RuleQuest research.
+*    Similar in spirit to the GritBot software developed by RuleQuest research. Reference article is:
+*      Cortes, David. "Explainable outlier detection through decision tree conditioning."
+*      arXiv preprint arXiv:2001.00636 (2020).
 *    
 *    
-*    Copyright 2019 David Cortes.
+*    Copyright 2020 David Cortes.
 *    
 *    Written for C++11 standard and OpenMP 2.0 or later. Code is meant to be wrapped into scripting languages
 *    such as R or Python.
@@ -101,7 +103,8 @@
 */
 bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_t st, size_t end,
                               double *restrict outlier_scores, size_t *restrict outlier_clusters, size_t *restrict outlier_trees,
-                              size_t *restrict outlier_depth, Cluster &cluster, std::vector<Cluster> &clusters, size_t cluster_num, size_t tree_num, size_t tree_depth,
+                              size_t *restrict outlier_depth, Cluster &cluster, std::vector<Cluster> &clusters,
+                              size_t cluster_num, size_t tree_num, size_t tree_depth,
                               bool is_log_transf, double log_minval, bool is_exp_transf, double orig_mean, double orig_sd,
                               double left_tail, double right_tail, double *restrict orig_x,
                               double max_perc_outliers, double z_norm, double z_outlier)
@@ -416,6 +419,9 @@ void define_categ_cluster_no_cond(int *restrict x, size_t *restrict ix_arr, size
 *        Position at which ix_arr ends (inclusive).
 *    - ncateg (in)
 *        Number of categories in this column.
+*    - by_maj (in)
+*        Model parameter. Default is 'false'. Indicates whether to detect outliers according to the number of non-majority
+*        obsevations compared to the expected number for each category.
 *    - outlier_scores[n] (in, out)
 *        Outlier scores (based on observed category proportion) that are already assigned to the observations from this column
 *        from previous runs of this function in larger subsets (should be started to 1).
@@ -439,8 +445,12 @@ void define_categ_cluster_no_cond(int *restrict x, size_t *restrict ix_arr, size
 *        Model parameter. Default is 0.01.
 *    - z_norm (in)
 *        Model parameter. Default is 2.67.
-*    - perc_threshold[ncateg]
+*    - z_outlier (in)
+*        Model parameter. Default is 8.0.
+*    - perc_threshold[ncateg] (in)
 *        Observed proportion below which a category can be considered as outlier.
+*    - prop_prior[ncateg] (in)
+*        Prior probability of each category in the full data (only used when passing 'by_maj' = 'true').
 *    - buffer_categ_counts[ncateg] (temp)
 *        Buffer where to save the observed frequencies of each category.
 *    - buffer_categ_pct[ncateg] (temp)
@@ -457,12 +467,15 @@ void define_categ_cluster_no_cond(int *restrict x, size_t *restrict ix_arr, size
 *    Returns:
 *        - Whether it identified any outliers or not.
 */
-bool define_categ_cluster(int *restrict x, size_t *restrict ix_arr, size_t st, size_t end, size_t ncateg,
+bool define_categ_cluster(int *restrict x, size_t *restrict ix_arr, size_t st, size_t end, size_t ncateg, bool by_maj,
                           double *restrict outlier_scores, size_t *restrict outlier_clusters, size_t *restrict outlier_trees,
-                          size_t *restrict outlier_depth, Cluster &cluster, std::vector<Cluster> &clusters, size_t cluster_num, size_t tree_num, size_t tree_depth,
-                          double max_perc_outliers, double z_norm, long double *restrict perc_threshold,
+                          size_t *restrict outlier_depth, Cluster &cluster, std::vector<Cluster> &clusters,
+                          size_t cluster_num, size_t tree_num, size_t tree_depth,
+                          double max_perc_outliers, double z_norm, double z_outlier,
+                          long double *restrict perc_threshold, long double *restrict prop_prior,
                           size_t *restrict buffer_categ_counts, long double *restrict buffer_categ_pct,
-                          size_t *restrict buffer_categ_ix, char *restrict buffer_outliers, bool *restrict drop_cluster)
+                          size_t *restrict buffer_categ_ix, char *restrict buffer_outliers,
+                          bool *restrict drop_cluster)
 {
     bool found_outliers, new_is_outlier;
     size_t tot = end - st + 1;
@@ -479,10 +492,15 @@ bool define_categ_cluster(int *restrict x, size_t *restrict ix_arr, size_t st, s
     }
 
     /* flag categories as outliers if appropriate */
-    find_outlier_categories(buffer_categ_counts, ncateg, tot, max_perc_outliers,
-                            perc_threshold, buffer_categ_ix, buffer_categ_pct,
-                            z_norm, buffer_outliers, &found_outliers,
-                            &new_is_outlier, &(cluster.perc_next_most_comm));
+    if (!by_maj)
+        find_outlier_categories(buffer_categ_counts, ncateg, tot, max_perc_outliers,
+                                perc_threshold, buffer_categ_ix, buffer_categ_pct,
+                                z_norm, buffer_outliers, &found_outliers,
+                                &new_is_outlier, &cluster.perc_next_most_comm);
+    else
+        find_outlier_categories_by_maj(buffer_categ_counts, ncateg, tot, max_perc_outliers,
+                                       prop_prior, z_outlier, buffer_outliers,
+                                       &found_outliers, &new_is_outlier, &cluster.categ_maj);
 
     if (found_outliers) {
         for (size_t row = st; row <= end; row++) {
@@ -505,9 +523,14 @@ bool define_categ_cluster(int *restrict x, size_t *restrict ix_arr, size_t st, s
                         )
                     )
                 {
-                    pct_outl = (long double)buffer_categ_counts[ x[ix_arr[row]] ] / tot_dbl;
-                    pct_outl = pct_outl + sqrt(pct_outl * (1 - pct_outl) / tot_dbl);
-                    outlier_scores[ix_arr[row]] = pct_outl;
+                    if (!by_maj) {
+                        pct_outl = (long double)buffer_categ_counts[ x[ix_arr[row]] ] / tot_dbl;
+                        pct_outl = pct_outl + sqrt(pct_outl * (1 - pct_outl) / tot_dbl);
+                        outlier_scores[ix_arr[row]] = pct_outl;
+                    } else {
+                        pct_outl = (long double)(tot - buffer_categ_counts[cluster.categ_maj]) / (tot_dbl * prop_prior[ x[ix_arr[row]] ]);
+                        outlier_scores[ix_arr[row]] = square(pct_outl);
+                    }
                     outlier_clusters[ix_arr[row]] = cluster_num;
                     outlier_trees[ix_arr[row]] = tree_num;
                     outlier_depth[ix_arr[row]] = tree_depth;
@@ -528,14 +551,31 @@ bool define_categ_cluster(int *restrict x, size_t *restrict ix_arr, size_t st, s
         cluster.cluster_size = sz_maj;
         cluster.subset_common.assign(buffer_outliers, buffer_outliers + ncateg);
         cluster.score_categ.resize(ncateg, 0);
-        for (size_t cat = 0; cat < ncateg; cat++) {
-            if (cluster.subset_common[cat] > 0) {
-                pct_outl = (long double)buffer_categ_counts[cat] / tot_dbl;
-                cluster.score_categ[cat] = pct_outl + sqrt(pct_outl * (1 - pct_outl) / tot_dbl);
-            } else if (cluster.subset_common[cat] < 0) {
-                pct_outl = (long double)1 / (long double)(tot + 2);
-                cluster.score_categ[cat] = pct_outl + sqrt(pct_outl * (1 - pct_outl) / (long double)(tot + 2));
+        if (!by_maj) {
+
+            for (size_t cat = 0; cat < ncateg; cat++) {
+                if (cluster.subset_common[cat] > 0) {
+                    pct_outl = (long double)buffer_categ_counts[cat] / tot_dbl;
+                    cluster.score_categ[cat] = pct_outl + sqrt(pct_outl * (1 - pct_outl) / tot_dbl);
+                } else if (cluster.subset_common[cat] < 0) {
+                    pct_outl = (long double)1 / (long double)(tot + 2);
+                    cluster.score_categ[cat] = pct_outl + sqrt(pct_outl * (1 - pct_outl) / (long double)(tot + 2));
+                }
             }
+
+        } else {
+
+            cluster.perc_in_subset = (long double) buffer_categ_counts[cluster.categ_maj] / tot_dbl;
+            for (size_t cat = 0; cat < ncateg; cat++) {
+                if (cat == cluster.categ_maj)
+                    continue;
+                if (cluster.subset_common[cat] != 0) {
+                    cluster.score_categ[cat] = (long double)(tot - buffer_categ_counts[cluster.categ_maj] + 1)
+                                                            / ((long double)(tot + 2) * prop_prior[cat]);
+                    cluster.score_categ[cat] = square(cluster.score_categ[cat]);
+                }
+            }
+
         }
     } else {
         *drop_cluster = true;

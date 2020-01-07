@@ -51,6 +51,7 @@ cdef extern from "outlier_tree.hpp":
         vector[char] subset_common
         double    perc_in_subset
         double    perc_next_most_comm
+        int       categ_maj
 
         double    cluster_mean
         double    cluster_sd
@@ -103,7 +104,7 @@ cdef extern from "outlier_tree.hpp":
                                int    *categorical_data, size_t ncols_categ,   int *ncat,
                                int    *ordinal_data,     size_t ncols_ord,     int *ncat_ord,
                                size_t nrows, char *cols_ignore, int nthreads,
-                               bool_t categ_as_bin, bool_t ord_as_bin, bool_t cat_bruteforce_subset,
+                               bool_t categ_as_bin, bool_t ord_as_bin, bool_t cat_bruteforce_subset, bool_t categ_from_maj,
                                size_t max_conditions, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
                                double min_gain, bool_t gain_as_pct, bool_t follow_all, double z_norm, double z_outlier)
 
@@ -146,6 +147,11 @@ cdef class OutlierCppObject:
     def get_model_outputs(self):
         return self.model_outputs
 
+    def get_n_clust_and_trees(self):
+        nclust = sum([self.model_outputs.all_clusters[cl].size() for cl in range(self.model_outputs.all_clusters.size())])
+        ntrees = sum([self.model_outputs.all_trees[cl].size() for cl in range(self.model_outputs.all_trees.size())])
+        return nclust, ntrees
+
     def get_flaggable_bounds(self):
         return  np.array(self.model_outputs.min_outlier_any_cl), \
                 np.array(self.model_outputs.max_outlier_any_cl), \
@@ -156,9 +162,10 @@ cdef class OutlierCppObject:
                   np.ndarray[int, ndim = 1] ncat, np.ndarray[int, ndim = 1] ncat_ord, cols_ignore,
                   size_t ncols_true_numeric = 0, size_t ncols_true_ts = 0, size_t ncols_true_cat = 0, size_t ncols_true_bool = 0,
                   colnames_num = [], colnames_cat = [], colnames_ord = [], levs_cat = [], levs_ord = [], ts_min = None,
-                  bool_t return_outliers = 1, int nthreads = 1, bool_t categ_as_bin = 1, bool_t ord_as_bin = 1, bool_t cat_bruteforce_subset = 0,
-                  size_t max_conditions = 4, double max_perc_outliers = 0.01, size_t min_size_numeric = 35, size_t min_size_categ = 75,
-                  double min_gain = 0.01, bool_t follow_all = 0, bool_t gain_as_pct = 0, double z_norm = 2.67, double z_outlier = 8.0,
+                  bool_t return_outliers = 1, int nthreads = 1, bool_t categ_as_bin = 1, bool_t ord_as_bin = 1,
+                  bool_t cat_bruteforce_subset = 0, bool_t categ_from_maj = 0, size_t max_conditions = 4,
+                  double max_perc_outliers = 0.01, size_t min_size_numeric = 25, size_t min_size_categ = 75, double min_gain = 0.001,
+                  bool_t follow_all = 0, bool_t gain_as_pct = 1, double z_norm = 2.67, double z_outlier = 8.0,
                   out_df = None):
 
         cdef size_t nrows = np.max([arr_num.shape[0], arr_cat.shape[0], arr_ord.shape[0]])
@@ -196,7 +203,7 @@ cdef class OutlierCppObject:
                                                 ptr_arr_cat, ncol_cat, ptr_arr_ncat,
                                                 ptr_arr_ord, ncol_ord, ptr_arr_ncat_ord,
                                                 nrows, ptr_cols_ignore, nthreads,
-                                                categ_as_bin, ord_as_bin, cat_bruteforce_subset,
+                                                categ_as_bin, ord_as_bin, cat_bruteforce_subset, categ_from_maj,
                                                 max_conditions, max_perc_outliers, min_size_numeric, min_size_categ,
                                                 min_gain, gain_as_pct, follow_all, z_norm, z_outlier
                                             )
@@ -347,18 +354,33 @@ cdef class OutlierCppObject:
 
                 elif outl_col < (ncol_num + ncol_cat):
                     if outl_col < (ncol_num + ncols_true_cat):
-                        out_df.iat[row, 1] = {
-                                                "categs_common" : levs_cat[outl_col - ncol_num][
-                                                                        (np.array(self.model_outputs.all_clusters[outl_col][outl_clust].subset_common) == 0).astype("bool")
+                        if self.model_outputs.all_clusters[outl_col][outl_clust].categ_maj < 0:
+                            out_df.iat[row, 1] = {
+                                                    "categs_common" : levs_cat[outl_col - ncol_num][
+                                                                            (np.array(self.model_outputs.all_clusters[
+                                                                                outl_col][outl_clust
+                                                                             ].subset_common) == 0).astype("bool")
+                                                                            ],
+                                                    "pct_common" : self.model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset,
+                                                    "pct_next_most_comm" : self.model_outputs.all_clusters[outl_col][outl_clust].perc_next_most_comm,
+                                                    "prior_prob" : self.model_outputs.prop_categ[
+                                                                            self.model_outputs.start_ix_cat_counts[outl_col - ncol_num] + \
+                                                                            arr_cat[row, outl_col - ncol_num]
+                                                                            ],
+                                                    "n_obs" : self.model_outputs.all_clusters[outl_col][outl_clust].cluster_size
+                                                }
+                        else:
+                            out_df.iat[row, 1] = {
+                                                    "categ_maj" : levs_cat[outl_col - ncol_num][
+                                                                        self.model_outputs.all_clusters[outl_col][outl_clust].categ_maj
                                                                         ],
-                                                "pct_common" : self.model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset,
-                                                "pct_next_most_comm" : self.model_outputs.all_clusters[outl_col][outl_clust].perc_next_most_comm,
-                                                "prior_prob" : self.model_outputs.prop_categ[
-                                                                        self.model_outputs.start_ix_cat_counts[outl_col - ncol_num] + \
-                                                                        arr_cat[row, outl_col - ncol_num]
-                                                                        ],
-                                                "n_obs" : self.model_outputs.all_clusters[outl_col][outl_clust].cluster_size
-                                            }
+                                                    "pct_common" : self.model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset,
+                                                    "prior_prob" : self.model_outputs.prop_categ[
+                                                                            self.model_outputs.start_ix_cat_counts[outl_col - ncol_num] + \
+                                                                            arr_cat[row, outl_col - ncol_num]
+                                                                            ],
+                                                    "n_obs" : self.model_outputs.all_clusters[outl_col][outl_clust].cluster_size,
+                                                }
                     else:
                         out_df.iat[row, 1] = {
                                                 "pct_other"  : self.model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset,
@@ -369,20 +391,41 @@ cdef class OutlierCppObject:
                                                 "n_obs" : self.model_outputs.all_clusters[outl_col][outl_clust].cluster_size
                                             }
 
+                    if (self.model_outputs.all_clusters[outl_col][outl_clust].split_type == Root):
+                        del out_df.iat[row, 1]["prior_prob"]
+
                 else:
 
-                    out_df.iat[row, 1] = {
-                                            "categs_common" : levs_ord[outl_col - ncol_num - ncol_cat][
-                                                                    (np.array(self.model_outputs.all_clusters[outl_col][outl_clust].subset_common) == 0).astype("bool")
-                                                                    ],
-                                            "pct_common" : self.model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset,
-                                            "pct_next_most_comm" : self.model_outputs.all_clusters[outl_col][outl_clust].perc_next_most_comm,
-                                            "prior_prob" : self.model_outputs.prop_categ[
-                                                                    self.model_outputs.start_ix_cat_counts[outl_col - ncol_num] + \
-                                                                    arr_ord[row, outl_col - ncol_num - ncol_cat]
-                                                                    ],
-                                            "n_obs" : self.model_outputs.all_clusters[outl_col][outl_clust].cluster_size
-                                        }
+                    if self.model_outputs.all_clusters[outl_col][outl_clust].categ_maj < 0:
+                        out_df.iat[row, 1] = {
+                                                "categs_common" : levs_ord[outl_col - ncol_num - ncol_cat][
+                                                                        (np.array(self.model_outputs.all_clusters[
+                                                                            outl_col][outl_clust
+                                                                         ].subset_common) == 0).astype("bool")
+                                                                        ],
+                                                "pct_common" : self.model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset,
+                                                "pct_next_most_comm" : self.model_outputs.all_clusters[outl_col][outl_clust].perc_next_most_comm,
+                                                "prior_prob" : self.model_outputs.prop_categ[
+                                                                        self.model_outputs.start_ix_cat_counts[outl_col - ncol_num] + \
+                                                                        arr_ord[row, outl_col - ncol_num - ncol_cat]
+                                                                        ],
+                                                "n_obs" : self.model_outputs.all_clusters[outl_col][outl_clust].cluster_size
+                                            }
+                    else:
+                        out_df.iat[row, 1] = {
+                                                    "categ_maj" : levs_ord[outl_col - ncol_num - ncol_cat][
+                                                                        self.model_outputs.all_clusters[outl_col][outl_clust].categ_maj
+                                                                        ],
+                                                    "pct_common" : self.model_outputs.all_clusters[outl_col][outl_clust].perc_in_subset,
+                                                    "prior_prob" : self.model_outputs.prop_categ[
+                                                                        self.model_outputs.start_ix_cat_counts[outl_col - ncol_num] + \
+                                                                        arr_ord[row, outl_col - ncol_num - ncol_cat]
+                                                                        ],
+                                                    "n_obs" : self.model_outputs.all_clusters[outl_col][outl_clust].cluster_size
+                                                }
+
+                    if (self.model_outputs.all_clusters[outl_col][outl_clust].split_type == Root):
+                        del out_df.iat[row, 1]["prior_prob"]
 
 
                 ### info about the conditions - first from the cluster (final branch in the tree, need to follow it back to the root afterwards)
@@ -430,22 +473,22 @@ cdef class OutlierCppObject:
 
 
                     elif self.model_outputs.all_clusters[outl_col][outl_clust].split_type == InSubset:
-                        if outl_col < (ncol_num + ncols_true_cat):
+                        if self.model_outputs.all_clusters[outl_col][outl_clust].col_num < (ncol_num + ncols_true_cat):
                             levs = levs_cat[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
                             colcond = "in"
                             condval = [levs[lv] for lv in range(len(levs)) if self.model_outputs.all_clusters[outl_col][outl_clust].split_subset[lv] > 0]
                         else:
-                            ### TODO: this is redundant
+                            ### Note: this is redundant
                             colcond = "="
                             condval = bool(self.model_outputs.all_clusters[outl_col][outl_clust].split_subset[1])
 
                     elif self.model_outputs.all_clusters[outl_col][outl_clust].split_type == NotInSubset:
-                        if outl_col < (ncol_num + ncols_true_cat):
+                        if self.model_outputs.all_clusters[outl_col][outl_clust].col_num < (ncol_num + ncols_true_cat):
                             levs = levs_cat[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
                             colcond = "in"
                             condval = [levs[lv] for lv in range(len(levs)) if not (self.model_outputs.all_clusters[outl_col][outl_clust].split_subset[lv] > 0)]
                         else:
-                            ### TODO: this is redundant
+                            ### Note: this is redundant
                             colcond = "="
                             condval = not bool(self.model_outputs.all_clusters[outl_col][outl_clust].split_subset[1])
 
@@ -547,8 +590,10 @@ cdef class OutlierCppObject:
                                     colval  = condval
                             elif self.model_outputs.all_trees[outl_col][curr_tree].split_this_branch == NotEqual:
                                 colcond = "!="
-                                condval = levs_cat[self.model_outputs.all_trees[outl_col][curr_tree].col_num][self.model_outputs.all_trees[outl_col][curr_tree].split_lev]
-                                colval  = levs_cat[arr_cat[row, self.model_outputs.all_trees[outl_col][curr_tree].col_num]]
+                                condval = levs_cat[self.model_outputs.all_trees[outl_col][curr_tree].col_num]\
+                                                  [self.model_outputs.all_trees[outl_col][curr_tree].split_lev]
+                                colval  = levs_cat[self.model_outputs.all_trees[outl_col][curr_tree].col_num]\
+                                                  [arr_cat[row, self.model_outputs.all_trees[outl_col][curr_tree].col_num]]
                                 ### Note: booleans and binaries always get translated to "=" and swapped
 
                         elif self.model_outputs.all_trees[outl_col][curr_tree].column_type == Ordinal:
@@ -568,8 +613,10 @@ cdef class OutlierCppObject:
                                 colval  = condval
                             elif self.model_outputs.all_trees[outl_col][curr_tree].split_this_branch == NotEqual:
                                 colcond = "!="
-                                condval = levs_ord[self.model_outputs.all_trees[outl_col][curr_tree].col_num][self.model_outputs.all_trees[outl_col][curr_tree].split_lev]
-                                colval  = levs_ord[arr_ord[row, self.model_outputs.all_trees[outl_col][curr_tree].col_num]]
+                                condval = levs_ord[self.model_outputs.all_trees[outl_col][curr_tree].col_num]\
+                                                  [self.model_outputs.all_trees[outl_col][curr_tree].split_lev]
+                                colval  = levs_ord[self.model_outputs.all_trees[outl_col][curr_tree].col_num]\
+                                                  [arr_ord[row, self.model_outputs.all_trees[outl_col][curr_tree].col_num]]
 
                     elif self.model_outputs.all_trees[outl_col][curr_tree].parent_branch == IsNa:
                         colcond = "is NA"

@@ -9,8 +9,8 @@ check_null_ptr_model <- function(ptr_model) {
     .Call(`_outliertree_check_null_ptr_model`, ptr_model)
 }
 
-fit_OutlierTree <- function(arr_num, ncols_numeric, arr_cat, ncols_categ, ncat, arr_ord, ncols_ord, ncat_ord, nrows, cols_ignore_r, nthreads, categ_as_bin, ord_as_bin, cat_bruteforce_subset, max_depth, max_perc_outliers, min_size_numeric, min_size_categ, min_gain, follow_all, gain_as_pct, z_norm, z_outlier, return_outliers, cat_levels, ord_levels, colnames_num, colnames_cat, colnames_ord, min_date, min_ts) {
-    .Call(`_outliertree_fit_OutlierTree`, arr_num, ncols_numeric, arr_cat, ncols_categ, ncat, arr_ord, ncols_ord, ncat_ord, nrows, cols_ignore_r, nthreads, categ_as_bin, ord_as_bin, cat_bruteforce_subset, max_depth, max_perc_outliers, min_size_numeric, min_size_categ, min_gain, follow_all, gain_as_pct, z_norm, z_outlier, return_outliers, cat_levels, ord_levels, colnames_num, colnames_cat, colnames_ord, min_date, min_ts)
+fit_OutlierTree <- function(arr_num, ncols_numeric, arr_cat, ncols_categ, ncat, arr_ord, ncols_ord, ncat_ord, nrows, cols_ignore_r, nthreads, categ_as_bin, ord_as_bin, cat_bruteforce_subset, categ_from_maj, max_depth, max_perc_outliers, min_size_numeric, min_size_categ, min_gain, follow_all, gain_as_pct, z_norm, z_outlier, return_outliers, cat_levels, ord_levels, colnames_num, colnames_cat, colnames_ord, min_date, min_ts) {
+    .Call(`_outliertree_fit_OutlierTree`, arr_num, ncols_numeric, arr_cat, ncols_categ, ncat, arr_ord, ncols_ord, ncat_ord, nrows, cols_ignore_r, nthreads, categ_as_bin, ord_as_bin, cat_bruteforce_subset, categ_from_maj, max_depth, max_perc_outliers, min_size_numeric, min_size_categ, min_gain, follow_all, gain_as_pct, z_norm, z_outlier, return_outliers, cat_levels, ord_levels, colnames_num, colnames_cat, colnames_ord, min_date, min_ts)
 }
 
 predict_OutlierTree <- function(ptr_model, nrows, nthreads, arr_num, arr_cat, arr_ord, cat_levels, ord_levels, colnames_num, colnames_cat, colnames_ord, min_date, min_ts) {

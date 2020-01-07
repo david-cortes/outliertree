@@ -4,11 +4,12 @@
 \alias{outlier.tree}
 \title{Outlier Tree}
 \usage{
-outlier.tree(df, max_depth = 4, min_gain = 0.001, z_norm = 2.67,
+outlier.tree(df, max_depth = 4, min_gain = 0.01, z_norm = 2.67,
   z_outlier = 8, pct_outliers = 0.01, min_size_numeric = 25,
-  min_size_categ = 50, categ_split = "binarize", cols_ignore = NULL,
-  follow_all = FALSE, gain_as_pct = TRUE, save_outliers = FALSE,
-  outliers_print = 10, nthreads = parallel::detectCores())
+  min_size_categ = 50, categ_split = "binarize",
+  categ_outliers = "tail", cols_ignore = NULL, follow_all = FALSE,
+  gain_as_pct = TRUE, save_outliers = FALSE, outliers_print = 10,
+  nthreads = parallel::detectCores())
 }
 \arguments{
 \item{df}{Data Frame with normal data that might contain some outliers. See details for allowed column types.}
@@ -50,6 +51,18 @@ this number of observations.}
   splits every time). Note that trying this when there are many categories in a column will result
   in exponential computation time that might never finish.
   \item `"separate"` : Will create one branch per category of the splitting variable (this is how GritBot handles them).
+}}
+
+\item{categ_outliers}{How to look for outliers in categorical variables. Options are:
+\itemize{
+  \item `"tail"` : Will try to flag outliers if there is a large gap between proportions in sorted order, and this
+  gap is unexpected given the prior probabilities. Such criteria tends to sometimes flag too many
+  uninteresting outliers, but is able to detect more cases and recognize outliers when there is no
+  single dominant category.
+  \item `"majority"` : Will calculate an equivalent to z-value according to the number of observations that do not
+  belong to the non-majority class, according to formula '(n-n_maj)/(n * p_prior) < 1/z_outlier^2'.
+  Such criteria  tends to miss many interesting outliers and will only be able to flag outliers in
+  large sample sizes. This is the approach used by GritBot.
 }}
 
 \item{cols_ignore}{Vector containing columns which will not be split, but will be evaluated for usage
@@ -136,7 +149,10 @@ outliers.w.names <- predict(model, df.w.names, return_outliers=TRUE)
 outliers.w.names[["rownum745"]]
 }
 \references{
-GritBot software: \url{https://www.rulequest.com/gritbot-info.html}
+\itemize{
+  \item GritBot software: \url{https://www.rulequest.com/gritbot-info.html}
+  \item Cortes, David. "Explainable outlier detection through decision tree conditioning." arXiv preprint arXiv:2001.00636 (2020).
+}
 }
 \seealso{
 \link{predict.outliertree} \link{extract.training.outliers} \link{hypothyroid} \link{unpack.outlier.tree}

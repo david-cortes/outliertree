@@ -6,10 +6,12 @@
 *    are observations that seem too distant from the others in a 1-D distribution for the column that the split tries
 *    to "predict" (will not generate a score for each observation).
 *    Splits are based on gain, while outlierness is based on confidence intervals.
-*    Similar in spirit to the GritBot software developed by RuleQuest research.
+*    Similar in spirit to the GritBot software developed by RuleQuest research. Reference article is:
+*      Cortes, David. "Explainable outlier detection through decision tree conditioning."
+*      arXiv preprint arXiv:2001.00636 (2020).
 *    
 *    
-*    Copyright 2019 David Cortes.
+*    Copyright 2020 David Cortes.
 *    
 *    Written for C++11 standard and OpenMP 2.0 or later. Code is meant to be wrapped into scripting languages
 *    such as R or Python.
@@ -151,6 +153,7 @@ typedef struct Cluster {
     std::vector<char> subset_common = std::vector<char>(); /* categorical or ordinal target column (=0 is common) */
     double    perc_in_subset = HUGE_VAL;                   /* categorical or ordinal target column */
     double    perc_next_most_comm = -HUGE_VAL;             /* categorical or ordinal target column */ /* TODO */
+    int       categ_maj = -1;                              /* when using majority-criterion for categorical outliers */
 
     double cluster_mean;              /* used to calculate outlier scores at prediction time */
     double cluster_sd;                /* used to calculate outlier scores at prediction time */
@@ -435,9 +438,9 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                          int    *restrict categorical_data, size_t ncols_categ,   int *restrict ncat,
                          int    *restrict ordinal_data,     size_t ncols_ord,     int *restrict ncat_ord,
                          size_t nrows, char *restrict cols_ignore = NULL, int nthreads = 1,
-                         bool categ_as_bin = true, bool ord_as_bin = true, bool cat_bruteforce_subset = false,
-                         size_t max_depth = 3, double max_perc_outliers = 0.01, size_t min_size_numeric = 25, size_t min_size_categ = 75,
-                         double min_gain = 1e-1, bool gain_as_pct = false, bool follow_all = false, double z_norm = 2.67, double z_outlier = 8.0);
+                         bool categ_as_bin = true, bool ord_as_bin = true, bool cat_bruteforce_subset = false, bool categ_from_maj = false,
+                         size_t max_depth = 3, double max_perc_outliers = 0.01, size_t min_size_numeric = 25, size_t min_size_categ = 50,
+                         double min_gain = 1e-2, bool gain_as_pct = false, bool follow_all = false, double z_norm = 2.67, double z_outlier = 8.0);
 
 typedef struct {
     
@@ -469,6 +472,7 @@ typedef struct {
 
     bool col_is_bin;                      /* whether the target categorical/ordinal column has 2 categories or has been forcibly binarized */
     long double *prop_small_this;         /* dynamic pointer */
+    long double *prior_prob;              /* dynamic pointer */
 
     double orig_mean;                     /* value to reconstruct originals from exponentiated */
     double orig_sd;                       /* value to reconstruct originals from exponentiated */
@@ -510,6 +514,7 @@ typedef struct {
     bool    categ_as_bin;
     bool    ord_as_bin;
     bool    cat_bruteforce_subset;
+    bool    categ_from_maj;
     size_t  max_depth;
     double  max_perc_outliers;
     size_t  min_size_numeric;
@@ -670,12 +675,15 @@ void define_categ_cluster_no_cond(int *restrict x, size_t *restrict ix_arr, size
                                   double *restrict outlier_scores, size_t *restrict outlier_clusters, size_t *restrict outlier_trees,
                                   size_t *restrict outlier_depth, Cluster &cluster,
                                   size_t *restrict categ_counts, char *restrict is_outlier, double perc_next_most_comm);
-bool define_categ_cluster(int *restrict x, size_t *restrict ix_arr, size_t st, size_t end, size_t ncateg,
+bool define_categ_cluster(int *restrict x, size_t *restrict ix_arr, size_t st, size_t end, size_t ncateg, bool by_maj,
                           double *restrict outlier_scores, size_t *restrict outlier_clusters, size_t *restrict outlier_trees,
-                          size_t *restrict outlier_depth, Cluster &cluster, std::vector<Cluster> &clusters, size_t cluster_num, size_t tree_num, size_t tree_depth,
-                          double max_perc_outliers, double z_norm, long double *restrict perc_threshold,
+                          size_t *restrict outlier_depth, Cluster &cluster, std::vector<Cluster> &clusters,
+                          size_t cluster_num, size_t tree_num, size_t tree_depth,
+                          double max_perc_outliers, double z_norm, double z_outlier,
+                          long double *restrict perc_threshold, long double *restrict prop_prior,
                           size_t *restrict buffer_categ_counts, long double *restrict buffer_categ_pct,
-                          size_t *restrict buffer_categ_ix, char *restrict buffer_outliers, bool *restrict drop_cluster);
+                          size_t *restrict buffer_categ_ix, char *restrict buffer_outliers,
+                          bool *restrict drop_cluster);
 void simplify_when_equal_cond(std::vector<Cluster> &clusters, int ncat_ord[]);
 void simplify_when_equal_cond(std::vector<ClusterTree> &trees, int ncat_ord[]);
 #ifdef TEST_MODE_DEFINE
@@ -693,6 +701,9 @@ void calculate_cluster_poss_categs(ModelOutputs &model_outputs, size_t col, size
 void find_outlier_categories(size_t categ_counts[], size_t ncateg, size_t tot, double max_perc_outliers,
                              long double perc_threshold[], size_t buffer_ix[], long double buffer_perc[],
                              double z_norm, char is_outlier[], bool *found_outliers, bool *new_is_outlier, double *next_most_comm);
+void find_outlier_categories_by_maj(size_t categ_counts[], size_t ncateg, size_t tot, double max_perc_outliers,
+                                    long double prior_prob[], double z_outlier, char is_outlier[],
+                                    bool *found_outliers, bool *new_is_outlier, int *categ_maj);
 bool find_outlier_categories_no_cond(size_t categ_counts[], size_t ncateg, size_t tot,
                                      char is_outlier[], double *next_most_comm);
 

@@ -6,10 +6,12 @@
 *    are observations that seem too distant from the others in a 1-D distribution for the column that the split tries
 *    to "predict" (will not generate a score for each observation).
 *    Splits are based on gain, while outlierness is based on confidence intervals.
-*    Similar in spirit to the GritBot software developed by RuleQuest research.
+*    Similar in spirit to the GritBot software developed by RuleQuest research. Reference article is:
+*      Cortes, David. "Explainable outlier detection through decision tree conditioning."
+*      arXiv preprint arXiv:2001.00636 (2020).
 *    
 *    
-*    Copyright 2019 David Cortes.
+*    Copyright 2020 David Cortes.
 *    
 *    Written for C++11 standard and OpenMP 2.0 or later. Code is meant to be wrapped into scripting languages
 *    such as R or Python.
