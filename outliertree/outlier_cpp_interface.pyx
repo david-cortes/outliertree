@@ -603,13 +603,20 @@ cdef class OutlierCppObject:
                                 colval  = np.nan
                             elif self.model_outputs.all_trees[outl_col][curr_tree].split_this_branch == LessOrEqual:
                                 colcond = "in"
-                                condval = levs_ord[self.model_outputs.all_trees[outl_col][curr_tree].col_num][:(self.model_outputs.all_trees[outl_col][curr_tree].split_lev + 1)]
+                                condval = levs_ord[self.model_outputs.all_trees[outl_col][curr_tree].col_num]\
+                                                  [:(self.model_outputs.all_trees[outl_col][curr_tree].split_lev + 1)]
+                                colval  = levs_ord[self.model_outputs.all_trees[outl_col][curr_tree].col_num]\
+                                                  [arr_ord[row, self.model_outputs.all_trees[outl_col][curr_tree].col_num]]
                             elif self.model_outputs.all_trees[outl_col][curr_tree].split_this_branch == Greater:
                                 colcond = "in"
-                                condval = levs_ord[self.model_outputs.all_trees[outl_col][curr_tree].col_num][(self.model_outputs.all_trees[outl_col][curr_tree].split_lev + 1):]
+                                condval = levs_ord[self.model_outputs.all_trees[outl_col][curr_tree].col_num]\
+                                                  [(self.model_outputs.all_trees[outl_col][curr_tree].split_lev + 1):]
+                                colval  = levs_ord[self.model_outputs.all_trees[outl_col][curr_tree].col_num]\
+                                                  [arr_ord[row, self.model_outputs.all_trees[outl_col][curr_tree].col_num]]
                             elif self.model_outputs.all_trees[outl_col][curr_tree].split_this_branch == Equal:
                                 colcond = "="
-                                condval = levs_ord[self.model_outputs.all_trees[outl_col][curr_tree].col_num][self.model_outputs.all_trees[outl_col][curr_tree].split_lev]
+                                condval = levs_ord[self.model_outputs.all_trees[outl_col][curr_tree].col_num]\
+                                                  [self.model_outputs.all_trees[outl_col][curr_tree].split_lev]
                                 colval  = condval
                             elif self.model_outputs.all_trees[outl_col][curr_tree].split_this_branch == NotEqual:
                                 colcond = "!="
