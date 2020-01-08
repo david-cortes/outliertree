@@ -1292,7 +1292,7 @@ void recursive_split_categ(Workspace &workspace,
         /* TODO: could make a pre-check that the splitting column up to this recursion still has
            more than 1 category, and skip for this and further recursions otherwise */
 
-        if (col == workspace.target_col_num) continue;
+        if (col == workspace.target_col_num && !workspace.target_col_is_ord) continue;
         if (input_data.skip_col[col + input_data.ncols_numeric]) continue;
 
         if (workspace.col_is_bin) {
@@ -1390,12 +1390,12 @@ void recursive_split_categ(Workspace &workspace,
                 for (size_t row = workspace.this_split_NA + 1; row <= workspace.end; row++) {
 
                     /* if the next observation is in a different category, then the split ends here */
-                    if (workspace.temp_ptr_x[row] != workspace.temp_ptr_x[row - 1]) {
+                    if (workspace.temp_ptr_x[workspace.ix_arr[row]] != workspace.temp_ptr_x[workspace.ix_arr[row-1]]) {
 
                         if ((row - workspace.this_split_ix) >= model_params.min_size_categ) {
 
                             (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
-                            workspace.clusters->emplace_back(col, workspace.temp_ptr_x[row-1], input_data.ncat[col], is_NA_branch);
+                            workspace.clusters->emplace_back(col, workspace.temp_ptr_x[workspace.ix_arr[row-1]], input_data.ncat[col], is_NA_branch);
                             workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                                           &workspace.ix_arr[0], workspace.this_split_ix, row - 1,
                                                                           workspace.ncat_this, model_params.categ_from_maj,
@@ -1413,7 +1413,7 @@ void recursive_split_categ(Workspace &workspace,
                             }
                             if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
                                 (*workspace.tree)[tree_from].all_branches.push_back(workspace.tree->size());
-                                workspace.tree->emplace_back(tree_from, col, workspace.temp_ptr_x[workspace.this_split_ix]);
+                                workspace.tree->emplace_back(tree_from, col, workspace.temp_ptr_x[workspace.ix_arr[workspace.this_split_ix]]);
                                 backup_recursion_state(workspace, *state_backup);
                                 workspace.st = workspace.this_split_ix;
                                 workspace.end = row - 1;
@@ -1427,10 +1427,10 @@ void recursive_split_categ(Workspace &workspace,
                 /* last category is given by the end indices */
                 if (
                         (workspace.end - workspace.this_split_ix) > model_params.min_size_categ &
-                        workspace.temp_ptr_x[workspace.end] != workspace.temp_ptr_x[workspace.this_split_ix]
+                        workspace.temp_ptr_x[workspace.ix_arr[workspace.end]] == workspace.temp_ptr_x[workspace.ix_arr[workspace.this_split_ix]]
                     ) {
                     (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
-                    workspace.clusters->emplace_back(col, workspace.temp_ptr_x[workspace.end], input_data.ncat[col], is_NA_branch);
+                    workspace.clusters->emplace_back(col, workspace.temp_ptr_x[workspace.ix_arr[workspace.end]], input_data.ncat[col], is_NA_branch);
                     workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                                   &workspace.ix_arr[0], workspace.this_split_ix, workspace.end,
                                                                   workspace.ncat_this, model_params.categ_from_maj,
@@ -1448,7 +1448,7 @@ void recursive_split_categ(Workspace &workspace,
                     }
                     if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
                         (*workspace.tree)[tree_from].all_branches.push_back(workspace.tree->size());
-                        workspace.tree->emplace_back(tree_from, col, workspace.temp_ptr_x[workspace.end]);
+                        workspace.tree->emplace_back(tree_from, col, workspace.temp_ptr_x[workspace.ix_arr[workspace.end]]);
                         backup_recursion_state(workspace, *state_backup);
                         workspace.st = workspace.this_split_ix;
                         recursive_split_categ(workspace, input_data, model_params, curr_depth + 1, is_NA_branch);
