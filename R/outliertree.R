@@ -260,7 +260,7 @@ outlier.tree <- function(df, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_ou
 #' ### retrieve the outlier info (for row 1) as an R list
 #' test_outliers[[1]]
 #' @export 
-predict.outliertree <- function(object, newdata, outliers_print = 15, return_outliers = FALSE, ...) {
+predict.outliertree <- function(object, newdata, outliers_print = 15, return_outliers = TRUE, ...) {
     check.is.model.obj(object)
     if (check_null_ptr_model(object$obj_from_cpp$ptr_model)) {
         ptr_new <- deserialize_OutlierTree(object$obj_from_cpp$serialized_obj)
@@ -273,7 +273,9 @@ predict.outliertree <- function(object, newdata, outliers_print = 15, return_out
         if (outliers_print) {
             report.no.outliers()
         }
-        if (return_outliers) { return(produce.empty.outliers(row.names(newdata))) } else { return(invisible(NULL)) }
+        if (return_outliers) {
+            return(invisible(produce.empty.outliers(row.names(newdata))))
+        } else { return(invisible(NULL)) }
     }
     
     c_arr_data    <- split.types.new(newdata, object)
@@ -295,7 +297,7 @@ predict.outliertree <- function(object, newdata, outliers_print = 15, return_out
     }
     if (return_outliers) {
         outliers_info$found_outliers <- NULL
-        return(outliers.to.list(newdata, outliers_info))
+        return(invisible(outliers.to.list(newdata, outliers_info)))
     }
 }
 

@@ -16,3 +16,6 @@ Displays general statistics from a fitted Outlier Tree model (same as `print`).
 For printing the outliers discovered, use function `print` on the returned outliers
 (e.g. from `predict`), not on the model object iself.
 }
+\seealso{
+\link{print.outliertree}
+}
