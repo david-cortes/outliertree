@@ -1425,10 +1425,7 @@ void recursive_split_categ(Workspace &workspace,
                     }
                 }
                 /* last category is given by the end indices */
-                if (
-                        (workspace.end - workspace.this_split_ix) > model_params.min_size_categ &
-                        workspace.temp_ptr_x[workspace.ix_arr[workspace.end]] == workspace.temp_ptr_x[workspace.ix_arr[workspace.this_split_ix]]
-                    ) {
+                if ((workspace.end - workspace.this_split_ix) > model_params.min_size_categ) {
                     (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
                     workspace.clusters->emplace_back(col, workspace.temp_ptr_x[workspace.ix_arr[workspace.end]], input_data.ncat[col], is_NA_branch);
                     workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
