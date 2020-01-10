@@ -161,6 +161,8 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     model_outputs.max_outlier_any_cl.resize(model_outputs.ncols_numeric,  HUGE_VAL);
     model_outputs.cat_outlier_any_cl.resize(model_outputs.ncols_categ + model_outputs.ncols_ord);
 
+    if (tot_cols < (size_t)nthreads)
+        nthreads = (int) tot_cols;
     #ifndef _OPENMP
         std::vector<Workspace> workspace(1);
     #else

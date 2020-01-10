@@ -78,6 +78,8 @@ bool find_new_outliers(double *restrict numeric_data,
     bool col_is_num;
 
     bool found_outliers = false;
+    if (nrows < (size_t)nthreads)
+        nthreads = (int) nrows;
     #if defined(_OPENMP)
         std::vector<char> outliers_thread(nthreads, false);
     #endif
