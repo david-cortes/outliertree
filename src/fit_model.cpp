@@ -184,10 +184,14 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
 
     /* determine maximum number of categories in a column, allocate arrays for category counts and proportions */
     model_outputs.start_ix_cat_counts[0] = 0;
-    input_data.max_categ = calculate_category_indices(&model_outputs.start_ix_cat_counts[0], input_data.ncat, input_data.ncols_categ,
-                                                      (bool*) &input_data.skip_col[ncols_numeric]);
-    input_data.max_categ = calculate_category_indices(&model_outputs.start_ix_cat_counts[input_data.ncols_categ], input_data.ncat_ord, input_data.ncols_ord,
-                                                      (bool*) &input_data.skip_col[input_data.ncols_numeric + input_data.ncols_categ], input_data.max_categ);
+    if (tot_cols > ncols_numeric) {
+        input_data.max_categ = calculate_category_indices(&model_outputs.start_ix_cat_counts[0], input_data.ncat, input_data.ncols_categ,
+                                                          (bool*) &input_data.skip_col[ncols_numeric]);
+        input_data.max_categ = calculate_category_indices(&model_outputs.start_ix_cat_counts[input_data.ncols_categ], input_data.ncat_ord, input_data.ncols_ord,
+                                                          (bool*) &input_data.skip_col[input_data.ncols_numeric + input_data.ncols_categ], input_data.max_categ);
+    } else {
+        input_data.max_categ = 0;
+    }
 
     /* now allocate arrays for proportions */
     input_data.cat_counts.resize(model_outputs.start_ix_cat_counts[ncols_categ + ncols_ord], 0);
@@ -195,49 +199,55 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     model_outputs.prop_categ.resize(model_outputs.start_ix_cat_counts[ncols_categ + ncols_ord]);
 
     /* calculate prior probabilities for categorical variables (in parallel), see if any is unsplittable */
-    #pragma omp parallel
-    {
-        #pragma omp sections
+    if (tot_cols > ncols_numeric) {
+        #pragma omp parallel
         {
-
-            #pragma omp section
+            #pragma omp sections
             {
 
-                calculate_all_cat_counts(&model_outputs.start_ix_cat_counts[0], &input_data.cat_counts[0], input_data.ncat,
-                                         input_data.categorical_data, input_data.ncols_categ, input_data.nrows,
-                                         (bool*) &input_data.has_NA[ncols_numeric], (bool*) &input_data.skip_col[input_data.ncols_numeric],
-                                         std::min(input_data.ncols_categ, (size_t)std::max(1, nthreads - 1)) );
+                #pragma omp section
+                {
+                    if (ncols_categ > 0) {
+                        calculate_all_cat_counts(&model_outputs.start_ix_cat_counts[0], &input_data.cat_counts[0], input_data.ncat,
+                                                 input_data.categorical_data, input_data.ncols_categ, input_data.nrows,
+                                                 (bool*) &input_data.has_NA[ncols_numeric], (bool*) &input_data.skip_col[input_data.ncols_numeric],
+                                                 std::min(input_data.ncols_categ, (size_t)std::max(1, nthreads - 1)) );
 
-                check_cat_col_unsplittable(&model_outputs.start_ix_cat_counts[0], &input_data.cat_counts[0], input_data.ncat,
-                                           input_data.ncols_categ, std::min(model_params.min_size_numeric, model_params.min_size_categ), input_data.nrows,
-                                           (bool*) &input_data.skip_col[input_data.ncols_numeric], std::min(input_data.ncols_categ, (size_t)std::max(1, nthreads - 1)));
+                        check_cat_col_unsplittable(&model_outputs.start_ix_cat_counts[0], &input_data.cat_counts[0], input_data.ncat,
+                                                   input_data.ncols_categ, std::min(model_params.min_size_numeric, model_params.min_size_categ), input_data.nrows,
+                                                   (bool*) &input_data.skip_col[input_data.ncols_numeric],
+                                                   std::min(input_data.ncols_categ, (size_t)std::max(1, nthreads - 1)));
+                    }
 
 
+                }
+
+                #pragma omp section
+                {
+                    if (ncols_ord > 0) {
+                        calculate_all_cat_counts(&model_outputs.start_ix_cat_counts[input_data.ncols_categ], &input_data.cat_counts[0], input_data.ncat_ord,
+                                                 input_data.ordinal_data, input_data.ncols_ord, input_data.nrows,
+                                                 (bool*) &input_data.has_NA[input_data.ncols_numeric + input_data.ncols_categ],
+                                                 (bool*) &input_data.skip_col[input_data.ncols_numeric + input_data.ncols_categ],
+                                                 std::max((int)1, nthreads - (int)input_data.ncols_categ) );
+
+                        check_cat_col_unsplittable(&model_outputs.start_ix_cat_counts[input_data.ncols_categ], &input_data.cat_counts[0], input_data.ncat_ord,
+                                                   ncols_ord, std::min(model_params.min_size_numeric, model_params.min_size_categ), input_data.nrows,
+                                                   (bool*) &input_data.skip_col[input_data.ncols_numeric + input_data.ncols_categ],
+                                                   std::max((int)1, nthreads - (int)input_data.ncols_categ));
+                    }
+                }
             }
 
-            #pragma omp section
-            {
-
-                calculate_all_cat_counts(&model_outputs.start_ix_cat_counts[input_data.ncols_categ], &input_data.cat_counts[0], input_data.ncat_ord,
-                                         input_data.ordinal_data, input_data.ncols_ord, input_data.nrows,
-                                         (bool*) &input_data.has_NA[input_data.ncols_numeric + input_data.ncols_categ],
-                                         (bool*) &input_data.skip_col[input_data.ncols_numeric + input_data.ncols_categ],
-                                         std::max((int)1, nthreads - (int)input_data.ncols_categ) );
-
-                check_cat_col_unsplittable(&model_outputs.start_ix_cat_counts[input_data.ncols_categ], &input_data.cat_counts[0], input_data.ncat_ord,
-                                           ncols_ord, std::min(model_params.min_size_numeric, model_params.min_size_categ), input_data.nrows,
-                                           (bool*) &input_data.skip_col[input_data.ncols_numeric + input_data.ncols_categ],
-                                           std::max((int)1, nthreads - (int)input_data.ncols_categ));
-            }
         }
+    
 
+        /* calculate proprotion limit and CI for each category of each column */
+        calculate_lowerlim_proportion(&model_params.prop_small[0], &model_outputs.prop_categ[0], &model_outputs.start_ix_cat_counts[0],
+                                      &input_data.cat_counts[0], input_data.ncols_categ, input_data.nrows, model_params.z_norm, model_params.z_tail);
+        calculate_lowerlim_proportion(&model_params.prop_small[0], &model_outputs.prop_categ[0], &model_outputs.start_ix_cat_counts[input_data.ncols_categ],
+                                      &input_data.cat_counts[0], input_data.ncols_ord,  input_data.nrows, model_params.z_norm, model_params.z_tail);
     }
-
-    /* calculate proprotion limit and CI for each category of each column */
-    calculate_lowerlim_proportion(&model_params.prop_small[0], &model_outputs.prop_categ[0], &model_outputs.start_ix_cat_counts[0],
-                                  &input_data.cat_counts[0], input_data.ncols_categ, input_data.nrows, model_params.z_norm, model_params.z_tail);
-    calculate_lowerlim_proportion(&model_params.prop_small[0], &model_outputs.prop_categ[0], &model_outputs.start_ix_cat_counts[input_data.ncols_categ],
-                                  &input_data.cat_counts[0], input_data.ncols_ord,  input_data.nrows, model_params.z_norm, model_params.z_tail);
 
     /* for numerical columns, check if they have NAs or if total variance is  too small */
     check_missing_no_variance(input_data.numeric_data, input_data.ncols_numeric, input_data.nrows,
