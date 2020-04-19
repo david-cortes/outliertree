@@ -2,7 +2,7 @@ global-include *.pyx
 global-include *.pxd 
 global-include *.cpp
 global-include *.hpp
-exclude outliertree/_outlier_cpp_interface.cpp
+exclude outliertree/outlier_cpp_interface.cpp
 exclude src/RcppExports.cpp
 exclude src/Rwrapper.cpp
 exclude src/Makevars
@@ -10,6 +10,7 @@ include pyproject.toml
 exclude DESCRIPTION
 exclude NAMESPACE
 exclude README.md
+exclude .Rbuildignore
 exclude .gitattributes
 global-exclude *.so
 global-exclude *.o
@@ -17,8 +18,13 @@ global-exclude *.a
 global-exclude *.exe
 global-exclude *.dll
 global-exclude *.dynlib
+global-exclude *.html
+global-exclude *.Rmd
+global-exclude *.Rd
+global-exclude *.ipynb
 prune gritbot_original
 prune man
 prune R
 prune data
 prune docs
+prune example
