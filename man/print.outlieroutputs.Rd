@@ -4,8 +4,7 @@
 \alias{print.outlieroutputs}
 \title{Print outliers in human-readable format}
 \usage{
-\method{print}{outlieroutputs}(x, outliers_print = 15,
-  only_these_rows = NULL, ...)
+\method{print}{outlieroutputs}(x, outliers_print = 15, only_these_rows = NULL, ...)
 }
 \arguments{
 \item{x}{Outliers as returned by predict method on an object from `outlier.tree`.}

@@ -104,7 +104,7 @@ cdef extern from "outlier_tree.hpp":
                                int    *categorical_data, size_t ncols_categ,   int *ncat,
                                int    *ordinal_data,     size_t ncols_ord,     int *ncat_ord,
                                size_t nrows, char *cols_ignore, int nthreads,
-                               bool_t categ_as_bin, bool_t ord_as_bin, bool_t cat_bruteforce_subset, bool_t categ_from_maj,
+                               bool_t categ_as_bin, bool_t ord_as_bin, bool_t cat_bruteforce_subset, bool_t categ_from_maj, bool_t take_mid,
                                size_t max_conditions, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
                                double min_gain, bool_t gain_as_pct, bool_t follow_all, double z_norm, double z_outlier)
 
@@ -163,7 +163,7 @@ cdef class OutlierCppObject:
                   size_t ncols_true_numeric = 0, size_t ncols_true_ts = 0, size_t ncols_true_cat = 0, size_t ncols_true_bool = 0,
                   colnames_num = [], colnames_cat = [], colnames_ord = [], levs_cat = [], levs_ord = [], ts_min = None,
                   bool_t return_outliers = 1, int nthreads = 1, bool_t categ_as_bin = 1, bool_t ord_as_bin = 1,
-                  bool_t cat_bruteforce_subset = 0, bool_t categ_from_maj = 0, size_t max_conditions = 4,
+                  bool_t cat_bruteforce_subset = 0, bool_t categ_from_maj = 0, bool_t take_mid = 1, size_t max_conditions = 4,
                   double max_perc_outliers = 0.01, size_t min_size_numeric = 25, size_t min_size_categ = 75, double min_gain = 0.001,
                   bool_t follow_all = 0, bool_t gain_as_pct = 1, double z_norm = 2.67, double z_outlier = 8.0,
                   out_df = None):
@@ -203,7 +203,7 @@ cdef class OutlierCppObject:
                                                 ptr_arr_cat, ncol_cat, ptr_arr_ncat,
                                                 ptr_arr_ord, ncol_ord, ptr_arr_ncat_ord,
                                                 nrows, ptr_cols_ignore, nthreads,
-                                                categ_as_bin, ord_as_bin, cat_bruteforce_subset, categ_from_maj,
+                                                categ_as_bin, ord_as_bin, cat_bruteforce_subset, categ_from_maj, take_mid,
                                                 max_conditions, max_perc_outliers, min_size_numeric, min_size_categ,
                                                 min_gain, gain_as_pct, follow_all, z_norm, z_outlier
                                             )

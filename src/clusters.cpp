@@ -167,7 +167,7 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
 
     /* look for a large gap in the z-scores */
     if (has_low_values) {
-        for (size_t row = st; row < tail_size; row++) {
+        for (size_t row = st; row < st + tail_size; row++) {
 
             if (( z_score(x[ix_arr[row + 1]], mean, sd) - z_score(x[ix_arr[row]], mean, sd) ) >= min_gap) {
                 st_normals = row + 1;

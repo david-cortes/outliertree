@@ -4,12 +4,25 @@
 \alias{outlier.tree}
 \title{Outlier Tree}
 \usage{
-outlier.tree(df, max_depth = 4, min_gain = 0.01, z_norm = 2.67,
-  z_outlier = 8, pct_outliers = 0.01, min_size_numeric = 25,
-  min_size_categ = 50, categ_split = "binarize",
-  categ_outliers = "tail", cols_ignore = NULL, follow_all = FALSE,
-  gain_as_pct = TRUE, save_outliers = FALSE, outliers_print = 10,
-  nthreads = parallel::detectCores())
+outlier.tree(
+  df,
+  max_depth = 4,
+  min_gain = 0.01,
+  z_norm = 2.67,
+  z_outlier = 8,
+  pct_outliers = 0.01,
+  min_size_numeric = 25,
+  min_size_categ = 50,
+  categ_split = "binarize",
+  categ_outliers = "tail",
+  numeric_split = "raw",
+  cols_ignore = NULL,
+  follow_all = FALSE,
+  gain_as_pct = TRUE,
+  save_outliers = FALSE,
+  outliers_print = 10,
+  nthreads = parallel::detectCores()
+)
 }
 \arguments{
 \item{df}{Data Frame with normal data that might contain some outliers. See details for allowed column types.}
@@ -20,7 +33,7 @@ there independently of the values in other columns).}
 
 \item{min_gain}{Minimum gain that a split has to produce in order to consider it (both in terms of looking
 for outliers in each branch, and in considering whether to continue branching from them). Note that default
-value for GritBot is 1e-6, with `gain_as_pct` = `FALSE`. Recommended to pass higher values (e.g. 1e-1) when using
+value for GritBot is 1e-6, with `gain_as_pct` = `FALSE`, but it's recommended to pass higher values (e.g. 1e-1) when using
 `gain_as_pct` = `FALSE`.}
 
 \item{z_norm}{Maximum Z-value (from standard normal distribution) that can be considered as a normal
@@ -64,6 +77,18 @@ this number of observations.}
   Such criteria  tends to miss many interesting outliers and will only be able to flag outliers in
   large sample sizes. This is the approach used by GritBot.
 }}
+
+\item{numeric_split}{How to determine the split point in numeric variables. Options are:
+\itemize{
+  \item `"mid"` : Will calculate the midpoint between the largest observation that goes to the '<=' branch and the
+  smallest observation that goes to the '>' branch.
+  \item `"raw"` : Will set the split point as the value of the largest observation that goes to the '<=' branch.
+}
+This doesn't affect how outliers are determined in the training data passed in `df`, but it does
+affect the way in which they are presented and the way in which new outliers are detected when
+using `predict`. `"mid"` is recommended for continuous-valued variables, while `"raw"` will
+provide more readable explanations for counts data at the expense of perhaps slightly worse
+generalizability to unseen data.}
 
 \item{cols_ignore}{Vector containing columns which will not be split, but will be evaluated for usage
 in splitting other columns. Can pass either a logical (boolean) vector with the same number of columns

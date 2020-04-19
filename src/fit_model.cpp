@@ -130,7 +130,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                          int    *restrict categorical_data, size_t ncols_categ,   int *restrict ncat,
                          int    *restrict ordinal_data,     size_t ncols_ord,     int *restrict ncat_ord,
                          size_t nrows, char *restrict cols_ignore, int nthreads,
-                         bool   categ_as_bin, bool ord_as_bin, bool cat_bruteforce_subset, bool categ_from_maj,
+                         bool   categ_as_bin, bool ord_as_bin, bool cat_bruteforce_subset, bool categ_from_maj, bool take_mid,
                          size_t max_depth, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
                          double min_gain, bool gain_as_pct, bool follow_all, double z_norm, double z_outlier)
 {
@@ -138,7 +138,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     /* put parameters and data into structs to avoid passing too many function arguments each time */
     double z_tail = z_outlier - z_norm;
     ModelParams model_params = {
-                                categ_as_bin, ord_as_bin, cat_bruteforce_subset, categ_from_maj,
+                                categ_as_bin, ord_as_bin, cat_bruteforce_subset, categ_from_maj, take_mid,
                                 max_depth, max_perc_outliers, min_size_numeric, min_size_categ,
                                 min_gain, gain_as_pct, follow_all, z_norm, z_outlier, z_tail,
                                 std::vector<long double>()
@@ -561,7 +561,7 @@ void recursive_split_numeric(Workspace &workspace,
         if (input_data.skip_col[col]) continue;
         split_numericx_numericy(&workspace.ix_arr[0], workspace.st, workspace.end, input_data.numeric_data + col * input_data.nrows,
                                 workspace.target_numeric_col, workspace.sd_y, (bool)(input_data.has_NA[col]), model_params.min_size_numeric,
-                                &workspace.buffer_sd[0], &(workspace.this_gain), &(workspace.this_split_point),
+                                model_params.take_mid, &workspace.buffer_sd[0], &(workspace.this_gain), &(workspace.this_split_point),
                                 &(workspace.this_split_ix), &(workspace.this_split_NA));
         if (model_params.gain_as_pct) workspace.this_gain /= workspace.sd_y;
 
@@ -1187,7 +1187,7 @@ void recursive_split_categ(Workspace &workspace,
         split_numericx_categy(&workspace.ix_arr[0], workspace.st, workspace.end, input_data.numeric_data + col * input_data.nrows,
                               workspace.untransf_target_col, workspace.ncat_this, workspace.base_info_orig,
                               &workspace.buffer_cat_cnt[0], (bool)(input_data.has_NA[col]), model_params.min_size_categ,
-                              &(workspace.this_gain), &(workspace.this_split_point),
+                              model_params.take_mid, &(workspace.this_gain), &(workspace.this_split_point),
                               &(workspace.this_split_ix), &(workspace.this_split_NA));
         if (model_params.gain_as_pct) workspace.this_gain /= workspace.base_info_orig;
 

@@ -6,7 +6,7 @@
 #' there independently of the values in other columns).
 #' @param min_gain Minimum gain that a split has to produce in order to consider it (both in terms of looking
 #' for outliers in each branch, and in considering whether to continue branching from them). Note that default
-#' value for GritBot is 1e-6, with `gain_as_pct` = `FALSE`. Recommended to pass higher values (e.g. 1e-1) when using
+#' value for GritBot is 1e-6, with `gain_as_pct` = `FALSE`, but it's recommended to pass higher values (e.g. 1e-1) when using
 #' `gain_as_pct` = `FALSE`.
 #' @param z_norm Maximum Z-value (from standard normal distribution) that can be considered as a normal
 #' observation. Note that simply having values above this will not automatically flag observations as outliers,
@@ -43,6 +43,17 @@
 #'   Such criteria  tends to miss many interesting outliers and will only be able to flag outliers in
 #'   large sample sizes. This is the approach used by GritBot.
 #' }
+#' @param numeric_split How to determine the split point in numeric variables. Options are:
+#' \itemize{
+#'   \item `"mid"` : Will calculate the midpoint between the largest observation that goes to the '<=' branch and the
+#'   smallest observation that goes to the '>' branch.
+#'   \item `"raw"` : Will set the split point as the value of the largest observation that goes to the '<=' branch.
+#' }
+#' This doesn't affect how outliers are determined in the training data passed in `df`, but it does
+#' affect the way in which they are presented and the way in which new outliers are detected when
+#' using `predict`. `"mid"` is recommended for continuous-valued variables, while `"raw"` will
+#' provide more readable explanations for counts data at the expense of perhaps slightly worse
+#' generalizability to unseen data.
 #' @param cols_ignore Vector containing columns which will not be split, but will be evaluated for usage
 #' in splitting other columns. Can pass either a logical (boolean) vector with the same number of columns
 #' as `df`, or a character vector of column names (must match with those of `df`).
@@ -120,8 +131,8 @@
 #' @export
 outlier.tree <- function(df, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_outlier = 8.0,
                          pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 50,
-                         categ_split = "binarize", categ_outliers = "tail", cols_ignore = NULL,
-                         follow_all = FALSE, gain_as_pct = TRUE,
+                         categ_split = "binarize", categ_outliers = "tail", numeric_split = "raw",
+                         cols_ignore = NULL, follow_all = FALSE, gain_as_pct = TRUE,
                          save_outliers = FALSE, outliers_print = 10,
                          nthreads = parallel::detectCores())
 {
@@ -133,6 +144,10 @@ outlier.tree <- function(df, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_ou
     allowed_co <- c("tail", "majority")
     if (NROW(categ_outliers) != 1 || !(categ_outliers %in% allowed_co)) {
         stop(paste0("'categ_outliers' must be one of ", paste(allowed_co, collapse = ", ")))
+    }
+    allowed_ns <- c("mid", "raw")
+    if (NROW(numeric_split) != 1 || !(numeric_split %in% allowed_ns)) {
+        stop(paste0("'numeric_split' must be one of ", paste(allowed_ns, collapse = ", ")))
     }
     if (max_depth < 0) { stop("'max_depth' must be >= 0.") }
     if (!("numeric" %in% class(min_gain)))     { stop("'min_gain' must be a decimal number.")     }
@@ -161,6 +176,7 @@ outlier.tree <- function(df, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_ou
     min_size_categ   <- as.integer(min_size_categ)
     categ_split      <- categ_split
     categ_outliers   <- categ_outliers
+    numeric_split    <- numeric_split
     follow_all  <- as.logical(follow_all)
     gain_as_pct <- as.logical(gain_as_pct)
 
@@ -171,7 +187,7 @@ outlier.tree <- function(df, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_ou
                                                model_data$arr_ord, model_data$ncol_ord, model_data$ncat_ord,
                                                model_data$nrow, model_data$cols_ign, nthreads,
                                                categ_split == "binarize", categ_split == "binarize",
-                                               categ_split == "bruteforce", categ_outliers == "majority",
+                                               categ_split == "bruteforce", categ_outliers == "majority", numeric_split == "mid",
                                                max_depth, pct_outliers, min_size_numeric, min_size_categ,
                                                min_gain, follow_all, gain_as_pct, z_norm, z_outlier,
                                                as.logical(save_outliers | outliers_print),

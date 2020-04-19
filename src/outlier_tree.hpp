@@ -438,7 +438,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                          int    *restrict categorical_data, size_t ncols_categ,   int *restrict ncat,
                          int    *restrict ordinal_data,     size_t ncols_ord,     int *restrict ncat_ord,
                          size_t nrows, char *restrict cols_ignore = NULL, int nthreads = 1,
-                         bool categ_as_bin = true, bool ord_as_bin = true, bool cat_bruteforce_subset = false, bool categ_from_maj = false,
+                         bool categ_as_bin = true, bool ord_as_bin = true, bool cat_bruteforce_subset = false, bool categ_from_maj = false, bool take_mid = true,
                          size_t max_depth = 3, double max_perc_outliers = 0.01, size_t min_size_numeric = 25, size_t min_size_categ = 50,
                          double min_gain = 1e-2, bool gain_as_pct = false, bool follow_all = false, double z_norm = 2.67, double z_outlier = 8.0);
 
@@ -515,6 +515,7 @@ typedef struct {
     bool    ord_as_bin;
     bool    cat_bruteforce_subset;
     bool    categ_from_maj;
+    bool    take_mid;
     size_t  max_depth;
     double  max_perc_outliers;
     size_t  min_size_numeric;
@@ -629,7 +630,7 @@ long double categ_gain(size_t *restrict categ_counts, size_t ncat, size_t *restr
 long double categ_gain_from_split(size_t *restrict ix_arr, int *restrict x, size_t st, size_t st_non_na, size_t split_ix, size_t end,
                                   size_t ncat, size_t *restrict buffer_cat_cnt, long double base_info);
 void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, double *restrict y,
-                             long double sd_y, bool has_na, size_t min_size, long double *restrict buffer_sd,
+                             long double sd_y, bool has_na, size_t min_size, bool take_mid, long double *restrict buffer_sd,
                              long double *restrict gain, double *restrict split_point, size_t *restrict split_left, size_t *restrict split_NA);
 void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, double *restrict y, long double sd_y, double ymean,
                            bool x_is_ordinal, size_t ncat_x, size_t *restrict buffer_cat_cnt, long double *restrict buffer_cat_sum,
@@ -637,7 +638,7 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
                            bool has_na, size_t min_size, long double *gain, char *restrict split_subset, int *restrict split_point);
 void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, int *restrict y,
                            size_t ncat_y, long double base_info, size_t *restrict buffer_cat_cnt,
-                           bool has_na, size_t min_size, long double *restrict gain, double *restrict split_point,
+                           bool has_na, size_t min_size, bool take_mid, long double *restrict gain, double *restrict split_point,
                            size_t *restrict split_left, size_t *restrict split_NA);
 void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_y, size_t ncat_x, long double base_info,

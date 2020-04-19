@@ -245,7 +245,7 @@ long double categ_gain_from_split(size_t *restrict ix_arr, int *restrict x, size
 *        Index at which the NA data is separated from the other branches
 */
 void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, double *restrict y,
-                             long double sd_y, bool has_na, size_t min_size, long double *restrict buffer_sd,
+                             long double sd_y, bool has_na, size_t min_size, bool take_mid, long double *restrict buffer_sd,
                              long double *restrict gain, double *restrict split_point, size_t *restrict split_left, size_t *restrict split_NA)
 {
 
@@ -315,7 +315,7 @@ void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, dou
         this_gain = numeric_gain(sd_y, info_left, buffer_sd[i + 1], info_NA, cnt_dbl);
         if (this_gain > *gain) {
             *gain = this_gain;
-            *split_point = avg_between(x[ix_arr[i]], x[ix_arr[i + 1]]);
+            *split_point = take_mid? (avg_between(x[ix_arr[i]], x[ix_arr[i + 1]])) : (x[ix_arr[i]]);
             *split_left = i;
         }
     }
@@ -533,7 +533,7 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
 */
 void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, int *restrict y,
                            size_t ncat_y, long double base_info, size_t *restrict buffer_cat_cnt,
-                           bool has_na, size_t min_size, long double *restrict gain, double *restrict split_point,
+                           bool has_na, size_t min_size, bool take_mid, long double *restrict gain, double *restrict split_point,
                            size_t *restrict split_left, size_t *restrict split_NA)
 {
     *gain = -HUGE_VAL;
@@ -592,7 +592,7 @@ void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, doubl
         this_gain = categ_gain(split_info, base_info);
         if (this_gain > *gain) {
             *gain = this_gain;
-            *split_point = avg_between(x[ix_arr[i]], x[ix_arr[i + 1]]);
+            *split_point = take_mid? (avg_between(x[ix_arr[i]], x[ix_arr[i + 1]])) : (x[ix_arr[i]]);
             *split_left = i;
         }
     }

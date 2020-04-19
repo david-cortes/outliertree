@@ -94,6 +94,8 @@ summary(new_outliers)
 ```
 (see documentation for more examples)
 
+Example [RMarkdown](http://htmlpreview.github.io/?https://github.com/david-cortes/outliertree/blob/master/example/titanic_outliertree_r.html) using the Titanic dataset.
+
 
 * For Python:
 ```python
@@ -126,6 +128,8 @@ new_outliers = outliers_model.predict(df_test)
 ### print outliers in readable format
 outliers_model.print_outliers(new_outliers)
 ```
+
+Example [IPython notebook](http://nbviewer.ipython.org/github/david-cortes/outliertree/blob/master/example/titanic_outliertree_python.ipynb) using the Titanic dataset.
 
 * For C++: see functions `fit_outliers_models` and `find_new_outliers` in header `outlier_tree.hpp`.
 

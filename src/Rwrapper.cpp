@@ -54,7 +54,7 @@ double* set_R_nan_as_C_nan(double *restrict x_R, std::vector<double> &x_C, size_
     x_C.assign(x_R, x_R + n);
     #pragma omp parallel for schedule(static) num_threads(nthreads) shared(x_R, x_C, n)
     for (size_t_for i = 0; i < n; i++)
-        if (isnan(x_R[i]))
+        if (isnan(x_R[i]) || Rcpp::NumericVector::is_na(x_R[i]) || Rcpp::traits::is_nan<REALSXP>(x_R[i]))
             x_C[i] = NAN;
     return x_C.data();
 }
@@ -1087,7 +1087,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
                            Rcpp::IntegerVector arr_cat, size_t ncols_categ,   Rcpp::IntegerVector ncat,
                            Rcpp::IntegerVector arr_ord, size_t ncols_ord,     Rcpp::IntegerVector ncat_ord,
                            size_t nrows, Rcpp::LogicalVector cols_ignore_r, int nthreads,
-                           bool categ_as_bin, bool ord_as_bin, bool cat_bruteforce_subset, bool categ_from_maj,
+                           bool categ_as_bin, bool ord_as_bin, bool cat_bruteforce_subset, bool categ_from_maj, bool take_mid,
                            size_t max_depth, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
                            double min_gain, bool follow_all, bool gain_as_pct, double z_norm, double z_outlier,
                            bool return_outliers,
@@ -1118,7 +1118,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
                                          &arr_cat[0], ncols_categ, &ncat[0],
                                          &arr_ord[0], ncols_ord,   &ncat_ord[0],
                                          nrows, cols_ignore_ptr, nthreads,
-                                         categ_as_bin, ord_as_bin, cat_bruteforce_subset, categ_from_maj,
+                                         categ_as_bin, ord_as_bin, cat_bruteforce_subset, categ_from_maj, take_mid,
                                          max_depth, max_perc_outliers, min_size_numeric, min_size_categ,
                                          min_gain, gain_as_pct, follow_all, z_norm, z_outlier);
 

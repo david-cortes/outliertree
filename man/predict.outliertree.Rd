@@ -4,8 +4,7 @@
 \alias{predict.outliertree}
 \title{Predict method for Outlier Tree}
 \usage{
-\method{predict}{outliertree}(object, newdata, outliers_print = 15,
-  return_outliers = TRUE, ...)
+\method{predict}{outliertree}(object, newdata, outliers_print = 15, return_outliers = TRUE, ...)
 }
 \arguments{
 \item{object}{An Outlier Tree object as returned by `outlier.tree`.}

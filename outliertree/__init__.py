@@ -32,7 +32,7 @@ class OutlierTree:
     min_gain : float
         Minimum gain that a split has to produce in order to consider it (both in terms of looking
         for outliers in each branch, and in considering whether to continue branching from them).
-        Note that default value for GritBot is 1e-6, with 'gain_as_pct' = 'False'. Recommended to pass
+        Note that default value for GritBot is 1e-6, with 'gain_as_pct' = 'False', but it's recommended to pass
         higher values (e.g. 1e-1) when using 'gain_as_pct' = 'False'.
     z_norm : float
         Maximum Z-value (from standard normal distribution) that can be considered as a normal observation.
@@ -80,6 +80,20 @@ class OutlierTree:
             belong to the non-majority class, according to formula '(n-n_maj)/(n * p_prior) < 1/z_outlier^2'.
             Such criteria  tends to miss many interesting outliers and will only be able to flag outliers in
             large sample sizes. This is the approach used by GritBot.
+    numeric_split : str
+        How to determine the split point in numeric variables. Options are:
+
+        ``"mid"``:
+            Will calculate the midpoint between the largest observation that goes to the '<=' branch and the
+            smallest observation that goes to the '>' branch.
+        ``"raw"``:
+            Will set the split point as the value of the largest observation that goes to the '<=' branch.
+
+        This doesn't affect how outliers are determined in the training data passed to 'fit', but it does
+        affect the way in which they are presented and the way in which new outliers are detected when
+        using 'predict'. ``"mid"`` is recommended for continuous-valued variables, while ``"raw"`` will
+        provide more readable explanations for counts data at the expense of perhaps slightly worse
+        generalizability to unseen data.
     follow_all : bool
         Whether to continue branching from each split that meets the size and gain criteria. This will
         produce exponentially many more branches, and if depth is large, might take forever to finish.
@@ -128,7 +142,7 @@ class OutlierTree:
     """
     def __init__(self, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_outlier = 8.0, pct_outliers = 0.01,
                  min_size_numeric = 25, min_size_categ = 50, categ_split = "binarize", categ_outliers = "tail",
-                 follow_all = False, gain_as_pct = True, nthreads = -1):
+                 numeric_split = "raw", follow_all = False, gain_as_pct = True, nthreads = -1):
 
         ### validate inputs
         assert max_depth >= 0
@@ -148,6 +162,7 @@ class OutlierTree:
         assert min_size_categ >= 10
         assert categ_split in  ["binarize", "bruteforce", "separate"]
         assert categ_outliers in ["tail", "majority"]
+        assert numeric_split in ["mid", "raw"]
         assert isinstance(min_size_numeric, int)
         assert isinstance(min_size_categ, int)
         if nthreads is None:
@@ -167,6 +182,7 @@ class OutlierTree:
         self.min_size_categ    =  min_size_categ
         self.categ_split       =  categ_split
         self.categ_outliers    =  categ_outliers
+        self.numeric_split     =  numeric_split
         self.follow_all        =  bool(follow_all)
         self.gain_as_pct       =  bool(gain_as_pct)
         self.nthreads          =  nthreads
@@ -267,7 +283,7 @@ class OutlierTree:
         -------
         result_df or self : DataFrame(n_rows, 6) or obj
             Either a DataFrame with the information about potential outliers detected in the training data,
-            or a copy of this object if passing 'return_outliers' = 'False'. In the former, format is the
+            or this same object if passing 'return_outliers' = 'False'. In the former, format is the
             same as when calling '.predict'. See the documentation for '.predict' for more information about
             the output format.
         """
@@ -293,7 +309,7 @@ class OutlierTree:
                                                             self.nthreads,
                                                             self.categ_split == "binarize", self.categ_split == "binarize",
                                                             self.categ_split == "bruteforce", self.categ_outliers == "majority",
-                                                            self.max_depth, self.pct_outliers,
+                                                            self.numeric_split == "mid", self.max_depth, self.pct_outliers,
                                                             self.min_size_numeric, self.min_size_categ,
                                                             self.min_gain, self.follow_all, self.gain_as_pct,
                                                             self.z_norm, self.z_outlier,
@@ -361,6 +377,7 @@ class OutlierTree:
             columns, and a simple upper conficence bound for categorical and ordinal columns - but note that it will
             always prefer to assign a row to an outlier branch that does not follow any NA path, or failing that,
             to the one with the smallest depth) - lower scores indicate lower probabilities and thus more outlierness. \n
+            
             Information such as the conditions in the tree or the group statistics are returned as dictionaries,
             since they are not tabular format.
             The index of the output will be the same as that of the input.

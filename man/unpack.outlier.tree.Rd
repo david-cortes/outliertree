@@ -52,13 +52,13 @@ wrap_predict <- function(model, data) {
     return(pred)
 }
 temp <- wrap_predict(otree2, df)
-cat("pointer outside function is this: \\n")
+cat("pointer outside function is this: \n")
 print(otree2$obj_from_cpp$ptr_model) ### pointer to the C++ object
 
 ### now unpack the C++ object beforehand
 unpack.outlier.tree(otree2)
 print("after unpacking beforehand")
 temp <- wrap_predict(otree2, df)
-cat("pointer outside function is this: \\n")
+cat("pointer outside function is this: \n")
 print(otree2$obj_from_cpp$ptr_model)
 }

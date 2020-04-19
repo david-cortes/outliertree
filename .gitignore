@@ -21,6 +21,8 @@ build/
 *.dynlib
 *.dll
 *.pyd
+*.Rproj
+test.py
 
 outliertree/
 	*.so
