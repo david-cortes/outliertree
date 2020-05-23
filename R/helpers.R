@@ -100,14 +100,14 @@ split.types <- function(df, cols_ignore = NULL, nthreads = 1) {
         df[, outp$cols_cat]  <- as.data.frame(lapply(df[, outp$cols_cat, drop = FALSE], factor))
         outp$cat_levels      <- lapply(df[, outp$cols_cat, drop = FALSE], levels)
         df[, outp$cols_cat]  <- as.data.frame(lapply(df[, outp$cols_cat, drop = FALSE],
-                                                     function(x) ifelse(is.na(x), -1, as.integer(x) - 1))
+                                                     function(x) ifelse(is.na(x), -1L, as.integer(x) - 1L))
                                               )
     }
     
     if (NROW(outp$cols_ord)) {
         outp$ord_levels     <- lapply(df[, outp$cols_ord, drop = FALSE], levels)
         df[, outp$cols_ord] <- as.data.frame(lapply(df[, outp$cols_ord, drop = FALSE],
-                                                    function(x) ifelse(is.na(x), -1, as.integer(x) - 1))
+                                                    function(x) ifelse(is.na(x), -1L, as.integer(x) - 1L))
                                              )
         ### check that they have at least 3 levels
         min_ord_levs = min(sapply(outp$ord_levels, length))
@@ -116,7 +116,7 @@ split.types <- function(df, cols_ignore = NULL, nthreads = 1) {
     
     if (NROW(outp$cols_bool)) {
         df[, outp$cols_bool] <- as.data.frame(lapply(df[, outp$cols_bool, drop = FALSE],
-                                                     function(x) ifelse(is.na(x), -1, as.integer(x)))
+                                                     function(x) ifelse(is.na(x), -1L, as.integer(x)))
                                               )
     }
     
@@ -147,13 +147,13 @@ split.types <- function(df, cols_ignore = NULL, nthreads = 1) {
     if (NROW(outp$cols_cat) || NROW(outp$cols_bool)) {
         outp$arr_cat  <- as.integer(as.matrix(df[, c(outp$cols_cat, outp$cols_bool), drop = FALSE]))
         outp$ncol_cat <- length(c(outp$cols_cat, outp$cols_bool))
-        outp$ncat     <- sapply(df[, c(outp$cols_cat, outp$cols_bool), drop = FALSE], max) + 1
+        outp$ncat     <- sapply(df[, c(outp$cols_cat, outp$cols_bool), drop = FALSE], max) + 1L
     }
     
     if (NROW(outp$cols_ord)) {
         outp$arr_ord  <- as.integer(as.matrix(df[, outp$cols_ord, drop = FALSE]))
         outp$ncol_ord <- length(outp$cols_ord)
-        outp$ncat_ord <- sapply(df[, outp$cols_ord, drop = FALSE], max) + 1
+        outp$ncat_ord <- sapply(df[, outp$cols_ord, drop = FALSE], max) + 1L
     }
     
     if (!is.null(cols_ignore)) {
@@ -207,7 +207,7 @@ split.types.new <- function(df, model_data) {
             df[[model_data$cols_cat[cl]]] <- factor(df[[model_data$cols_cat[[cl]]]],
                                                     unname(unlist(model_data$cat_levels[[cl]])))
             df[[model_data$cols_cat[cl]]] <- ifelse(is.na(df[[model_data$cols_cat[[cl]]]]),
-                                                    -1, as.integer(df[[model_data$cols_cat[[cl]]]]) - 1)
+                                                    -1L, as.integer(df[[model_data$cols_cat[[cl]]]]) - 1L)
             if (any(new_levels)) {
                 df[[model_data$cols_cat[[cl]]]][new_levels] <- length(model_data$cat_levels[[cl]])
                 throw_new_lev_warn <- TRUE
@@ -216,7 +216,7 @@ split.types.new <- function(df, model_data) {
     }
     if (NROW(model_data$cols_bool)) {
         df[, model_data$cols_bool] <- as.data.frame(lapply(df[, model_data$cols_bool, drop = FALSE],
-                                                           function(x) ifelse(is.na(x), -1, as.integer(as.logical(x)))))
+                                                           function(x) ifelse(is.na(x), -1L, as.integer(as.logical(x)))))
     }
     if (NROW(model_data$cols_ord)) {
         for (cl in 1:NROW(model_data$cols_ord)) {
@@ -224,7 +224,7 @@ split.types.new <- function(df, model_data) {
                           !is.na(df[[model_data$cols_ord[[cl]]]])
             df[[model_data$cols_ord[[cl]]]] <- factor(df[[model_data$cols_ord[cl]]], unname(unlist(model_data$ord_levels[[cl]])))
             df[[model_data$cols_ord[[cl]]]] <- ifelse(is.na(df[[model_data$cols_ord[[cl]]]]),
-                                                      -1, as.integer(df[[model_data$cols_ord[[cl]]]]) - 1)
+                                                      -1L, as.integer(df[[model_data$cols_ord[[cl]]]]) - 1L)
             if (any(new_levels)) {
                 df[[model_data$cols_ord[[cl]]]][new_levels] <- length(model_data$ord_levels[[cl]])
                 throw_new_lev_warn <- TRUE
@@ -267,12 +267,12 @@ discard.input.data <- function(model_data) {
 
 check.nthreads <- function(nthreads) {
     if (is.null(nthreads)) {
-        nthreads <- 1
+        nthreads <- 1L
     } else if (is.na(nthreads)) {
-        nthreads <- 1
+        nthreads <- 1L
     } else if (nthreads == "auto") {
         nthreads <- parallel::detectCores()
-    } else if (nthreads < 1) {
+    } else if (nthreads < 1L) {
         nthreads <- parallel::detectCores()
     }
     return(as.integer(nthreads))
@@ -349,14 +349,14 @@ report.outliers <- function(lst, rnames, outliers_print) {
             if ("upper_thr" %in% names(group_statistics[[row_ix]])) {
                 if ("numeric" %in% class(group_statistics[[row_ix]]$upper_thr)) {
                     cat(sprintf("\tdistribution: %.3f%% <= %.3f - [mean: %.3f] - [sd: %.3f] - [norm. obs: %d]\n",
-                                group_statistics[[row_ix]]$pct_below * 100,
+                                group_statistics[[row_ix]]$pct_below * 100.,
                                 group_statistics[[row_ix]]$upper_thr,
                                 group_statistics[[row_ix]]$mean,
                                 group_statistics[[row_ix]]$sd,
                                 group_statistics[[row_ix]]$n_obs))
                 } else {
                     cat(sprintf("\tdistribution: %.3f%% <= [%s] - [mean: %s] - [norm. obs: %d]\n",
-                                group_statistics[[row_ix]]$pct_below * 100,
+                                group_statistics[[row_ix]]$pct_below * 100.,
                                 group_statistics[[row_ix]]$upper_thr,
                                 group_statistics[[row_ix]]$mean,
                                 group_statistics[[row_ix]]$n_obs))
@@ -364,14 +364,14 @@ report.outliers <- function(lst, rnames, outliers_print) {
             } else {
                 if ("numeric" %in% class(group_statistics[[row_ix]]$lower_thr)) {
                     cat(sprintf("\tdistribution: %.3f%% >= %.3f - [mean: %.3f] - [sd: %.3f] - [norm. obs: %d]\n",
-                                group_statistics[[row_ix]]$pct_above * 100,
+                                group_statistics[[row_ix]]$pct_above * 100.,
                                 group_statistics[[row_ix]]$lower_thr,
                                 group_statistics[[row_ix]]$mean,
                                 group_statistics[[row_ix]]$sd,
                                 group_statistics[[row_ix]]$n_obs))
                 } else {
                     cat(sprintf("\tdistribution: %.3f%% >= [%s] - [mean: %s] - [norm. obs: %d]\n",
-                                group_statistics[[row_ix]]$pct_above * 100,
+                                group_statistics[[row_ix]]$pct_above * 100.,
                                 group_statistics[[row_ix]]$lower_thr,
                                 group_statistics[[row_ix]]$mean,
                                 group_statistics[[row_ix]]$n_obs))
@@ -380,36 +380,36 @@ report.outliers <- function(lst, rnames, outliers_print) {
         } else if ("categs_common" %in% names(group_statistics[[row_ix]])) {
             if (NROW(group_statistics[[row_ix]]$categs_common) == 1) {
                 cat(sprintf("\tdistribution: %.3f%% = [%s]\n",
-                            group_statistics[[row_ix]]$pct_common * 100,
+                            group_statistics[[row_ix]]$pct_common * 100.,
                             group_statistics[[row_ix]]$categs_common))
             } else {
                 cat(sprintf("\tdistribution: %.3f%% in [%s]\n",
-                            group_statistics[[row_ix]]$pct_common * 100,
+                            group_statistics[[row_ix]]$pct_common * 100.,
                             paste(group_statistics[[row_ix]]$categs_common, collapse = ", ")))
             }
             if (NROW(conditions[[row_ix]])) {
                 cat(sprintf("\t( [norm. obs: %d] - [prior_prob: %.3f%%] - [next smallest: %.3f%%] )\n",
                             group_statistics[[row_ix]]$n_obs,
-                            group_statistics[[row_ix]]$prior_prob * 100,
-                            group_statistics[[row_ix]]$pct_next_most_comm * 100))
+                            group_statistics[[row_ix]]$prior_prob * 100.,
+                            group_statistics[[row_ix]]$pct_next_most_comm * 100.))
             } else {
                 cat(sprintf("\t( [norm. obs: %d] - [next smallest: %.3f%%] )\n",
                             group_statistics[[row_ix]]$n_obs,
-                            group_statistics[[row_ix]]$pct_next_most_comm * 100))
+                            group_statistics[[row_ix]]$pct_next_most_comm * 100.))
             }
         }  else if ("categ_maj" %in% names(group_statistics[[row_ix]])) {
             cat(sprintf("\tdistribution: %.3f%% = [%s]\n",
-                        group_statistics[[row_ix]]$pct_common * 100,
+                        group_statistics[[row_ix]]$pct_common * 100.,
                         group_statistics[[row_ix]]$categ_maj))
             cat(sprintf("\t( [norm. obs: %d] - [prior_prob: %.3f%%] )\n",
                         group_statistics[[row_ix]]$n_obs,
                         group_statistics[[row_ix]]$prior_prob * 100))
         } else {
             cat(sprintf("\tdistribution: %.3f%% different [norm. obs: %d]",
-                        group_statistics[[row_ix]]$pct_other * 100,
+                        group_statistics[[row_ix]]$pct_other * 100.,
                         group_statistics[[row_ix]]$n_obs))
             if (NROW(conditions[[row_ix]])) {
-                cat(sprintf(" - [prior_prob: %.3f%%]", group_statistics[[row_ix]]$prior_prob * 100))
+                cat(sprintf(" - [prior_prob: %.3f%%]", group_statistics[[row_ix]]$prior_prob * 100.))
             }
             cat("\n")
         }
