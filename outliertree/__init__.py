@@ -228,7 +228,7 @@ class OutlierTree:
         self._ts_min      = np.empty(0, dtype = int)
         self.flaggable_values = dict()
 
-    def fit(self, df, cols_ignore = None, outliers_print = 10, return_outliers = False):
+    def fit(self, df, cols_ignore = None, outliers_print = 10, min_decimals = 2, return_outliers = False):
         """
         Fit Outlier Tree model to data.
 
@@ -274,6 +274,10 @@ class OutlierTree:
             Maximum number of flagged outliers in the training data to print after fitting the model.
             Pass zero or None to avoid printing any.
             Outliers can be printed from resulting data frame afterwards through '.print_outliers'.
+        min_decimals : int
+            Minimum number of decimals to use when printing numeric values for the flagged
+            outliers. The number of decimals will be dynamically increased according to the relative magnitudes of the
+            values being reported. Ignored when passing ``max_outliers=0`` or ``max_outliers=None``.
         return_outliers : bool
             Whether to return a DataFrame with information about outliers flagged in the training data.
             If 'True', will return this information as a DataFrame. If 'False', will return this same
@@ -288,7 +292,7 @@ class OutlierTree:
             the output format.
         """
         ## TODO: this should have 'fit' / 'fit_transform' instead of these parameters
-        outliers_print = self._check_outliers_print(outliers_print)
+        outliers_print = self._check_outliers_print(outliers_print, min_decimals)
         self._check_valid_data(df)
         self._reset_object()
         arr_num, arr_cat, arr_ord = self._split_types(df)
@@ -325,7 +329,7 @@ class OutlierTree:
             out_df.index = df.index.copy()
         if outliers_print:
             if has_outl:
-                self.print_outliers(out_df, outliers_print)
+                self.print_outliers(out_df, outliers_print, min_decimals)
             else:
                 self._print_no_outliers()
 
@@ -335,7 +339,7 @@ class OutlierTree:
             return self
 
 
-    def predict(self, df, outliers_print = None):
+    def predict(self, df, outliers_print = None, min_decimals = 2):
         """
         Detect outliers on new data
 
@@ -362,6 +366,10 @@ class OutlierTree:
             Maximum number of outliers to print, if any are found.
             Pass zero or None to avoid printing any.
             Outliers can be printed from resulting data frame afterwards through '.print_outliers'.
+        min_decimals : int
+            Minimum number of decimals to use when printing numeric values for the flagged
+            outliers. The number of decimals will be dynamically increased according to the relative magnitudes of the
+            values being reported. Ignored when passing ``max_outliers=0`` or ``max_outliers=None``.
 
         Returns
         -------
@@ -386,7 +394,7 @@ class OutlierTree:
         ## TODO: add a 'transform' method that would do the same thing as this
         if not self.is_fitted_:
             raise ValueError("Can only call '.predict' after the model has already been fit to some data.")
-        outliers_print = self._check_outliers_print(outliers_print)
+        outliers_print = self._check_outliers_print(outliers_print, min_decimals)
         if df.__class__.__name__ == "Series":
             df = df.to_frame().T
         self._check_valid_data(df)
@@ -408,18 +416,19 @@ class OutlierTree:
         out_df.index = df.index.copy()
         if outliers_print:
             if has_outl:
-                self.print_outliers(out_df, outliers_print)
+                self.print_outliers(out_df, outliers_print, min_decimals)
             else:
                 self._print_no_outliers()
 
         return out_df
 
-    def _check_outliers_print(self, outliers_print):
+    def _check_outliers_print(self, outliers_print, min_decimals):
         if outliers_print is not None:
             assert outliers_print >= 0
             assert isinstance(outliers_print, int)
             if outliers_print == 0:
                 outliers_print = None
+        assert min_decimals >= 0
         return outliers_print
 
     def _check_valid_data(self, df):
@@ -694,7 +703,7 @@ class OutlierTree:
     def _generate_empty_out_df(self, nrows):
         empty_dict_col = [dict() for row in range(nrows)]
         return pd.DataFrame({
-            "suspicous_value"  :  deepcopy(empty_dict_col),
+            "suspicious_value"  :  deepcopy(empty_dict_col),
             "group_statistics" :  deepcopy(empty_dict_col),
             "conditions"       :  [list() for row in range(nrows)],
             "tree_depth"       :  np.nan,
@@ -737,7 +746,7 @@ class OutlierTree:
     def _print_no_outliers(self):
         print("No outliers found in input data.\n")
 
-    def print_outliers(self, df_outliers, max_outliers = 10):
+    def print_outliers(self, df_outliers, max_outliers = 10, min_decimals = 2):
         """
         Print outliers in readable format
 
@@ -752,11 +761,20 @@ class OutlierTree:
             DataFrame with outliers information as output by 'fit' or 'predict'.
         max_outliers : int
             Maximum number of outliers to print.
+        min_decimals : int
+            Minimum number of decimals to use when printing numeric values for the flagged
+            outliers. The number of decimals will be dynamically increased according to the relative magnitudes of the
+            values being reported. Ignored when passing ``max_outliers=0``.
+
+        Returns
+        -------
+        None : None
+            No return value.
         """
         if df_outliers.__class__.__name__ == "Series":
             df_outliers = df_outliers.to_frame().T
         self._check_valid_outliers_df(df_outliers)
-        max_outliers = self._check_outliers_print(max_outliers)
+        max_outliers = self._check_outliers_print(max_outliers, min_decimals)
         if not max_outliers:
             raise ValueError("Invalid value passed for 'max_outliers'.")
 
@@ -779,13 +797,17 @@ class OutlierTree:
         print("Reporting top %d outliers [out of %d found]\n\n" % (df_outliers.shape[0], tot_outliers))
         for row in df_outliers.itertuples():
 
+            min_dec_this = min_decimals
+
             ### first suspicious value
             ln_value = "row [%s]" % row.Index
-            ln_value += " - suspicious column: [%s] - " % row.suspicous_value["column"]
-            if np.in1d(row.suspicous_value["column"], self.cols_num_).max():
-                ln_value += "suspicious value: [%.3f]" % row.suspicous_value["value"]
+            ln_value += " - suspicious column: [%s] - " % row.suspicious_value["column"]
+            if np.in1d(row.suspicious_value["column"], self.cols_num_).max():
+                if "decimals" in row.suspicious_value:
+                    min_dec_this = max(min_dec_this, row.suspicious_value["decimals"])
+                ln_value += ("suspicious value: [%%.%df]" % min_dec_this) % row.suspicious_value["value"]
             else:
-                ln_value += "suspicious value: [%s]" % str(row.suspicous_value["value"])
+                ln_value += "suspicious value: [%s]" % str(row.suspicious_value["value"])
             print(ln_value)
 
             ### then group statistics
@@ -793,24 +815,27 @@ class OutlierTree:
             if "mean" in row.group_statistics:
                 ## numeric
                 if "upper_thr" in row.group_statistics:
-                    if np.in1d(row.suspicous_value["column"], self.cols_num_).max():
-                        ln_group += "\tdistribution: %.3f%% <= %.3f" % (row.group_statistics["pct_below"] * 100,
-                                                                        row.group_statistics["upper_thr"])
+                    if np.in1d(row.suspicious_value["column"], self.cols_num_).max():
+                        ln_group += (("\tdistribution: %%.%df%%%% <= %%.%df" % (3, min_dec_this))
+                                                                     % (row.group_statistics["pct_below"] * 100,
+                                                                        row.group_statistics["upper_thr"]))
                     else:
                         ln_group += "\tdistribution: %.3f%% <= [%s]" % (row.group_statistics["pct_below"] * 100,
                                                                         row.group_statistics["upper_thr"])
                 else:
-                    if np.in1d(row.suspicous_value["column"], self.cols_num_).max():
-                        ln_group += "\tdistribution: %.3f%% >= %.3f" % (row.group_statistics["pct_above"] * 100,
-                                                                        row.group_statistics["lower_thr"])
+                    if np.in1d(row.suspicious_value["column"], self.cols_num_).max():
+                        ln_group += (("\tdistribution: %%.%df%%%% >= %%.%df" % (3, min_dec_this))
+                                                                     % (row.group_statistics["pct_above"] * 100,
+                                                                        row.group_statistics["lower_thr"]))
                     else:
                         ln_group += "\tdistribution: %.3f%% >= [%s]" % (row.group_statistics["pct_above"] * 100,
                                                                         row.group_statistics["lower_thr"])
                 
-                if np.in1d(row.suspicous_value["column"], self.cols_num_).max():
-                    ln_group += " - [mean: %.3f] - [sd: %.3f] - [norm. obs: %d]" % (row.group_statistics["mean"],
+                if np.in1d(row.suspicious_value["column"], self.cols_num_).max():
+                    ln_group += ((" - [mean: %%.%df] - [sd: %%.%df] - [norm. obs: %%d]" % (min_dec_this, min_dec_this))
+                                                                                 % (row.group_statistics["mean"],
                                                                                     row.group_statistics["sd"],
-                                                                                    row.group_statistics["n_obs"])
+                                                                                    row.group_statistics["n_obs"]))
                 else:
                     ln_group += " - [mean: %s] - [norm. obs: %d]" % (row.group_statistics["mean"],
                                                                      row.group_statistics["n_obs"])
@@ -850,22 +875,27 @@ class OutlierTree:
                 conditions = self._simplify_condition(row.conditions)
                 ln_cond = "\tgiven:"
                 for cond in conditions:
+
+                    min_dec_this = max(min_decimals, cond["decimals"] if ("decimals" in cond) else 0)
+
                     if cond["comparison"] == "is NA":
                         ln_cond += "\n\t\t[%s] is NA" % cond["column"]
                     elif cond["comparison"] == "<=":
                         if np.in1d(cond["column"], self.cols_num_).max():
-                            ln_cond += "\n\t\t[%s] <= [%.3f] (value: %.3f)" % (cond["column"],
+                            ln_cond += (("\n\t\t[%%s] <= [%%.%df] (value: %%.%df)" % (min_dec_this, min_dec_this))
+                                                                            % (cond["column"],
                                                                                cond["value_comp"],
-                                                                               cond["value_this"])
+                                                                               cond["value_this"]))
                         else:
                             ln_cond += "\n\t\t[%s] <= [%s] (value: %s)" % (cond["column"],
                                                                            cond["value_comp"],
                                                                            cond["value_this"])
                     elif cond["comparison"] == ">":
                         if np.in1d(cond["column"], self.cols_num_).max():
-                            ln_cond += "\n\t\t[%s] > [%.3f] (value: %.3f)" % (cond["column"],
+                            ln_cond += (("\n\t\t[%%s] > [%%.%df] (value: %%.%df)" % (min_dec_this, min_dec_this))
+                                                                           % (cond["column"],
                                                                               cond["value_comp"],
-                                                                              cond["value_this"])
+                                                                              cond["value_this"]))
                         else:
                             ln_cond += "\n\t\t[%s] > [%s] (value: %s)" % (cond["column"],
                                                                           cond["value_comp"],
@@ -873,10 +903,11 @@ class OutlierTree:
                     
                     elif cond["comparison"] == "between":
                         if np.in1d(cond["column"], self.cols_num_).max():
-                            ln_cond += "\n\t\t[%s] between (%.3f, %.3f] (value: %.3f)" % (cond["column"],
+                            ln_cond += (("\n\t\t[%%s] between (%%.%df, %%.%df] (value: %%.%df)" % (min_dec_this, min_dec_this, min_dec_this))
+                                                                                       % (cond["column"],
                                                                                           cond["value_comp"][0],
                                                                                           cond["value_comp"][1],
-                                                                                          cond["value_this"])
+                                                                                          cond["value_this"]))
                         else:
                             ln_cond += "\n\t\t[%s] between (%s, %s] (value: %s)" % (cond["column"],
                                                                                     str(cond["value_comp"][0]),
@@ -903,7 +934,7 @@ class OutlierTree:
 
     def _check_valid_outliers_df(self, df_outliers):
         required_cols = np.array([
-                                    "suspicous_value", "group_statistics",
+                                    "suspicious_value", "group_statistics",
                                     "conditions",      "tree_depth",
                                     "uses_NA_branch",  "outlier_score"
                                 ])
@@ -930,6 +961,8 @@ class OutlierTree:
                 val_eq      = None
                 val_neq     = None
                 smallest_in = None
+                highest_dec = 0
+
                 for cn in condition:
                     if cn["column"] != cl:
                         continue
@@ -942,12 +975,16 @@ class OutlierTree:
                             lowest_le = cn["value_comp"]
                         if cn["value_comp"] < lowest_le:
                             lowest_le = cn["value_comp"]
+                        if "decimals" in cn:
+                            highest_dec = max(highest_dec, cn["decimals"])
                     elif cn["comparison"] == ">":
                         n_gt += 1
                         if highest_gt is None:
                             highest_gt = cn["value_comp"]
                         if cn["value_comp"] > highest_gt:
                             highest_gt = cn["value_comp"]
+                        if "decimals" in cn:
+                            highest_dec = max(highest_dec, cn["decimals"])
                     elif cn["comparison"] == "in":
                         n_in += 1
                         if smallest_in is None:
@@ -961,11 +998,14 @@ class OutlierTree:
                         n_neq += 1
                         val_neq = cn["value_comp"]
                 if (n_le > 0) and (n_gt == 0):
-                    replacing_cond.append({"column" : cl, "comparison" : "<=", "value_comp" : lowest_le, "value_this" : val_this})
+                    replacing_cond.append({"column" : cl, "comparison" : "<=", "value_comp" : lowest_le,
+                                           "value_this" : val_this, "decimals" : highest_dec})
                 elif (n_gt > 0) and (n_le == 0):
-                    replacing_cond.append({"column" : cl, "comparison" : ">", "value_comp" : highest_gt, "value_this" : val_this})
+                    replacing_cond.append({"column" : cl, "comparison" : ">", "value_comp" : highest_gt,
+                                           "value_this" : val_this, "decimals" : highest_dec})
                 elif (n_le > 0) and (n_gt > 0):
-                    replacing_cond.append({"column" : cl, "comparison" : "between", "value_comp" : [highest_gt, lowest_le], "value_this" : val_this})
+                    replacing_cond.append({"column" : cl, "comparison" : "between", "value_comp" : [highest_gt, lowest_le],
+                                           "value_this" : val_this, "decimals" : highest_dec})
                 elif (n_in > 0) and (n_eq == 0) and (n_neq == 0):
                     replacing_cond.append({"column" : cl, "comparison" : "in", "value_comp" : smallest_in, "value_this" : val_this})
                 elif (n_in > 0) and (n_eq > 0):

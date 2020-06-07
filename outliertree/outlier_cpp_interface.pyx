@@ -84,11 +84,13 @@ cdef extern from "outlier_tree.hpp":
         vector[size_t] outlier_columns_final
         vector[size_t] outlier_trees_final
         vector[size_t] outlier_depth_final
+        vector[int] outlier_decimals_distr
         vector[size_t] start_ix_cat_counts
         vector[long double] prop_categ
         vector[ColTransf] col_transf
         vector[double] transf_offset
         vector[double] sd_div
+        vector[int]    min_decimals_col
         vector[int]    ncat
         vector[int]    ncat_ord
         size_t ncols_numeric
@@ -274,6 +276,7 @@ cdef class OutlierCppObject:
         ### TODO: parallelize this using joblib (cannot use cython prange as it has non-typed python code)
         cdef size_t row
         cdef size_t outl_col, outl_clust, outl_tree, curr_tree, parent_tree, cat_col_num
+        cdef int coldecim
         for row in range(self.model_outputs.outlier_scores_final.size()):
             if self.model_outputs.outlier_scores_final[row] < 1:
 
@@ -290,7 +293,11 @@ cdef class OutlierCppObject:
                 if outl_col < ncol_num:
                     colname = colnames_num[outl_col]
                     if outl_col < ncols_true_numeric:
-                        out_df.iat[row, 0] = {"column" : colnames_num[outl_col], "value" : arr_num[row, outl_col]}
+                        out_df.iat[row, 0] = {
+                                                "column" : colnames_num[outl_col],
+                                                "value" : arr_num[row, outl_col],
+                                                "decimals" : self.model_outputs.outlier_decimals_distr[row]
+                                            }
                     else:
                         out_df.iat[row, 0] = {
                                                 "column" : colnames_num[outl_col],
@@ -431,9 +438,9 @@ cdef class OutlierCppObject:
                 ### info about the conditions - first from the cluster (final branch in the tree, need to follow it back to the root afterwards)
                 if self.model_outputs.all_clusters[outl_col][outl_clust].column_type != NoType:
                     if self.model_outputs.all_clusters[outl_col][outl_clust].split_type == IsNa:
-                        colcond = "is NA"
-                        condval = np.nan
-                        colval  = np.nan
+                        colcond  = "is NA"
+                        condval  = np.nan
+                        colval   = np.nan
 
                     elif self.model_outputs.all_clusters[outl_col][outl_clust].split_type == LessOrEqual:
                         if self.model_outputs.all_clusters[outl_col][outl_clust].column_type == Numeric:
@@ -515,11 +522,14 @@ cdef class OutlierCppObject:
                             
 
                     ### add the column name and actual value for the row
+                    coldecim = 0
                     if self.model_outputs.all_clusters[outl_col][outl_clust].column_type == Numeric:
                         cond_col = colnames_num[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
                         colval   = arr_num[row, self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
                         if self.model_outputs.all_clusters[outl_col][outl_clust].col_num >= ncols_true_numeric:
                             colval = np.datetime64(np.int(colval - 1 + ts_min[self.model_outputs.all_clusters[outl_col][outl_clust].col_num - ncols_true_numeric]), "s")
+                        else:
+                            coldecim = self.model_outputs.min_decimals_col[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
                     elif self.model_outputs.all_clusters[outl_col][outl_clust].column_type == Categorical:
                         cond_col = colnames_cat[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]
                         if self.model_outputs.all_clusters[outl_col][outl_clust].col_num < ncols_true_cat:
@@ -532,7 +542,13 @@ cdef class OutlierCppObject:
                         colval   = levs_ord[self.model_outputs.all_clusters[outl_col][outl_clust].col_num]\
                                            [arr_ord[row, self.model_outputs.all_clusters[outl_col][outl_clust].col_num]]
 
-                    out_df.iat[row, 2].append({"column" : cond_col, "comparison" : colcond, "value_comp" : condval, "value_this" : colval})
+                    out_df.iat[row, 2].append({
+                                                "column"     : cond_col,
+                                                "comparison" : colcond,
+                                                "value_comp" : condval,
+                                                "value_this" : colval,
+                                                "decimals"   : coldecim
+                                            })
 
                 ### now add all the conditions from the tree branches that lead to the cluster
                 curr_tree = outl_tree
@@ -708,9 +724,12 @@ cdef class OutlierCppObject:
 
 
                     ### add column name
+                    coldecim = 0
                     if self.model_outputs.all_trees[outl_col][parent_tree].all_branches.size() == 0:
                         if self.model_outputs.all_trees[outl_col][parent_tree].column_type == Numeric:
                             cond_col = colnames_num[self.model_outputs.all_trees[outl_col][parent_tree].col_num]
+                            if self.model_outputs.all_trees[outl_col][parent_tree].col_num < ncols_true_numeric:
+                                coldecim = self.model_outputs.min_decimals_col[self.model_outputs.all_trees[outl_col][parent_tree].col_num]
                         elif self.model_outputs.all_trees[outl_col][parent_tree].column_type == Categorical:
                             cond_col = colnames_cat[self.model_outputs.all_trees[outl_col][parent_tree].col_num]
                         else:
@@ -718,12 +737,20 @@ cdef class OutlierCppObject:
                     else:
                         if self.model_outputs.all_trees[outl_col][curr_tree].column_type == Numeric:
                             cond_col = colnames_num[self.model_outputs.all_trees[outl_col][curr_tree].col_num]
+                            if self.model_outputs.all_trees[outl_col][curr_tree].col_num < ncols_true_numeric:
+                                coldecim = self.model_outputs.min_decimals_col[self.model_outputs.all_trees[outl_col][curr_tree].col_num]
                         elif self.model_outputs.all_trees[outl_col][curr_tree].column_type == Categorical:
                             cond_col = colnames_cat[self.model_outputs.all_trees[outl_col][curr_tree].col_num]
                         else:
                             cond_col = colnames_ord[self.model_outputs.all_trees[outl_col][curr_tree].col_num]
 
-                    out_df.iat[row, 2].append({"column" : cond_col, "comparison" : colcond, "value_comp" : condval, "value_this" : colval})
+                    out_df.iat[row, 2].append({
+                                                "column"     : cond_col,
+                                                "comparison" : colcond,
+                                                "value_comp" : condval,
+                                                "value_this" : colval,
+                                                "decimals"   : coldecim
+                                            })
                     curr_tree = parent_tree
 
         return out_df

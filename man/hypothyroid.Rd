@@ -4,7 +4,9 @@
 \name{hypothyroid}
 \alias{hypothyroid}
 \title{Data about thyroid hormones for anonymous patients}
-\format{An object of class \code{data.frame} with 2772 rows and 23 columns.}
+\format{
+An object of class \code{data.frame} with 2772 rows and 23 columns.
+}
 \source{
 \url{http://archive.ics.uci.edu/ml/datasets/thyroid+disease}
 }

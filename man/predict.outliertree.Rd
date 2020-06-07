@@ -4,7 +4,14 @@
 \alias{predict.outliertree}
 \title{Predict method for Outlier Tree}
 \usage{
-\method{predict}{outliertree}(object, newdata, outliers_print = 15, return_outliers = TRUE, ...)
+\method{predict}{outliertree}(
+  object,
+  newdata,
+  outliers_print = 15L,
+  min_decimals = 2L,
+  return_outliers = TRUE,
+  ...
+)
 }
 \arguments{
 \item{object}{An Outlier Tree object as returned by `outlier.tree`.}
@@ -13,6 +20,10 @@
 
 \item{outliers_print}{How many outliers to print. Pass zero or `NULL` to avoid printing them. Must pass
 at least one of `outliers_print` and `return_outliers`.}
+
+\item{min_decimals}{Minimum number of decimals to use when printing numeric values for the flagged
+outliers. The number of decimals will be dynamically increased according to the relative magnitudes of the
+values being reported. Ignored when passing `outliers_print=0` or `outliers_print=FALSE`.}
 
 \item{return_outliers}{Whether to return the outliers in an R object (otherwise will just print them).}
 

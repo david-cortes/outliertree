@@ -4,12 +4,16 @@
 \alias{print.outlieroutputs}
 \title{Print outliers in human-readable format}
 \usage{
-\method{print}{outlieroutputs}(x, outliers_print = 15, only_these_rows = NULL, ...)
+\method{print}{outlieroutputs}(x, outliers_print = 15L, min_decimals = 2L, only_these_rows = NULL, ...)
 }
 \arguments{
 \item{x}{Outliers as returned by predict method on an object from `outlier.tree`.}
 
 \item{outliers_print}{Maximum number of outliers to print.}
+
+\item{min_decimals}{Minimum number of decimals to use when printing numeric values for the flagged
+outliers. The number of decimals will be dynamically increased according to the relative magnitudes of the
+values being reported. Ignored when passing `outliers_print=0` or `outliers_print=FALSE`.}
 
 \item{only_these_rows}{Specific rows to print (either numbers if the row names in the original
 data frame were null, or the row names they had if non-null). Pass `NULL` to print information

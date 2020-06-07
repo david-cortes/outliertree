@@ -302,7 +302,7 @@ report.no.outliers <- function() {
     cat("No outliers were found.\n")
 }
 
-report.outliers <- function(lst, rnames, outliers_print) {
+report.outliers <- function(lst, rnames, outliers_print, min_decimals=2) {
 
     if (NROW(lst) == 0) { report.no.outliers(); return(invisible(NULL)); }
     
@@ -334,11 +334,16 @@ report.outliers <- function(lst, rnames, outliers_print) {
     df_outlierness <- df_outlierness[1:min(outliers_print, NROW(df_outlierness)), ]
     for (row in 1:NROW(df_outlierness)) {
         row_ix <- df_outlierness$ix_num[row]
+        min_dec_this <- min_decimals
         
         ### print suspicious value
         cat(sprintf("row [%s] - suspicious column: [%s] - ", rnames[row_ix], suspicous_value[[row_ix]]$column))
         if ("numeric" %in% class(suspicous_value[[row_ix]]$value)) {
-            cat(sprintf("suspicious value: [%.3f]\n", suspicous_value[[row_ix]]$value))
+            if ("decimals" %in% names(suspicous_value[[row_ix]])) {
+                min_dec_this <- pmax(min_dec_this, suspicous_value[[row_ix]]$decimals)
+            }
+            cat(sprintf(sprintf("suspicious value: [%%.%df]\n", min_dec_this),
+                        suspicous_value[[row_ix]]$value))
         } else {
             cat(sprintf("suspicious value: [%s]\n", suspicous_value[[row_ix]]$value))
         }
@@ -348,7 +353,8 @@ report.outliers <- function(lst, rnames, outliers_print) {
         if ("mean" %in% names(group_statistics[[row_ix]])) {
             if ("upper_thr" %in% names(group_statistics[[row_ix]])) {
                 if ("numeric" %in% class(group_statistics[[row_ix]]$upper_thr)) {
-                    cat(sprintf("\tdistribution: %.3f%% <= %.3f - [mean: %.3f] - [sd: %.3f] - [norm. obs: %d]\n",
+                    cat(sprintf(sprintf("\tdistribution: %%.%df%%%% <= %%.%df - [mean: %%.%df] - [sd: %%.%df] - [norm. obs: %%d]\n",
+                                        3L, min_dec_this, min_dec_this, min_dec_this),
                                 group_statistics[[row_ix]]$pct_below * 100.,
                                 group_statistics[[row_ix]]$upper_thr,
                                 group_statistics[[row_ix]]$mean,
@@ -363,7 +369,8 @@ report.outliers <- function(lst, rnames, outliers_print) {
                 }
             } else {
                 if ("numeric" %in% class(group_statistics[[row_ix]]$lower_thr)) {
-                    cat(sprintf("\tdistribution: %.3f%% >= %.3f - [mean: %.3f] - [sd: %.3f] - [norm. obs: %d]\n",
+                    cat(sprintf(sprintf("\tdistribution: %%.%df%%%% >= %%.%df - [mean: %%.%df] - [sd: %%.%df] - [norm. obs: %%d]\n",
+                                        3L, min_dec_this, min_dec_this, min_dec_this),
                                 group_statistics[[row_ix]]$pct_above * 100.,
                                 group_statistics[[row_ix]]$lower_thr,
                                 group_statistics[[row_ix]]$mean,
@@ -420,13 +427,17 @@ report.outliers <- function(lst, rnames, outliers_print) {
             cat("\tgiven:\n")
             conditions_this <- simplify.conditions(conditions[[row_ix]])
             for (cond in conditions_this) {
+                
+                min_dec_this <- pmax(min_decimals, cond$decimals)
+                
                 switch(cond$comparison,
                        "is NA" = {
                                cat(sprintf("\t\t[%s] is NA\n", cond$column))
                        },
                        "<=" = {
                                if ("numeric" %in% class(cond$value_this)) {
-                                   cat(sprintf("\t\t[%s] <= [%.3f] (value: %.3f)\n",
+                                   cat(sprintf(sprintf("\t\t[%%s] <= [%%.%df] (value: %%.%df)\n",
+                                                       min_dec_this, min_dec_this),
                                                cond$column, cond$value_comp, cond$value_this))
                                } else {
                                    cat(sprintf("\t\t[%s] <= [%s] (value: %s)\n",
@@ -435,7 +446,8 @@ report.outliers <- function(lst, rnames, outliers_print) {
                        },
                        ">" = {
                                if ("numeric" %in% class(cond$value_this)) {
-                                   cat(sprintf("\t\t[%s] > [%.3f] (value: %.3f)\n",
+                                   cat(sprintf(sprintf("\t\t[%%s] > [%%.%df] (value: %%.%df)\n",
+                                                       min_dec_this, min_dec_this),
                                                cond$column, cond$value_comp, cond$value_this))
                                } else {
                                    cat(sprintf("\t\t[%s] > [%s] (value: %s)\n",
@@ -444,7 +456,8 @@ report.outliers <- function(lst, rnames, outliers_print) {
                        },
                        "between" = {
                                if ("numeric" %in% class(cond$value_this)) {
-                                   cat(sprintf("\t\t[%s] between (%.3f, %.3f] (value: %.3f)\n",
+                                   cat(sprintf(sprintf("\t\t[%%s] between (%%.%df, %%.%df] (value: %%.%df)\n",
+                                                       min_dec_this, min_dec_this, min_dec_this),
                                                cond$column, cond$value_comp[1], cond$value_comp[2], cond$value_this))
                                } else {
                                    cat(sprintf("\t\t[%s] between (%s, %s] (value: %s)\n",
@@ -488,6 +501,7 @@ simplify.conditions <- function(conditions) {
             val_eq      <- NA
             val_neq     <- NA
             smallest_in <- NULL
+            highest_dec <- 0
             
             for (cn in 1:NROW(conditions)) {
                 if (conditions[[cn]]$column == cl) {
@@ -498,12 +512,16 @@ simplify.conditions <- function(conditions) {
                                    if (conditions[[cn]]$value_comp < lowest_le) {
                                        lowest_le <- conditions[[cn]]$value_comp
                                    }
+                                   if (!is.null(conditions[[cn]]$decimals))
+                                       highest_dec <- pmax(highest_dec, conditions[[cn]]$decimals)
                            },
                            ">" = {
                                    n_gt <- n_gt + 1
                                    if (conditions[[cn]]$value_comp > highest_gt) {
                                        highest_gt <- conditions[[cn]]$value_comp
                                    }
+                                   if (!is.null(conditions[[cn]]$decimals))
+                                       highest_dec <- pmax(highest_dec, conditions[[cn]]$decimals)
                            },
                            "in" = {
                                    n_in <- n_in + 1
@@ -527,13 +545,16 @@ simplify.conditions <- function(conditions) {
             
             if        (n_le  > 0 & n_gt == 0) {
                 replacing_cond[[NROW(replacing_cond) + 1]] <- list(column = cl, value_this = val_this,
-                                                                   comparison = "<=", value_comp = lowest_le)
+                                                                   comparison = "<=", value_comp = lowest_le,
+                                                                   decimals = highest_dec)
             } else if (n_gt  > 0 & n_le == 0) {
                 replacing_cond[[NROW(replacing_cond) + 1]] <- list(column = cl, value_this = val_this,
-                                                                   comparison = ">", value_comp = highest_gt)
+                                                                   comparison = ">", value_comp = highest_gt,
+                                                                   decimals = highest_dec)
             } else if (n_le  > 0 & n_gt  > 0) {
                 replacing_cond[[NROW(replacing_cond) + 1]] <- list(column = cl, value_this = val_this,
-                                                                   comparison = "between", value_comp = c(highest_gt, lowest_le))
+                                                                   comparison = "between", value_comp = c(highest_gt, lowest_le),
+                                                                   decimals = highest_dec)
             } else if (n_in  > 0 & n_eq == 0 & n_neq == 0) {
                 replacing_cond[[NROW(replacing_cond) + 1]] <- list(column = cl, value_this = val_this,
                                                                    comparison = "in", value_comp = smallest_in)

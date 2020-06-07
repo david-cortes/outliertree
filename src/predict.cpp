@@ -140,10 +140,12 @@ bool find_new_outliers(double *restrict numeric_data,
 
     #if defined(_OPENMP)
         for (size_t tid = 0; tid < outliers_thread.size(); tid++) {
-            if (outliers_thread[tid] != 0) return true;
+            if (outliers_thread[tid] != 0) found_outliers = true;
         }
-        return false;
     #endif
+
+    if (found_outliers)
+        calc_min_decimals_to_print(model_outputs, prediction_data.numeric_data, nthreads);
 
     return found_outliers;
 }

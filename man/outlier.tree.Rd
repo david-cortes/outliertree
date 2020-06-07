@@ -6,13 +6,13 @@
 \usage{
 outlier.tree(
   df,
-  max_depth = 4,
+  max_depth = 4L,
   min_gain = 0.01,
   z_norm = 2.67,
   z_outlier = 8,
   pct_outliers = 0.01,
-  min_size_numeric = 25,
-  min_size_categ = 50,
+  min_size_numeric = 25L,
+  min_size_categ = 50L,
   categ_split = "binarize",
   categ_outliers = "tail",
   numeric_split = "raw",
@@ -20,7 +20,8 @@ outlier.tree(
   follow_all = FALSE,
   gain_as_pct = TRUE,
   save_outliers = FALSE,
-  outliers_print = 10,
+  outliers_print = 10L,
+  min_decimals = 2L,
   nthreads = parallel::detectCores()
 )
 }
@@ -114,6 +115,10 @@ These outliers can then be extracted from the returned object through function
 the model. Pass zero or `NULL` to avoid printing any. Outliers can be printed from resulting data frame
 afterwards through the `predict` method, or through the `print` method (on the extracted outliers, not on
 the model object) if passing `save_outliers` = `TRUE`.}
+
+\item{min_decimals}{Minimum number of decimals to use when printing numeric values for the flagged
+outliers. The number of decimals will be dynamically increased according to the relative magnitudes of the
+values being reported. Ignored when passing `outliers_print=0` or `outliers_print=FALSE`.}
 
 \item{nthreads}{Number of parallel threads to use. When fitting the model, it will only use up to one
 thread per column, while for prediction it will use up to one thread per row. The more threads that are

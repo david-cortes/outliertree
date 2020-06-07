@@ -111,7 +111,8 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                 if (outl_col < ncols_num_num) {
                     outlier_val[row] = Rcpp::List::create(
                         Rcpp::_["column"] = Rcpp::CharacterVector(1, colnames_num[outl_col]),
-                        Rcpp::_["value"]  = Rcpp::wrap(arr_num[row + outl_col * nrows])
+                        Rcpp::_["value"]  = Rcpp::wrap(arr_num[row + outl_col * nrows]),
+                        Rcpp::_["decimals"] = Rcpp::wrap(model_outputs.outlier_decimals_distr[row])
                     );
                 } else if (outl_col < (ncols_num_num + ncols_date)) {
                     outlier_val[row] = Rcpp::List::create(
@@ -300,6 +301,8 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                         cond_clust["column"] = Rcpp::CharacterVector(1, colnames_num[model_outputs.all_clusters[outl_col][outl_clust].col_num]);
                         if (model_outputs.all_clusters[outl_col][outl_clust].col_num < ncols_num_num) {
                             cond_clust["value_this"] = Rcpp::wrap(arr_num[row + model_outputs.all_clusters[outl_col][outl_clust].col_num * nrows]);
+                            if (model_outputs.all_clusters[outl_col][outl_clust].split_type != IsNa)
+                                cond_clust["decimals"] = Rcpp::wrap(model_outputs.min_decimals_col[model_outputs.all_clusters[outl_col][outl_clust].col_num]);
                         } else if (model_outputs.all_clusters[outl_col][outl_clust].col_num < (ncols_num_num + ncols_date)) {
                             cond_clust["value_this"] = Rcpp::Date(arr_num[row + model_outputs.all_clusters[outl_col][outl_clust].col_num * nrows]
                                                                   - 1 + min_date[model_outputs.all_clusters[outl_col][outl_clust].col_num - ncols_num_num]);
@@ -532,6 +535,16 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
 
                             case Numeric:
                             {
+                                /* add decimals if appropriate */
+                                if (
+                                    model_outputs.all_trees[outl_col][curr_tree].col_num < ncols_num_num &&
+                                    model_outputs.all_trees[outl_col][curr_tree].split_this_branch != IsNa
+                                    )
+                                {
+                                    cond_clust["decimals"] = Rcpp::wrap(model_outputs.min_decimals_col[model_outputs.all_trees[outl_col][curr_tree].col_num]);
+                                }
+
+                                /* then conditions */
                                 switch(model_outputs.all_trees[outl_col][curr_tree].split_this_branch) {
 
                                     case IsNa:
@@ -761,6 +774,14 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                             case Numeric:
                             {
                                 cond_clust["column"] = Rcpp::as<Rcpp::CharacterVector>(colnames_num[model_outputs.all_trees[outl_col][parent_tree].col_num]);
+                                /* add decimals if appropriate */
+                                if (
+                                    model_outputs.all_trees[outl_col][parent_tree].col_num < ncols_num_num &&
+                                    model_outputs.all_trees[outl_col][curr_tree].parent_branch != IsNa
+                                    )
+                                {
+                                    cond_clust["decimals"] = Rcpp::wrap(model_outputs.min_decimals_col[model_outputs.all_trees[outl_col][parent_tree].col_num]);
+                                }
                                 break;
                             }
 
@@ -780,6 +801,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
 
                         /* add conditions from tree */
                         switch(model_outputs.all_trees[outl_col][curr_tree].parent_branch) {
+
 
                             case IsNa:
                             {

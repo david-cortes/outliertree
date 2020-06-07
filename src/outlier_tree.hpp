@@ -42,6 +42,7 @@
 #include <numeric>
 #include <unordered_set>
 #include <math.h>
+#include <cmath>
 #include <stddef.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -51,44 +52,20 @@
     #include <omp.h>
 #endif
 
-/******************
-  Short Functions
-*******************/
+/************************
+    Short Functions
+*************************/
 #define extract_bit(number, bit) (((number) >> (bit)) & 1) /* https://stackoverflow.com/questions/2249731/how-do-i-get-bit-by-bit-data-from-an-integer-value-in-c */
 #define pow2(n) ( ((size_t) 1) << (n) ) /* https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int */
 #define avg_between(a, b) (((a) + (b)) * 0.5)
 #define square(x) ((x) * (x))
-
-#ifndef isnan
-    #ifdef _isnan
-        #define isnan _isnan
-    #else
-        #define isnan(x) ( (x) != (x) )
-    #endif
-#endif
 #ifndef isinf
-    #ifdef _finite
-        #define isinf(x) (!_finite(x))
-    #else
-        #define isinf(x) ( (x) >= HUGE_VAL || (x) <= -HUGE_VAL )
-    #endif
+    #define isinf std::isinf
+#endif
+#ifndef isnan
+    #define isnan std::isnan
 #endif
 #define is_na_or_inf(x) (isnan(x) || isinf(x))
-
-/* Functions for 'long double' types */
-#ifndef sqrtl
-    #define sqrtl sqrt
-#endif
-#ifndef logl
-    #define logl log
-#endif
-#ifndef fminl
-    #define fminl fmin
-#endif
-#ifndef fmaxl
-    #define fmaxl fmax
-#endif
-
 
 /* Aliasing for compiler optimizations */
 #if defined(__GNUG__) || defined(__GNUC__) || defined(_MSC_VER) || defined(__clang__) || defined(__INTEL_COMPILER)
@@ -100,7 +77,7 @@
 /* MSVC is stuck with an OpenMP version that's 19 years old at the time of writing and does not support unsigned iterators */
 #ifdef _OPENMP
     #if (_OPENMP < 200801) || defined(_WIN32) || defined(_WIN64) /* OpenMP < 3.0 */
-        #define size_t_for long
+        #define size_t_for long long
     #else
         #define size_t_for size_t
     #endif
@@ -113,9 +90,9 @@
 #endif
 
 
-/************************************************************
-  Data types and structs that are returned from this module
-*************************************************************/
+/****************************************************************
+    Data types and structs that are returned from this module
+*****************************************************************/
 typedef enum ColType {Numeric, Categorical, Ordinal, NoType} ColType;
 typedef enum SplitType {
     LessOrEqual, Greater,  /* for numerical and ordinal */
@@ -368,11 +345,13 @@ typedef struct ModelOutputs {
     std::vector<size_t> outlier_columns_final;  /* if an outlier is flagged, this indicates the column that makes it an outlier */
     std::vector<size_t> outlier_trees_final;    /* if an outlier is flagged, this indicates the tree under which the cluster is found */
     std::vector<size_t> outlier_depth_final;    /* if an outlier is flagged, this indicates the split depth under which the cluster is found */
+    std::vector<int> outlier_decimals_distr;    /* if an outlier is flagged, and it's a numeric column, this will indicate how many decimals to print for it */
     std::vector<size_t> start_ix_cat_counts; /* this is to determine where to index the proportions */
     std::vector<long double> prop_categ;     /* this is just for statistics to show, it's not used for anything */
     std::vector<ColTransf> col_transf;       /* tells whether each numerical columns underwent log/exp transformations */
     std::vector<double> transf_offset;       /* value subtracted for log transform, mean subtracted for exp transform */
     std::vector<double> sd_div;              /* standard deviation with which exp-transformed columns were standardized */
+    std::vector<int> min_decimals_col;       /* number of decimals to show for split conditions in numeric columns */
     std::vector<int> ncat;      /* copied from the inputs, used to determine at prediction time if a category is out-of-range and skip */
     std::vector<int> ncat_ord;  /* copied from the inputs, used to determine at prediction time if a category is out-of-range and skip */
     size_t ncols_numeric;       /* copied from the inputs, used to determine at prediction time if a category is out-of-range and skip */
@@ -428,11 +407,11 @@ typedef struct ModelOutputs {
 *    So don't change them back to regular 'double', or if necessary, change every 'long double' to 'double' too.
 */
 
-/**************************************
-  Prototypes from fit_model.cpp
-  (This is the main module from which
-   the model is generated)
-***************************************/
+/******************************************
+    Prototypes from fit_model.cpp
+    (This is the main module from which
+     the model is generated)
+*******************************************/
 bool fit_outliers_models(ModelOutputs &model_outputs,
                          double *restrict numeric_data,     size_t ncols_numeric,
                          int    *restrict categorical_data, size_t ncols_categ,   int *restrict ncat,
@@ -563,11 +542,11 @@ void recursive_split_categ(Workspace &workspace,
                            size_t curr_depth, bool is_NA_branch);
 
 
-/****************************************
-  Prototypes from predict.cpp
-  (This is the module from which
-   new data can be flagged as outliers)
-*****************************************/
+/*******************************************
+    Prototypes from predict.cpp
+    (This is the module from which
+     new data can be flagged as outliers)
+********************************************/
 typedef struct {
     double  *restrict numeric_data;
     int     *restrict categorical_data;
@@ -586,9 +565,9 @@ bool check_is_outlier_in_tree(std::vector<size_t> &clusters_in_tree, size_t curr
                               bool col_is_num, double num_val_this, int cat_val_this);
 
 
-/****************************
-  Prototypes from split.cpp
-****************************/
+/********************************
+    Prototypes from split.cpp
+*********************************/
 #define SD_REG 1e-5 /* Regularization for standard deviation estimation */
 
 typedef struct {
@@ -659,9 +638,9 @@ void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, 
 
 
 
-/*******************************
-  Prototypes from clusters.cpp
-********************************/
+/***********************************
+    Prototypes from clusters.cpp
+************************************/
 #define calculate_max_outliers(n, perc) (  (n) * (perc) + (long double)2 * sqrtl( (n) * (perc) * ((long double)1 - perc) ) + (long double)1  )
 #define z_score(x, mu, sd) (  ((x) - (mu)) / (sd)  )
 #define chebyshyov_bound(sd) (1.0 / square(sd))
@@ -695,9 +674,9 @@ void calculate_cluster_minimums(ModelOutputs &model_outputs, size_t col);
 void calculate_cluster_poss_categs(ModelOutputs &model_outputs, size_t col, size_t col_rel);
 
 
-/**********************************
-  Prototypes from cat_outlier.cpp
-***********************************/
+/**************************************
+    Prototypes from cat_outlier.cpp
+***************************************/
 #define calculate_max_cat_outliers(n, perc, z_norm) ((long double)1 + ((n) * (perc) / z_norm)) /* Note: this is not anyhow probabilistic, nor based on provable bounds */
 void find_outlier_categories(size_t categ_counts[], size_t ncateg, size_t tot, double max_perc_outliers,
                              long double perc_threshold[], size_t buffer_ix[], long double buffer_perc[],
@@ -710,9 +689,9 @@ bool find_outlier_categories_no_cond(size_t categ_counts[], size_t ncateg, size_
 
 
 
-/*********************************************
-  Prototypes from misc.cpp and other structs
-**********************************************/
+/*************************************************
+    Prototypes from misc.cpp and other structs
+**************************************************/
 
 /* an inefficient workaround for coding up option 'follow_all' */
 typedef struct {
@@ -748,7 +727,8 @@ void check_cat_col_unsplittable(size_t start_ix_cat_counts[], size_t cat_counts[
 void calculate_lowerlim_proportion(long double *restrict prop_small, long double *restrict prop,
                                    size_t start_ix_cat_counts[], size_t cat_counts[],
                                    size_t ncols, size_t nrows, double z_norm, double z_tail);
-void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows, bool has_NA[], bool skip_col[], int nthreads);
+void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows, bool has_NA[],
+                               bool skip_col[], int min_decimals[], int nthreads);
 void calc_central_mean_and_sd(size_t ix_arr[], size_t st, size_t end, double x[], size_t size_quarter, double *mean_central, double *sd_central);
 void check_for_tails(size_t ix_arr[], size_t st, size_t end, double *restrict x,
                      double z_norm, double max_perc_outliers,
@@ -773,4 +753,6 @@ void set_tree_as_ordinal(ClusterTree &tree, int split_lev, size_t col);
 void forget_row_outputs(ModelOutputs &model_outputs);
 void allocate_row_outputs(ModelOutputs &model_outputs, size_t nrows, size_t max_depth);
 void check_more_two_values(double arr_num[], size_t nrows, size_t ncols, int nthreads, char too_few_values[]);
+void calc_min_decimals_to_print(ModelOutputs &model_outputs, double *restrict numeric_data, int nthreads);
+int decimals_diff(double val1, double val2);
 void dealloc_ModelOutputs(ModelOutputs &model_outputs);

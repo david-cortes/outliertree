@@ -183,6 +183,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     model_outputs.col_transf.resize(ncols_numeric, NoTransf);
     model_outputs.transf_offset.resize(ncols_numeric);
     model_outputs.sd_div.resize(ncols_numeric);
+    model_outputs.min_decimals_col.resize(ncols_numeric);
 
     /* determine maximum number of categories in a column, allocate arrays for category counts and proportions */
     model_outputs.start_ix_cat_counts[0] = 0;
@@ -253,7 +254,8 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
 
     /* for numerical columns, check if they have NAs or if total variance is  too small */
     check_missing_no_variance(input_data.numeric_data, input_data.ncols_numeric, input_data.nrows,
-                              (bool*) &input_data.has_NA[0], (bool*) &input_data.skip_col[0], nthreads);
+                              (bool*) &input_data.has_NA[0], (bool*) &input_data.skip_col[0],
+                              model_outputs.min_decimals_col.data(), nthreads);
 
     /* determine an approximate size for the output clusters, and reserve memory right away */
     model_outputs.all_clusters.resize(tot_cols);
@@ -395,6 +397,10 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
 
     }
 
+    /* once finished, determine how many decimals to report for numerical outliers */
+    if (found_outliers)
+      calc_min_decimals_to_print(model_outputs, input_data.numeric_data, nthreads);
+
     #ifdef TEST_MODE_DEFINE
     for (size_t col = 0; col < tot_cols; col++) {
         std::cout << "col " << col << " has " << model_outputs.all_clusters[col].size() << " clusters [" << model_outputs.all_trees[col].size() << " trees]" << std::endl;
@@ -423,6 +429,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     //                    &cat_data_row[0],
     //                    &ord_data_row[0],
     //                    1, 1, model_outputs);
+    // calc_min_printable_digits(model_outputs);
     #endif
 
     return found_outliers;
@@ -444,7 +451,7 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
     workspace.st = move_NAs_to_front(&workspace.ix_arr[0], workspace.target_numeric_col, 0, workspace.end, true);
     workspace.col_has_outliers = false;
 
-    /* check for problematic distributions */
+    /* check for problematic distributions - need to sort data first */
     std::sort(&workspace.ix_arr[0] + workspace.st, &workspace.ix_arr[0] + workspace.end + 1,
               [&workspace](const size_t a, const size_t b){return workspace.target_numeric_col[a] < workspace.target_numeric_col[b];});
 
@@ -458,7 +465,7 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
         running_ssq  += (xval - running_mean) * (xval - mean_prev);
         mean_prev     = running_mean;
     }
-
+    
     check_for_tails(&workspace.ix_arr[0], workspace.st, workspace.end, workspace.target_numeric_col,
                     model_params.z_norm, model_params.max_perc_outliers,
                     &workspace.buffer_transf_y[0], (double)running_mean,

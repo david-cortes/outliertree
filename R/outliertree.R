@@ -74,6 +74,9 @@
 #' the model. Pass zero or `NULL` to avoid printing any. Outliers can be printed from resulting data frame
 #' afterwards through the `predict` method, or through the `print` method (on the extracted outliers, not on
 #' the model object) if passing `save_outliers` = `TRUE`.
+#' @param min_decimals Minimum number of decimals to use when printing numeric values for the flagged
+#' outliers. The number of decimals will be dynamically increased according to the relative magnitudes of the
+#' values being reported. Ignored when passing `outliers_print=0` or `outliers_print=FALSE`.
 #' @param nthreads Number of parallel threads to use. When fitting the model, it will only use up to one
 #' thread per column, while for prediction it will use up to one thread per row. The more threads that are
 #' used, the more memory will be required and allocated, so using more threads will not always lead to better
@@ -129,11 +132,11 @@
 #' outliers.w.names <- predict(model, df.w.names, return_outliers=TRUE)
 #' outliers.w.names[["rownum745"]]
 #' @export
-outlier.tree <- function(df, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_outlier = 8.0,
-                         pct_outliers = 0.01, min_size_numeric = 25, min_size_categ = 50,
+outlier.tree <- function(df, max_depth = 4L, min_gain = 1e-2, z_norm = 2.67, z_outlier = 8.0,
+                         pct_outliers = 0.01, min_size_numeric = 25L, min_size_categ = 50L,
                          categ_split = "binarize", categ_outliers = "tail", numeric_split = "raw",
                          cols_ignore = NULL, follow_all = FALSE, gain_as_pct = TRUE,
-                         save_outliers = FALSE, outliers_print = 10,
+                         save_outliers = FALSE, outliers_print = 10L, min_decimals = 2L,
                          nthreads = parallel::detectCores())
 {
     ### validate inputs
@@ -160,6 +163,7 @@ outlier.tree <- function(df, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_ou
     if (pct_outliers > 0.1)   { stop("'pct_outliers' passed is too large.")       }
     if (min_size_numeric < 5) { stop("'min_size_numeric' is too small.")          }
     if (min_size_categ < 5)   { stop("'min_size_categ' is too small.")            }
+    if (min_decimals < 0)     { stop("'min_decimals' must be >= 0.") }
     nthreads <- check.nthreads(nthreads)
     
     ### cast inputs
@@ -204,7 +208,7 @@ outlier.tree <- function(df, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_ou
     ### print or store the outliers if requested
     if (outliers_print > 0) {
         if (model_data$obj_from_cpp$found_outliers) {
-                report.outliers(model_data$obj_from_cpp$outliers_info, row.names(df), outliers_print)
+                report.outliers(model_data$obj_from_cpp$outliers_info, row.names(df), outliers_print, min_decimals)
             } else {
                 report.no.outliers()
             }
@@ -231,6 +235,9 @@ outlier.tree <- function(df, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_ou
 #' @param newdata A Data Frame in which to look for outliers according to the fitted model.
 #' @param outliers_print How many outliers to print. Pass zero or `NULL` to avoid printing them. Must pass
 #' at least one of `outliers_print` and `return_outliers`.
+#' @param min_decimals Minimum number of decimals to use when printing numeric values for the flagged
+#' outliers. The number of decimals will be dynamically increased according to the relative magnitudes of the
+#' values being reported. Ignored when passing `outliers_print=0` or `outliers_print=FALSE`.
 #' @param return_outliers Whether to return the outliers in an R object (otherwise will just print them).
 #' @param ... Not used.
 #' @return If passing `return_outliers` = `TRUE`, will return a list of lists with the outliers and their
@@ -276,7 +283,8 @@ outlier.tree <- function(df, max_depth = 4, min_gain = 1e-2, z_norm = 2.67, z_ou
 #' ### retrieve the outlier info (for row 1) as an R list
 #' test_outliers[[1]]
 #' @export 
-predict.outliertree <- function(object, newdata, outliers_print = 15, return_outliers = TRUE, ...) {
+predict.outliertree <- function(object, newdata, outliers_print = 15L, min_decimals = 2L,
+                                return_outliers = TRUE, ...) {
     check.is.model.obj(object)
     if (check_null_ptr_model(object$obj_from_cpp$ptr_model)) {
         ptr_new <- deserialize_OutlierTree(object$obj_from_cpp$serialized_obj)
@@ -306,7 +314,7 @@ predict.outliertree <- function(object, newdata, outliers_print = 15, return_out
                                          object$ts_min)
     if (outliers_print > 0) {
         if (outliers_info$found_outliers) {
-                report.outliers(outliers_info, row.names(newdata), outliers_print)
+                report.outliers(outliers_info, row.names(newdata), outliers_print, min_decimals)
             } else {
                 report.no.outliers()
             }
@@ -323,6 +331,9 @@ predict.outliertree <- function(object, newdata, outliers_print = 15, return_out
 #' Same as function `summary`.
 #' @param x Outliers as returned by predict method on an object from `outlier.tree`.
 #' @param outliers_print Maximum number of outliers to print.
+#' @param min_decimals Minimum number of decimals to use when printing numeric values for the flagged
+#' outliers. The number of decimals will be dynamically increased according to the relative magnitudes of the
+#' values being reported. Ignored when passing `outliers_print=0` or `outliers_print=FALSE`.
 #' @param only_these_rows Specific rows to print (either numbers if the row names in the original
 #' data frame were null, or the row names they had if non-null). Pass `NULL` to print information
 #' about potentially all rows
@@ -349,16 +360,16 @@ predict.outliertree <- function(object, newdata, outliers_print = 15, return_out
 #' ### Row 531 is an outlier, but 532 is not
 #' print(pred, only_these_rows = c(531, 532))
 #' @export 
-print.outlieroutputs <- function(x, outliers_print = 15, only_these_rows = NULL, ...) {
+print.outlieroutputs <- function(x, outliers_print = 15L, min_decimals = 2L, only_these_rows = NULL, ...) {
     if (NROW(x) == 0) { report.no.outliers(); return(invisible(NULL)); }
     outliers_print <- check.outliers.print(outliers_print)
     if (!outliers_print) { stop("Must pass a positive integer for 'outliers_print'.") }
     if (is.null(only_these_rows)) {
         outliers_info <- list.to.outliers(x)
-        report.outliers(outliers_info, names(x), outliers_print)
+        report.outliers(outliers_info, names(x), outliers_print, min_decimals)
     } else {
         outliers_info <- list.to.outliers(x[only_these_rows])
-        report.outliers(outliers_info, names(x[only_these_rows]), outliers_print)
+        report.outliers(outliers_info, names(x[only_these_rows]), outliers_print, min_decimals)
     }
 }
 

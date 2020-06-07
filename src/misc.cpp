@@ -59,7 +59,7 @@ void calculate_all_cat_counts(size_t start_ix_cat_counts[], size_t cat_counts[],
     size_t col_stop;
 
     #pragma omp parallel for schedule(static, 1) num_threads(nthreads) private(col_st_offset, col_stop)
-    for (size_t col = 0; col < ncols; col++) {
+    for (size_t_for col = 0; col < ncols; col++) {
 
         if (skip_col[col]) continue;
 
@@ -84,7 +84,7 @@ void check_cat_col_unsplittable(size_t start_ix_cat_counts[], size_t cat_counts[
 {
     size_t largest_cnt;
     #pragma omp parallel for num_threads(nthreads) private(largest_cnt) shared(ncols, nrows, ncat, cat_counts, start_ix_cat_counts, min_conditioned_size, skip_col)
-    for (size_t col = 0; col < ncols; col++) {
+    for (size_t_for col = 0; col < ncols; col++) {
 
         largest_cnt = 0;
         for (int cat = 0; cat <= ncat[col]; cat++) {
@@ -125,8 +125,10 @@ void calculate_lowerlim_proportion(long double *restrict prop_small, long double
 }
 
 
-/* Check if a numerical column has no variance (i.e. will not be splittable) */
-void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows, bool has_NA[], bool skip_col[], int nthreads)
+/* Check if a numerical column has no variance (i.e. will not be splittable).
+   Along the way, also record the number of decimals to display for this column. */
+void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows, bool has_NA[],
+                               bool skip_col[], int min_decimals[], int nthreads)
 {
     long double running_mean;
     long double mean_prev;
@@ -134,12 +136,19 @@ void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows
     size_t cnt;
     size_t col_stop;
     double xval;
+    double min_val;
+    double max_val;
+    int min_decimals_col;
 
-    #pragma omp parallel for schedule(static) num_threads(nthreads) private(running_mean, mean_prev, running_ssq, cnt, col_stop, xval)
-    for (size_t col = 0; col < ncols; col++) {
+    #pragma omp parallel for schedule(static) num_threads(nthreads) \
+            shared(nrows, ncols, numeric_data, has_NA, skip_col, min_decimals) \
+            private(running_mean, mean_prev, running_ssq, cnt, col_stop, xval, min_val, max_val, min_decimals_col)
+    for (size_t_for col = 0; col < ncols; col++) {
         running_mean = 0;
         mean_prev = 0;
         running_ssq = 0;
+        min_val =  HUGE_VAL;
+        max_val = -HUGE_VAL;
         cnt = 0;
         col_stop = (col + 1) * nrows;
         for (size_t row = col * nrows; row < col_stop; row++) {
@@ -148,11 +157,20 @@ void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows
                 running_mean += (xval - running_mean) / (long double)(++cnt);
                 running_ssq  += (xval - running_mean) * (xval - mean_prev);
                 mean_prev     = running_mean;
+                min_val = fmin(min_val, xval);
+                max_val = fmax(max_val, xval);
             } else {
                 has_NA[col] = true;
             }
         }
         if (  (running_ssq / (long double)(cnt - 1))  < 1e-6 ) skip_col[col] = true;
+        if (cnt > 1) {
+            min_decimals_col = 0;
+            min_decimals_col = std::max(min_decimals_col, decimals_diff(running_mean, min_val));
+            min_decimals_col = std::max(min_decimals_col, decimals_diff(running_mean, max_val));
+            min_decimals_col = std::max(min_decimals_col, decimals_diff(0., sqrtl((running_ssq / (long double)(cnt - 1)))));
+            min_decimals[col] = min_decimals_col;
+        }
     }
 }
 
@@ -568,12 +586,14 @@ void forget_row_outputs(ModelOutputs &model_outputs)
     model_outputs.outlier_columns_final.clear();
     model_outputs.outlier_trees_final.clear();
     model_outputs.outlier_depth_final.clear();
+    model_outputs.outlier_decimals_distr.clear();
 
     model_outputs.outlier_scores_final.shrink_to_fit();
     model_outputs.outlier_clusters_final.shrink_to_fit();
     model_outputs.outlier_columns_final.shrink_to_fit();
     model_outputs.outlier_trees_final.shrink_to_fit();
     model_outputs.outlier_depth_final.shrink_to_fit();
+    model_outputs.outlier_decimals_distr.shrink_to_fit();
 }
 
 void allocate_row_outputs(ModelOutputs &model_outputs, size_t nrows, size_t max_depth)
@@ -584,12 +604,14 @@ void allocate_row_outputs(ModelOutputs &model_outputs, size_t nrows, size_t max_
     model_outputs.outlier_columns_final.resize(nrows);
     model_outputs.outlier_trees_final.resize(nrows);
     model_outputs.outlier_depth_final.resize(nrows, max_depth + 2);
+    model_outputs.outlier_decimals_distr.resize(nrows, 0);
 
     model_outputs.outlier_scores_final.shrink_to_fit();
     model_outputs.outlier_clusters_final.shrink_to_fit();
     model_outputs.outlier_columns_final.shrink_to_fit();
     model_outputs.outlier_trees_final.shrink_to_fit();
     model_outputs.outlier_depth_final.shrink_to_fit();
+    model_outputs.outlier_decimals_distr.shrink_to_fit();
 }
 
 void check_more_two_values(double arr_num[], size_t nrows, size_t ncols, int nthreads, char too_few_values[])
@@ -606,6 +628,50 @@ void check_more_two_values(double arr_num[], size_t nrows, size_t ncols, int nth
         if (seen_values[col].size() <= 2)too_few_values[col] = true;
     }
 }
+
+void calc_min_decimals_to_print(ModelOutputs &model_outputs, double *restrict numeric_data, int nthreads)
+{
+    if (numeric_data == NULL) return;
+
+    double val_this;
+    double val_comp;
+    int min_decimals;
+    size_t col_this;
+    Cluster *cluster_this;
+    size_t nrows = model_outputs.outlier_columns_final.size();
+
+    #pragma omp parallel for schedule(dynamic) num_threads(nthreads) \
+            shared(model_outputs, nrows, numeric_data) \
+            private(val_this, val_comp, min_decimals, col_this, cluster_this)
+    for (size_t_for row = 0; row < nrows; row++) {
+        if (model_outputs.outlier_scores_final[row] < 1.0 &&
+            model_outputs.outlier_columns_final[row] < model_outputs.ncols_numeric
+            ) {
+
+            col_this = model_outputs.outlier_columns_final[row];
+            cluster_this = &model_outputs.all_clusters[col_this][model_outputs.outlier_clusters_final[row]];
+            val_this = numeric_data[row + nrows * col_this];
+            val_comp = cluster_this->display_mean;
+            min_decimals = std::max(0, decimals_diff(val_this, val_comp));
+
+            if (val_this >= cluster_this->upper_lim)
+                val_comp = cluster_this->display_lim_high;
+            else
+                val_comp = cluster_this->display_lim_low;
+            min_decimals = std::max(min_decimals, decimals_diff(val_this, val_comp));
+
+            model_outputs.outlier_decimals_distr[row] = min_decimals;
+        }
+    }
+}
+
+int decimals_diff(double val1, double val2)
+{
+    double res = ceil(-log10(fabs(val1 - val2)));
+    if (is_na_or_inf(res)) res = 0.;
+    return (int) res;
+}
+
 
 /* Reason behind this function: Cython (as of v0.29) will not auto-deallocate
    structs which are part of a cdef'd class, which produces a memory leak
