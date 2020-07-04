@@ -56,6 +56,13 @@ pip install outliertree
 ```
 (Package has only been tested in Python 3)
 
+**Note for macOS users:** on macOS, the Python version of this package will compile **without** multi-threading capabilities. This is due to default apple's redistribution of `clang` not providing OpenMP modules, and aliasing it to `gcc` which causes confusions in build scripts. If you have a non-apple version of `clang` with the OpenMP modules, or if you have `gcc` installed, you can compile this package with multi-threading enabled by setting up an environment variable `ENABLE_OMP=1`:
+```
+export ENABLE_OMP=1
+pip install outliertree
+```
+(Alternatively, can also pass argument `enable-omp` to the `setup.py` file: `python setup.py install enable-omp`)
+
 
 * For C++: package doesn't have a build system, nor a `main` function that can produce an executable, but can be built as a shared object and wrapped into other languages with any C++11-compliant compiler (`std=c++11` in most compilers, `/std:c++14` in MSVC). For parallelization, needs OpenMP linkage (`-fopenmp` in most compilers, `/openmp` in MSVC). Package should *not* be built with optimization higher than `O3` (i.e. don't use `-Ofast`). Needs linkage to the `math` library, which should be enabled by default in most C++ compilers, but otherwise would require `-lm` argument. No external dependencies are required.
 
