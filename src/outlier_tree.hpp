@@ -217,7 +217,7 @@ typedef struct Cluster {
     }
 
     /* this is for serialization with both cereal and cython auto-pickle */
-    Cluster() {};
+    Cluster() = default;
     
 } Cluster;
 
@@ -332,7 +332,7 @@ typedef struct ClusterTree {
     }
 
     /* this is for serialization with both cereal and cython auto-pickle */
-    ClusterTree() {};
+    ClusterTree() = default;
 
 } ClusterTree;
 
@@ -393,7 +393,7 @@ typedef struct ModelOutputs {
     }
 
     /* this is for serialization with both cereal and cython auto-pickle */
-    ModelOutputs() {};
+    ModelOutputs() = default;
 
 } ModelOutputs;
 

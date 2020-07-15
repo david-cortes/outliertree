@@ -35,7 +35,7 @@ SEXP deserialize_OutlierTree(Rcpp::RawVector src)
     std::stringstream ss;
     ss.write(reinterpret_cast<char*>(&src[0]), src.size());
     ss.seekg(0, ss.beg);
-    std::unique_ptr<ModelOutputs> model_outputs = std::unique_ptr<ModelOutputs>(new ModelOutputs);
+    std::unique_ptr<ModelOutputs> model_outputs = std::unique_ptr<ModelOutputs>(new ModelOutputs());
     {
         cereal::BinaryInputArchive iarchive(ss);
         iarchive(*model_outputs);
@@ -1134,7 +1134,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
     std::vector<double> Xcpp;
     double *arr_num_C = set_R_nan_as_C_nan(&arr_num[0], Xcpp, arr_num.size(), nthreads);
 
-    std::unique_ptr<ModelOutputs> model_outputs = std::unique_ptr<ModelOutputs>(new ModelOutputs);
+    std::unique_ptr<ModelOutputs> model_outputs = std::unique_ptr<ModelOutputs>(new ModelOutputs());
     found_outliers = fit_outliers_models(*model_outputs,
                                          arr_num_C, ncols_numeric,
                                          &arr_cat[0], ncols_categ, &ncat[0],
