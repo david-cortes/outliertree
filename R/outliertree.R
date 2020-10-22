@@ -202,6 +202,8 @@ outlier.tree <- function(df, max_depth = 4L, min_gain = 1e-2, z_norm = 2.67, z_o
                                                as.character(model_data$cols_ord),
                                                model_data$date_min,
                                                model_data$ts_min)
+    if (!NROW(model_data$obj_from_cpp$serialized_obj))
+        stop("Model object is too big. Try smaller inputs and/or changing hyperparameters.")
     names(model_data$obj_from_cpp$bounds) <- get.cols.ordered(model_data)
     model_data$obj_from_cpp$bounds        <- model_data$obj_from_cpp$bounds[names(df)]
     

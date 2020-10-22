@@ -23,7 +23,12 @@ Rcpp::RawVector serialize_OutlierTree(ModelOutputs *model_outputs)
         oarchive(*model_outputs);
     }
     ss.seekg(0, ss.end);
-    Rcpp::RawVector retval(ss.tellg());
+    std::stringstream::pos_type vec_size = ss.tellg();
+    if (vec_size <= 0) {
+        Rcpp::Rcerr << "Error: model is too big to serialize, resulting object will not be usable.\n" << std::endl;
+        return Rcpp::RawVector();
+    }
+    Rcpp::RawVector retval((size_t)vec_size);
     ss.seekg(0, ss.beg);
     ss.read(reinterpret_cast<char*>(&retval[0]), retval.size());
     return retval;
@@ -1151,6 +1156,8 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
                                          min_ts);
 
     outp["serialized_obj"] = serialize_OutlierTree(model_outputs.get());
+    if (!Rf_xlength(outp["serialized_obj"]))
+        return outp;
     if (return_outliers) {
         outp["outliers_info"] = describe_outliers(*model_outputs,
                                                   arr_num_C,
