@@ -2,14 +2,6 @@
 
 Explainable outlier/anomaly detection based on smart decision tree grouping, similar in spirit to the GritBot software developed by RuleQuest research. Written in C++ with interfaces for R and Python (additional Ruby wrapper can be found [here](https://github.com/ankane/outliertree/)). Supports columns of types numeric, categorical, binary/boolean, and ordinal, and can handle missing values in all of them. Ideal as a sanity checker in exploratory data analysis.
 
-# How it works
-
-Will try to fit decision trees that try to "predict" values for each column based on the values of each other column. Along the way, each time a split is evaluated, it will take the observations that fall into each branch as a homogeneous cluster in which it will search for outliers in the 1-d distribution of the column being predicted. Outliers are determined according to confidence intervals on this 1-d distribution, and need to have a large gap with respect to the next observation in sorted order to be flagged as outliers. Since outliers are searched for in a decision tree branch, it will know the conditions that make it a rare observation compared to others that meet the same conditions, and the conditions will always be correlated with the target variable (as it's being predicted from them).
-
-As such, it will only be able to detect outliers that can be described through a decision tree logic, and unlike other methods such as [Isolation Forests](https://github.com/david-cortes/isotree), will not be able to assign an outlier score to each observation, nor to detect outliers that are just overall rare, but will always provide a human-readable justification when it flags an outlier.
-
-Procedure is described in more detail in [Explainable outlier detection through decision tree conditioning](http://arxiv.org/abs/2001.00636).
-
 # Example outputs
 
 Example outliers from [hypothyroid dataset](http://archive.ics.uci.edu/ml/datasets/thyroid+disease):
@@ -24,6 +16,13 @@ row [2229] - suspicious column: [T3] - suspicious vale: [10.600]
 	distribution: 99.951% <= 7.100 - [mean: 1.984] - [sd: 0.750] - [norm. obs: 2050]
 	given:
 		[query hyperthyroid] = [f]
+
+row [745] - suspicious column: [TT4] - suspicious value: [239.00]
+	distribution: 98.571% <= 177.00 - [mean: 135.23] - [sd: 12.57] - [norm. obs: 69]
+	given:
+		[FTI] between (97.96, 128.12] (value: 112.74)
+		[T4U] > [1.12] (value: 2.12)
+		[age] > [55.00] (value: 87.00)
 ```
 (i.e. it's saying that it's abnormal to be pregnant at the age of 75, or to not be classified as hyperthyroidal when having very high thyroid hormone levels)
 (this dataset is also bundled into the R package - e.g. `data(hypothyroid)`)
@@ -41,6 +40,14 @@ row [885] - suspicious column: [Fare] - suspicious value: [29.125]
 (i.e. it's saying that the this person paid too much for the kind of accomodation he had)
 
 _Note that it can also produce other types of conditions such as 'between' (for numeric intervals) or 'in' (for categorical subsets)_
+
+# How it works
+
+Will try to fit decision trees that try to "predict" values for each column based on the values of each other column. Along the way, each time a split is evaluated, it will take the observations that fall into each branch as a homogeneous cluster in which it will search for outliers in the 1-d distribution of the column being predicted. Outliers are determined according to confidence intervals on this 1-d distribution, and need to have a large gap with respect to the next observation in sorted order to be flagged as outliers. Since outliers are searched for in a decision tree branch, it will know the conditions that make it a rare observation compared to others that meet the same conditions, and the conditions will always be correlated with the target variable (as it's being predicted from them).
+
+As such, it will only be able to detect outliers that can be described through a decision tree logic, and unlike other methods such as [Isolation Forests](https://github.com/david-cortes/isotree), will not be able to assign an outlier score to each observation, nor to detect outliers that are just overall rare, but will always provide a human-readable justification when it flags an outlier.
+
+Procedure is described in more detail in [Explainable outlier detection through decision tree conditioning](http://arxiv.org/abs/2001.00636).
 
 # Installation
 
