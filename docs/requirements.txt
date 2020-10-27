@@ -1,0 +1,4 @@
+pandas>=0.24.0
+numpy
+cython
+Sphinx>=3.2.1
