@@ -75,25 +75,14 @@ split.types <- function(df, cols_ignore = NULL, nthreads = 1) {
     if (NROW(cols_date)) {
         df[, cols_date] <- as.data.frame(lapply(df[, cols_date, drop = FALSE], as.numeric))
         outp$date_min   <- sapply(df[, cols_date, drop = FALSE], min, na.rm = TRUE)
-        if (NROW(cols_date) != NROW(df)) {
-            df[, cols_date] <- df[, cols_date, drop = FALSE] - outp$date_min + 1
-        } else {
-            ### if the number of columns is the same as the number of rows, R will
-            ### always make subtraction by-row instead of by-col, regardless of whether
-            ### it's passed as a matrix with a certain shape like in NumPy
-            df[, cols_date] <- mapply(function(a, b) a - b + 1, df[, cols_date, drop = FALSE], outp$date_min)
-        }
+        df[, cols_date] <- mapply(function(a, b) a - b + 1, df[, cols_date, drop = FALSE], outp$date_min)
         ## the extra 1 is for the way in which package applies log transforms
     }
     
     if (NROW(cols_ts)) {
         df[, cols_ts] <- as.data.frame(lapply(df[, cols_ts, drop = FALSE], as.numeric))
         outp$ts_min   <- sapply(df[, cols_ts, drop = FALSE], min, na.rm = TRUE)
-        if (NROW(cols_ts) != NROW(df)) {
-            df[, cols_ts] <- df[, cols_ts, drop = FALSE] - outp$ts_min + 1
-        } else {
-            df[, cols_ts] <- mapply(function(a, b) a - b + 1, df[, cols_ts, drop = FALSE], outp$ts_min)
-        }
+        df[, cols_ts] <- mapply(function(a, b) a - b + 1, df[, cols_ts, drop = FALSE], outp$ts_min)
     }
     
     if (NROW(outp$cols_cat)) {
@@ -193,12 +182,14 @@ split.types.new <- function(df, model_data) {
         df[, model_data$cols_num] <- as.data.frame(lapply(df[, model_data$cols_num, drop = FALSE], as.numeric))
     }
     if (NROW(model_data$cols_date)) {
-        df[, model_data$cols_date] <- (as.data.frame(lapply(df[, model_data$cols_date, drop = FALSE], as.numeric))
-                                       - model_data$date_min + 1)
+        df[, model_data$cols_date] <- mapply(function(a, b) a - b + 1,
+                                             as.data.frame(lapply(df[, model_data$cols_date, drop = FALSE], as.numeric)),
+                                             model_data$date_min)
     }
     if (NROW(model_data$cols_ts)) {
-        df[, model_data$cols_ts] <- (as.data.frame(lapply(df[, model_data$cols_ts, drop = FALSE], as.numeric))
-                                     - model_data$ts_min + 1)
+        df[, model_data$cols_ts] <- mapply(function(a, b) a - b + 1,
+                                           as.data.frame(lapply(df[, model_data$cols_ts, drop = FALSE], as.numeric)),
+                                           model_data$ts_min)
     }
     if (NROW(model_data$cols_cat)) {
         for (cl in 1:NROW(model_data$cols_cat)) {
