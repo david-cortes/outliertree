@@ -284,6 +284,9 @@ outlier.tree <- function(df, max_depth = 4L, min_gain = 1e-2, z_norm = 2.67, z_o
 #' 
 #' ### retrieve the outlier info (for row 1) as an R list
 #' test_outliers[[1]]
+#' 
+#' ### to turn it into a 6-column table:
+#' # dt = t(data.table::as.data.table(test_outliers))
 #' @export 
 predict.outliertree <- function(object, newdata, outliers_print = 15L, min_decimals = 2L,
                                 return_outliers = TRUE, ...) {

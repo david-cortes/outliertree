@@ -77,6 +77,9 @@ test_outliers = predict(outliers_model, df_test,
 
 ### retrieve the outlier info (for row 1) as an R list
 test_outliers[[1]]
+
+### to turn it into a 6-column table:
+# dt = t(data.table::as.data.table(test_outliers))
 }
 \seealso{
 \link{outlier.tree} \link{print.outlieroutputs} \link{unpack.outlier.tree}
