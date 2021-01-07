@@ -75,14 +75,14 @@ split.types <- function(df, cols_ignore = NULL, nthreads = 1) {
     if (NROW(cols_date)) {
         df[, cols_date] <- as.data.frame(lapply(df[, cols_date, drop = FALSE], as.numeric))
         outp$date_min   <- sapply(df[, cols_date, drop = FALSE], min, na.rm = TRUE)
-        df[, cols_date] <- mapply(function(a, b) a - b + 1, df[, cols_date, drop = FALSE], outp$date_min)
+        df[, cols_date] <- sweep(df[, cols_date, drop = FALSE], 2, outp$date_min - 1, "-")
         ## the extra 1 is for the way in which package applies log transforms
     }
     
     if (NROW(cols_ts)) {
         df[, cols_ts] <- as.data.frame(lapply(df[, cols_ts, drop = FALSE], as.numeric))
         outp$ts_min   <- sapply(df[, cols_ts, drop = FALSE], min, na.rm = TRUE)
-        df[, cols_ts] <- mapply(function(a, b) a - b + 1, df[, cols_ts, drop = FALSE], outp$ts_min)
+        df[, cols_ts] <- sweep(df[, cols_ts, drop = FALSE], 2, outp$ts_min - 1, "-")
     }
     
     if (NROW(outp$cols_cat)) {
