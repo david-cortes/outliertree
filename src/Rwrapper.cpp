@@ -1,5 +1,7 @@
 #include <Rcpp.h>
+#include <Rcpp/unwindProtect.h>
 // [[Rcpp::plugins(cpp11)]]
+// [[Rcpp::plugins(unwindProtect)]]
 
 /* This is to serialize the model objects */
 // [[Rcpp::depends(Rcereal)]]
@@ -10,6 +12,11 @@
 
 /* This is the package's header */
 #include "outlier_tree.hpp"
+
+SEXP alloc_RawVec(void *data)
+{
+    return Rcpp::RawVector(*(size_t*)data);
+}
 
 /* for model serialization and re-usage in R */
 /* https://stackoverflow.com/questions/18474292/how-to-handle-c-internal-data-structure-in-r-in-order-to-allow-save-load */
@@ -28,7 +35,12 @@ Rcpp::RawVector serialize_OutlierTree(ModelOutputs *model_outputs)
         Rcpp::Rcerr << "Error: model is too big to serialize, resulting object will not be usable.\n" << std::endl;
         return Rcpp::RawVector();
     }
-    Rcpp::RawVector retval((size_t)vec_size);
+    // Rcpp::RawVector retval((size_t)vec_size);
+    Rcpp::RawVector retval;
+    size_t vec_size_ = (size_t)vec_size;
+    retval = Rcpp::unwindProtect(alloc_RawVec, (void*)&vec_size_);
+    if (!retval.size())
+        return retval;
     ss.seekg(0, ss.beg);
     ss.read(reinterpret_cast<char*>(&retval[0]), retval.size());
     return retval;
