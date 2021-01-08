@@ -32,6 +32,7 @@
 *    along with OutlierTree.  If not, see <https://www.gnu.org/licenses/>.
 ********************************************************************************************************************/
 #include "outlier_tree.hpp"
+bool interrupt_switch;
 
 /*    Fit outliers model based on conditional distributions obtaines thorugh decision-tree splitting
 *    
@@ -134,6 +135,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                          size_t max_depth, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
                          double min_gain, bool gain_as_pct, bool follow_all, double z_norm, double z_outlier)
 {
+    SignalSwitcher();
 
     /* put parameters and data into structs to avoid passing too many function arguments each time */
     double z_tail = z_outlier - z_norm;
@@ -200,6 +202,9 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     input_data.cat_counts.resize(model_outputs.start_ix_cat_counts[ncols_categ + ncols_ord], 0);
     model_params.prop_small.resize(model_outputs.start_ix_cat_counts[ncols_categ + ncols_ord]);
     model_outputs.prop_categ.resize(model_outputs.start_ix_cat_counts[ncols_categ + ncols_ord]);
+
+    if (interrupt_switch)
+        throw "Error: procedure was interrupted.\n";
 
     /* calculate prior probabilities for categorical variables (in parallel), see if any is unsplittable */
     if (tot_cols > ncols_numeric) {
@@ -269,12 +274,16 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
         /* this is not exact as categoricals and ordinals can also be split multiple times */
     }
 
+    if (interrupt_switch)
+        throw "Error: procedure was interrupted.\n";
 
     /* now run the procedure on each column separately */
     int tid;
     nthreads = std::min(nthreads, (int)(ncols_numeric + ncols_categ + ncols_ord));
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic, 1) private(tid) shared(workspace, model_outputs, input_data, model_params, tot_cols)
     for (size_t_for col = 0; col < tot_cols; col++) {
+
+        if (interrupt_switch) continue;
 
         if (cols_ignore != NULL && cols_ignore[col]) continue;
         if (input_data.skip_col[col] && col < input_data.ncols_numeric) continue;
@@ -397,6 +406,9 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
 
     }
 
+    if (interrupt_switch)
+        throw "Error: procedure was interrupted.\n";
+
     /* once finished, determine how many decimals to report for numerical outliers */
     if (found_outliers)
       calc_min_decimals_to_print(model_outputs, input_data.numeric_data, nthreads);
@@ -443,6 +455,8 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
                          ModelParams &model_params,
                          ModelOutputs &model_outputs)
 {
+    if (interrupt_switch) return;
+
     /* discard NAs and infinites */
     workspace.target_col_num = target_col_num;
     workspace.target_numeric_col = input_data.numeric_data + target_col_num * input_data.nrows;
@@ -543,6 +557,8 @@ void recursive_split_numeric(Workspace &workspace,
                              ModelParams &model_params,
                              size_t curr_depth, bool is_NA_branch)
 {
+    if (interrupt_switch) return;
+
     workspace.best_gain = -HUGE_VAL;
     workspace.column_type_best = NoType;
     workspace.lev_has_outliers = false;
@@ -1010,6 +1026,8 @@ void process_categ_col(std::vector<Cluster> &cluster_root,
                        ModelParams &model_params,
                        ModelOutputs &model_outputs)
 {
+    if (interrupt_switch) return;
+
     if (model_params.max_depth <= 0) return;
 
     /* extract necesary info from column and discard NAs */
@@ -1150,6 +1168,8 @@ void recursive_split_categ(Workspace &workspace,
                            ModelParams &model_params,
                            size_t curr_depth, bool is_NA_branch)
 {
+    if (interrupt_switch) return;
+    
     /*    idea is the same as its numeric counterpart, only splitting by another categorical
         is less clear how to do and offers different options */
     workspace.best_gain = -HUGE_VAL;

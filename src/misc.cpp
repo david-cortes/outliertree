@@ -683,3 +683,29 @@ void dealloc_ModelOutputs(ModelOutputs &model_outputs)
 {
     model_outputs.~ModelOutputs();
 }
+
+/* Function to handle interrupt signals */
+void set_interrup_global_variable(int s)
+{
+    #ifndef _FOR_R
+    fprintf(stderr, "Error: procedure was interrupted\n");
+    #else
+    REprintf("Error: procedure was interrupted\n");
+    #endif
+    #pragma omp critical
+    {
+        interrupt_switch = true;
+    }
+}
+
+SignalSwitcher::SignalSwitcher()
+{
+    interrupt_switch = false;
+    this->old_sig = signal(SIGINT, set_interrup_global_variable);
+}
+
+SignalSwitcher::~SignalSwitcher()
+{
+    interrupt_switch = false;
+    signal(SIGINT, this->old_sig);
+}
