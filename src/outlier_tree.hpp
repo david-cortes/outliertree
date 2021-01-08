@@ -53,6 +53,9 @@
 #endif
 #include <signal.h>
 typedef void (*sig_t_)(int);
+#ifdef _FOR_R
+    #include "Rinternals.h"
+#endif
 
 /************************
     Short Functions
