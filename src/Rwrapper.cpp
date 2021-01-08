@@ -1,3 +1,5 @@
+#ifdef _FOR_R
+
 #include <Rcpp.h>
 #include <Rcpp/unwindProtect.h>
 // [[Rcpp::plugins(cpp11)]]
@@ -1242,3 +1244,5 @@ Rcpp::LogicalVector check_few_values(Rcpp::NumericVector arr_num, size_t nrows, 
     }
     return outp;
 }
+
+#endif /* _FOR_R */
