@@ -687,13 +687,13 @@ void dealloc_ModelOutputs(ModelOutputs &model_outputs)
 /* Function to handle interrupt signals */
 void set_interrup_global_variable(int s)
 {
-    #ifndef _FOR_R
-    fprintf(stderr, "Error: procedure was interrupted\n");
-    #else
-    REprintf("Error: procedure was interrupted\n");
-    #endif
     #pragma omp critical
     {
+        #ifndef _FOR_R
+        fprintf(stderr, "Error: procedure was interrupted\n");
+        #else
+        REprintf("Error: procedure was interrupted\n");
+        #endif
         interrupt_switch = true;
     }
 }
