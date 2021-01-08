@@ -10,7 +10,6 @@ SEXP deserialize_OutlierTree(Rcpp::RawVector src);
 RcppExport SEXP _outliertree_deserialize_OutlierTree(SEXP srcSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::RawVector >::type src(srcSEXP);
     rcpp_result_gen = Rcpp::wrap(deserialize_OutlierTree(src));
     return rcpp_result_gen;
@@ -21,7 +20,6 @@ Rcpp::LogicalVector check_null_ptr_model(SEXP ptr_model);
 RcppExport SEXP _outliertree_check_null_ptr_model(SEXP ptr_modelSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type ptr_model(ptr_modelSEXP);
     rcpp_result_gen = Rcpp::wrap(check_null_ptr_model(ptr_model));
     return rcpp_result_gen;
@@ -32,7 +30,6 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric, Rc
 RcppExport SEXP _outliertree_fit_OutlierTree(SEXP arr_numSEXP, SEXP ncols_numericSEXP, SEXP arr_catSEXP, SEXP ncols_categSEXP, SEXP ncatSEXP, SEXP arr_ordSEXP, SEXP ncols_ordSEXP, SEXP ncat_ordSEXP, SEXP nrowsSEXP, SEXP cols_ignore_rSEXP, SEXP nthreadsSEXP, SEXP categ_as_binSEXP, SEXP ord_as_binSEXP, SEXP cat_bruteforce_subsetSEXP, SEXP categ_from_majSEXP, SEXP take_midSEXP, SEXP max_depthSEXP, SEXP max_perc_outliersSEXP, SEXP min_size_numericSEXP, SEXP min_size_categSEXP, SEXP min_gainSEXP, SEXP follow_allSEXP, SEXP gain_as_pctSEXP, SEXP z_normSEXP, SEXP z_outlierSEXP, SEXP return_outliersSEXP, SEXP cat_levelsSEXP, SEXP ord_levelsSEXP, SEXP colnames_numSEXP, SEXP colnames_catSEXP, SEXP colnames_ordSEXP, SEXP min_dateSEXP, SEXP min_tsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type arr_num(arr_numSEXP);
     Rcpp::traits::input_parameter< size_t >::type ncols_numeric(ncols_numericSEXP);
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type arr_cat(arr_catSEXP);
@@ -75,7 +72,6 @@ Rcpp::List predict_OutlierTree(SEXP ptr_model, size_t nrows, int nthreads, Rcpp:
 RcppExport SEXP _outliertree_predict_OutlierTree(SEXP ptr_modelSEXP, SEXP nrowsSEXP, SEXP nthreadsSEXP, SEXP arr_numSEXP, SEXP arr_catSEXP, SEXP arr_ordSEXP, SEXP cat_levelsSEXP, SEXP ord_levelsSEXP, SEXP colnames_numSEXP, SEXP colnames_catSEXP, SEXP colnames_ordSEXP, SEXP min_dateSEXP, SEXP min_tsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type ptr_model(ptr_modelSEXP);
     Rcpp::traits::input_parameter< size_t >::type nrows(nrowsSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
@@ -98,7 +94,6 @@ Rcpp::LogicalVector check_few_values(Rcpp::NumericVector arr_num, size_t nrows, 
 RcppExport SEXP _outliertree_check_few_values(SEXP arr_numSEXP, SEXP nrowsSEXP, SEXP ncolsSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type arr_num(arr_numSEXP);
     Rcpp::traits::input_parameter< size_t >::type nrows(nrowsSEXP);
     Rcpp::traits::input_parameter< size_t >::type ncols(ncolsSEXP);

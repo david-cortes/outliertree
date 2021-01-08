@@ -48,7 +48,7 @@ Rcpp::RawVector serialize_OutlierTree(ModelOutputs *model_outputs)
     return retval;
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 SEXP deserialize_OutlierTree(Rcpp::RawVector src)
 {
     std::stringstream ss;
@@ -62,7 +62,7 @@ SEXP deserialize_OutlierTree(Rcpp::RawVector src)
     return Rcpp::XPtr<ModelOutputs>(model_outputs.release(), true);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::LogicalVector check_null_ptr_model(SEXP ptr_model)
 {
     return Rcpp::LogicalVector(R_ExternalPtrAddr(ptr_model) == NULL);
@@ -1123,7 +1123,7 @@ Rcpp::List extract_outl_bounds(ModelOutputs &model_outputs,
 
 
 /* external functions for fitting the model and predicting outliers */
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
                            Rcpp::IntegerVector arr_cat, size_t ncols_categ,   Rcpp::IntegerVector ncat,
                            Rcpp::IntegerVector arr_ord, size_t ncols_ord,     Rcpp::IntegerVector ncat_ord,
@@ -1200,7 +1200,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
     return outp;
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::List predict_OutlierTree(SEXP ptr_model, size_t nrows, int nthreads,
                                Rcpp::NumericVector arr_num, Rcpp::IntegerVector arr_cat, Rcpp::IntegerVector arr_ord,
                                Rcpp::ListOf<Rcpp::StringVector> cat_levels,
@@ -1233,7 +1233,7 @@ Rcpp::List predict_OutlierTree(SEXP ptr_model, size_t nrows, int nthreads,
     return outp;
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::LogicalVector check_few_values(Rcpp::NumericVector arr_num, size_t nrows, size_t ncols, int nthreads)
 {
     std::vector<char> too_few_vals(ncols, 0);
