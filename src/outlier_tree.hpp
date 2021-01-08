@@ -56,6 +56,9 @@ typedef void (*sig_t_)(int);
 #ifdef _FOR_R
     #include "Rinternals.h"
 #endif
+#if !defined(_WIN32) && !defined(_WIN64) && !defined(_MSC_VER)
+    #include <unistd.h>
+#endif
 
 /************************
     Short Functions
