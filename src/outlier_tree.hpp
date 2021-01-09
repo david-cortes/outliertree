@@ -54,9 +54,6 @@
 #ifdef _FOR_R
     #include <Rcpp.h>
 #endif
-#ifdef _FOR_PYTHON
-    #include "Python.h"
-#endif
 #include <signal.h>
 typedef void (*sig_t_)(int);
 #if !defined(_WIN32) && !defined(_WIN64) && !defined(_MSC_VER)
@@ -775,8 +772,10 @@ class SignalSwitcher
 {
 public:
     sig_t_ old_sig;
+    bool is_active;
     SignalSwitcher();
     ~SignalSwitcher();
+    void restore_handle();
 };
 void check_interrupt_switch(SignalSwitcher &ss);
 #ifdef _FOR_PYTHON

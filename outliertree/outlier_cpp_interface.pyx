@@ -3,7 +3,6 @@ import  numpy as np
 cimport numpy as np
 from libcpp cimport bool as bool_t ###don't confuse it with Python bool
 from libcpp.vector cimport vector
-from cpython.exc cimport PyErr_CheckSignals, PyErr_SetInterrupt
 import ctypes
 
 cdef extern from "outlier_tree.hpp":
@@ -217,7 +216,7 @@ cdef class OutlierCppObject:
 
         if cy_check_interrupt_switch():
             cy_tick_off_interrupt_switch()
-            raise KeyboardInterrupt("Error: procedure was interrupted.")
+            raise InterruptedError("Error: procedure was interrupted.")
 
         if not return_outliers:
             forget_row_outputs(self.model_outputs)
