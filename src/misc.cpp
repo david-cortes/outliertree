@@ -689,14 +689,46 @@ void set_interrup_global_variable(int s)
 {
     #pragma omp critical
     {
+        interrupt_switch = true;
+    }
+}
+
+void check_interrupt_switch(SignalSwitcher &ss)
+{
+    if (interrupt_switch)
+    {
+        ss.~SignalSwitcher();
         #ifndef _FOR_R
         fprintf(stderr, "Error: procedure was interrupted\n");
         #else
         REprintf("Error: procedure was interrupted\n");
         #endif
+        #if !defined(_WIN32) && !defined(_WIN64) && !defined(_MSC_VER)
+        kill(getpid(), SIGINT);
+        #endif
+        #ifdef _FOR_R
+        Rcpp::checkUserInterrupt();
+        #endif
+        #ifdef _FOR_PYTHON
+        PyErr_SetInterrupt();
+        PyErr_CheckSignals();
         interrupt_switch = true;
+        #else
+        throw "Error: procedure was interrupted.\n";
+        #endif
     }
 }
+
+#ifdef _FOR_PYTHON
+bool cy_check_interrupt_switch()
+{
+    return interrupt_switch;
+}
+void cy_tick_off_interrupt_switch()
+{
+    interrupt_switch = false;
+}
+#endif
 
 SignalSwitcher::SignalSwitcher()
 {
@@ -707,11 +739,5 @@ SignalSwitcher::SignalSwitcher()
 SignalSwitcher::~SignalSwitcher()
 {
     signal(SIGINT, this->old_sig);
-    if (interrupt_switch)
-    {
-        interrupt_switch = false;
-        #if !defined(_WIN32) && !defined(_WIN64) && !defined(_MSC_VER)
-        kill(getpid(), SIGINT);
-        #endif
-    }
+    interrupt_switch = false;
 }

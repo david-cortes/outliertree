@@ -135,7 +135,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                          size_t max_depth, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
                          double min_gain, bool gain_as_pct, bool follow_all, double z_norm, double z_outlier)
 {
-    SignalSwitcher();
+    SignalSwitcher ss = SignalSwitcher();
 
     /* put parameters and data into structs to avoid passing too many function arguments each time */
     double z_tail = z_outlier - z_norm;
@@ -203,8 +203,10 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     model_params.prop_small.resize(model_outputs.start_ix_cat_counts[ncols_categ + ncols_ord]);
     model_outputs.prop_categ.resize(model_outputs.start_ix_cat_counts[ncols_categ + ncols_ord]);
 
-    if (interrupt_switch)
-        throw "Error: procedure was interrupted.\n";
+    check_interrupt_switch(ss);
+    #ifdef _FOR_PYTHON
+    if (interrupt_switch) return false;
+    #endif
 
     /* calculate prior probabilities for categorical variables (in parallel), see if any is unsplittable */
     if (tot_cols > ncols_numeric) {
@@ -274,8 +276,10 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
         /* this is not exact as categoricals and ordinals can also be split multiple times */
     }
 
-    if (interrupt_switch)
-        throw "Error: procedure was interrupted.\n";
+    check_interrupt_switch(ss);
+    #ifdef _FOR_PYTHON
+    if (interrupt_switch) return false;
+    #endif
 
     /* now run the procedure on each column separately */
     int tid;
@@ -406,8 +410,10 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
 
     }
 
-    if (interrupt_switch)
-        throw "Error: procedure was interrupted.\n";
+    check_interrupt_switch(ss);
+    #ifdef _FOR_PYTHON
+    if (interrupt_switch) return false;
+    #endif
 
     /* once finished, determine how many decimals to report for numerical outliers */
     if (found_outliers)

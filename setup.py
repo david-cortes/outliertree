@@ -65,7 +65,7 @@ if platform[:3] != "dar":
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.3.2',
+    version = '1.3.3',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     author_email = 'david.cortes.rivera@gmail.com',
@@ -77,6 +77,7 @@ setup(
                                 sources=["outliertree/outlier_cpp_interface.pyx", "src/split.cpp", "src/cat_outlier.cpp",
                                          "src/fit_model.cpp", "src/clusters.cpp", "src/misc.cpp", "src/predict.cpp"],
                                 include_dirs=[np.get_include(), ".", "./src"],
+                                define_macros=[("_FOR_PYTHON", None)],
                                 language="c++",
                                 install_requires = ["numpy", "pandas>=0.24.0", "cython"]
                             )]

@@ -3,6 +3,7 @@ import  numpy as np
 cimport numpy as np
 from libcpp cimport bool as bool_t ###don't confuse it with Python bool
 from libcpp.vector cimport vector
+from cpython.exc cimport PyErr_CheckSignals, PyErr_SetInterrupt
 import ctypes
 
 cdef extern from "outlier_tree.hpp":
@@ -121,6 +122,10 @@ cdef extern from "outlier_tree.hpp":
 
     void dealloc_ModelOutputs(ModelOutputs &model_outputs)
 
+    bool_t cy_check_interrupt_switch()
+
+    void cy_tick_off_interrupt_switch()
+
 
 def check_few_values(np.ndarray[double, ndim = 2] arr, int nthreads = 1):
     cdef size_t nrows = arr.shape[0]
@@ -209,6 +214,10 @@ cdef class OutlierCppObject:
                                                 max_conditions, max_perc_outliers, min_size_numeric, min_size_categ,
                                                 min_gain, gain_as_pct, follow_all, z_norm, z_outlier
                                             )
+
+        if cy_check_interrupt_switch():
+            cy_tick_off_interrupt_switch()
+            raise KeyboardInterrupt("Error: procedure was interrupted.")
 
         if not return_outliers:
             forget_row_outputs(self.model_outputs)

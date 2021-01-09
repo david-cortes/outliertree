@@ -51,14 +51,18 @@
 #ifdef _OPENMP
     #include <omp.h>
 #endif
+#ifdef _FOR_R
+    #include <Rcpp.h>
+#endif
+#ifdef _FOR_PYTHON
+    #include "Python.h"
+#endif
 #include <signal.h>
 typedef void (*sig_t_)(int);
-#ifdef _FOR_R
-    #include "Rinternals.h"
-#endif
 #if !defined(_WIN32) && !defined(_WIN64) && !defined(_MSC_VER)
     #include <unistd.h>
 #endif
+
 
 /************************
     Short Functions
@@ -774,3 +778,8 @@ public:
     SignalSwitcher();
     ~SignalSwitcher();
 };
+void check_interrupt_switch(SignalSwitcher &ss);
+#ifdef _FOR_PYTHON
+bool cy_check_interrupt_switch();
+void cy_tick_off_interrupt_switch();
+#endif

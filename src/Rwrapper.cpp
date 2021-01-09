@@ -23,7 +23,6 @@ SEXP alloc_RawVec(void *data)
 /* for model serialization and re-usage in R */
 /* https://stackoverflow.com/questions/18474292/how-to-handle-c-internal-data-structure-in-r-in-order-to-allow-save-load */
 /* this extra comment below the link is a workaround for Rcpp issue 675 in GitHub, do not remove it */
-#include <Rinternals.h>
 Rcpp::RawVector serialize_OutlierTree(ModelOutputs *model_outputs)
 {
     std::stringstream ss;
