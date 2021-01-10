@@ -703,9 +703,7 @@ void check_interrupt_switch(SignalSwitcher &ss)
         #else
         REprintf("Error: procedure was interrupted\n");
         #endif
-        #if !defined(_WIN32) && !defined(_WIN64) && !defined(_MSC_VER)
-        kill(getpid(), SIGINT);
-        #endif
+        raise(SIGINT);
         #ifdef _FOR_R
         Rcpp::checkUserInterrupt();
         #elif !defined(_FOR_PYTHON) && !defined(DONT_THROW_ON_INTERRUPT)

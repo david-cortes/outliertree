@@ -56,9 +56,6 @@
 #endif
 #include <signal.h>
 typedef void (*sig_t_)(int);
-#if !defined(_WIN32) && !defined(_WIN64) && !defined(_MSC_VER)
-    #include <unistd.h>
-#endif
 
 
 /************************
