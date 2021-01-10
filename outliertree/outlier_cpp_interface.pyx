@@ -3,6 +3,7 @@ import  numpy as np
 cimport numpy as np
 from libcpp cimport bool as bool_t ###don't confuse it with Python bool
 from libcpp.vector cimport vector
+from cython cimport boundscheck, nonecheck, wraparound
 import ctypes
 
 cdef extern from "outlier_tree.hpp":
@@ -108,12 +109,12 @@ cdef extern from "outlier_tree.hpp":
                                size_t nrows, char *cols_ignore, int nthreads,
                                bool_t categ_as_bin, bool_t ord_as_bin, bool_t cat_bruteforce_subset, bool_t categ_from_maj, bool_t take_mid,
                                size_t max_conditions, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
-                               double min_gain, bool_t gain_as_pct, bool_t follow_all, double z_norm, double z_outlier) except +
+                               double min_gain, bool_t gain_as_pct, bool_t follow_all, double z_norm, double z_outlier) nogil except +
 
     bool_t find_new_outliers(double *numeric_data,
                              int    *categorical_data,
                              int    *ordinal_data,
-                             size_t nrows, int nthreads, ModelOutputs &model_outputs) except +
+                             size_t nrows, int nthreads, ModelOutputs &model_outputs) nogil except +
 
     void forget_row_outputs(ModelOutputs &model_outputs)
 
@@ -203,7 +204,8 @@ cdef class OutlierCppObject:
                 cols_ignore_c[cl_ix] = <bool_t> cols_ignore[cl_ix]
 
         cdef bool_t found_outliers
-        found_outliers = fit_outliers_models(
+        with nogil, boundscheck(False), nonecheck(False), wraparound(False):
+            found_outliers = fit_outliers_models(
                                                 self.model_outputs,
                                                 ptr_arr_num, ncol_num,
                                                 ptr_arr_cat, ncol_cat, ptr_arr_ncat,
@@ -252,13 +254,14 @@ cdef class OutlierCppObject:
             ptr_arr_ord = &arr_ord[0, 0]
 
         cdef bool_t found_outliers
-        found_outliers = find_new_outliers(
-                                            ptr_arr_num,
-                                            ptr_arr_cat,
-                                            ptr_arr_ord,
-                                            nrows, nthreads,
-                                            self.model_outputs
-                                        )
+        with nogil, boundscheck(False), nonecheck(False), wraparound(False):
+            found_outliers = find_new_outliers(
+                                                ptr_arr_num,
+                                                ptr_arr_cat,
+                                                ptr_arr_ord,
+                                                nrows, nthreads,
+                                                self.model_outputs
+                                            )
 
         
         if found_outliers:
