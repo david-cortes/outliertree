@@ -204,7 +204,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     model_outputs.prop_categ.resize(model_outputs.start_ix_cat_counts[ncols_categ + ncols_ord]);
 
     check_interrupt_switch(ss);
-    #if defined(_FOR_PYTHON) || defined(DONT_THROW_ON_INTERRUPT)
+    #if defined(DONT_THROW_ON_INTERRUPT)
     if (interrupt_switch) return false;
     #endif
 
@@ -277,7 +277,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     }
 
     check_interrupt_switch(ss);
-    #if defined(_FOR_PYTHON) || defined(DONT_THROW_ON_INTERRUPT)
+    #if defined(DONT_THROW_ON_INTERRUPT)
     if (interrupt_switch) return false;
     #endif
 
@@ -411,7 +411,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     }
 
     check_interrupt_switch(ss);
-    #if defined(_FOR_PYTHON) || defined(DONT_THROW_ON_INTERRUPT)
+    #if defined(DONT_THROW_ON_INTERRUPT)
     if (interrupt_switch) return false;
     #endif
 

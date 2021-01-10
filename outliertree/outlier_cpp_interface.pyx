@@ -108,12 +108,12 @@ cdef extern from "outlier_tree.hpp":
                                size_t nrows, char *cols_ignore, int nthreads,
                                bool_t categ_as_bin, bool_t ord_as_bin, bool_t cat_bruteforce_subset, bool_t categ_from_maj, bool_t take_mid,
                                size_t max_conditions, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
-                               double min_gain, bool_t gain_as_pct, bool_t follow_all, double z_norm, double z_outlier)
+                               double min_gain, bool_t gain_as_pct, bool_t follow_all, double z_norm, double z_outlier) except +
 
     bool_t find_new_outliers(double *numeric_data,
                              int    *categorical_data,
                              int    *ordinal_data,
-                             size_t nrows, int nthreads, ModelOutputs &model_outputs)
+                             size_t nrows, int nthreads, ModelOutputs &model_outputs) except +
 
     void forget_row_outputs(ModelOutputs &model_outputs)
 
