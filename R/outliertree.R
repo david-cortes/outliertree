@@ -343,7 +343,7 @@ predict.outliertree <- function(object, newdata, outliers_print = 15L, min_decim
 #' data frame were null, or the row names they had if non-null). Pass `NULL` to print information
 #' about potentially all rows
 #' @param ... Not used.
-#' @return No return value.
+#' @return The same input `x` that was passed (as `invisible`).
 #' @seealso \link{outlier.tree} \link{predict.outliertree}
 #' @examples 
 #' ### Example re-printing results for selected rows
@@ -366,7 +366,7 @@ predict.outliertree <- function(object, newdata, outliers_print = 15L, min_decim
 #' print(pred, only_these_rows = c(531, 532))
 #' @export 
 print.outlieroutputs <- function(x, outliers_print = 15L, min_decimals = 2L, only_these_rows = NULL, ...) {
-    if (NROW(x) == 0) { report.no.outliers(); return(invisible(NULL)); }
+    if (NROW(x) == 0) { report.no.outliers(); return(invisible(x)); }
     outliers_print <- check.outliers.print(outliers_print)
     if (!outliers_print) { stop("Must pass a positive integer for 'outliers_print'.") }
     if (is.null(only_these_rows)) {
@@ -376,6 +376,7 @@ print.outlieroutputs <- function(x, outliers_print = 15L, min_decimals = 2L, onl
         outliers_info <- list.to.outliers(x[only_these_rows])
         report.outliers(outliers_info, names(x[only_these_rows]), outliers_print, min_decimals)
     }
+    return(invisible(x))
 }
 
 #' @title Extract outliers found in training data

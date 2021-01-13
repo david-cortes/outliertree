@@ -7,6 +7,7 @@
 #' @details Note that after loading a serialized object from `outlier.tree` through `readRDS` or `load`,
 #' it will only de-serialize the underlying C++ object upon running `predict` or `print`, so the first run will
 #' be slower, while subsequent runs will be faster as the C++ object will already be in-memory.
+#' @return The same input `x` that was passed (as `invisible`).
 #' @export
 print.outliertree <- function(x, ...) {
     check.is.model.obj(x)
@@ -26,6 +27,7 @@ print.outliertree <- function(x, ...) {
     cat("\n")
     cat(sprintf("Consists of %d clusters, spread across %d tree branches\n",
                 x$obj_from_cpp$nclust, x$obj_from_cpp$ntrees))
+    return(invisible(x))
 }
 
 #' @title Print summary information from Outlier Tree model
@@ -34,6 +36,7 @@ print.outliertree <- function(x, ...) {
 #' (e.g. from `predict`), not on the model object iself.
 #' @param object An Outlier Tree model as produced by function `outlier.tree`.
 #' @param ... Not used.
+#' @return The same input `object` that was passed (as `invisible`).
 #' @seealso \link{print.outliertree}
 #' @export
 summary.outliertree <- function(object, ...) {

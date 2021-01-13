@@ -11,6 +11,9 @@
 
 \item{...}{Not used.}
 }
+\value{
+The same input `object` that was passed (as `invisible`).
+}
 \description{
 Displays general statistics from a fitted Outlier Tree model (same as `print`).
 For printing the outliers discovered, use function `print` on the returned outliers

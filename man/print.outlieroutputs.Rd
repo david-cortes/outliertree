@@ -22,7 +22,7 @@ about potentially all rows}
 \item{...}{Not used.}
 }
 \value{
-No return value.
+The same input `x` that was passed (as `invisible`).
 }
 \description{
 Pretty-prints outliers as output by the `predict` function from an Outlier Tree
