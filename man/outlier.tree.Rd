@@ -169,8 +169,11 @@ model <- outlier.tree(hypothyroid,
 outliers <- extract.training.outliers(model)
 summary(outliers)
 
-### information for row 745
+### information for row 745 (list of lists)
 outliers[[745]]
+
+### outliers can be sliced too
+outliers[700:1000]
 
 ### use custom row names
 df.w.names <- hypothyroid

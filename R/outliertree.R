@@ -1,3 +1,10 @@
+#' @importFrom parallel detectCores
+#' @importFrom stats predict
+#' @importFrom utils head
+#' @importFrom Rcpp evalCpp
+#' @useDynLib outliertree, .registration=TRUE
+NULL
+
 #' @title Outlier Tree
 #' @description Fit Outlier Tree model to normal data with perhaps some outliers.
 #' @param df  Data Frame with normal data that might contain some outliers. See details for allowed column types.
@@ -123,8 +130,11 @@
 #' outliers <- extract.training.outliers(model)
 #' summary(outliers)
 #' 
-#' ### information for row 745
+#' ### information for row 745 (list of lists)
 #' outliers[[745]]
+#' 
+#' ### outliers can be sliced too
+#' outliers[700:1000]
 #' 
 #' ### use custom row names
 #' df.w.names <- hypothyroid
@@ -377,6 +387,35 @@ print.outlieroutputs <- function(x, outliers_print = 15L, min_decimals = 2L, onl
         report.outliers(outliers_info, names(x[only_these_rows]), outliers_print, min_decimals)
     }
     return(invisible(x))
+}
+
+#' @title Convert outlier outputs to R list
+#' @description Converts outliers results (an object as returned from \link{predict.outliertree}
+#' or from \link{extract.training.outliers}) to an R list which can be modified
+#' programatically.
+#' @param x Outliers flagged by an \link{outlier.tree} model, returned by e.g. the
+#' prediction function.
+#' @param ... Not used.
+#' @return The same outliers as a list of lists.
+#' @export 
+as.list.outlieroutputs <- function(x, ...) {
+    class(x) <- "list"
+    return(x)
+}
+
+#' @title Slice or sub-set outliers
+#' @description Select given rows from outlier results.
+#' @param x An object of class `outlieroutputs`, as returned by e.g. \link{predict.outliertree}.
+#' @param i Rows to select. Can pass numbers or strings. Works the same as when selecting
+#' elements from a list.
+#' @return An object of class `outlieroutputs` containing only the selected rows.
+#' @export 
+`[.outlieroutputs` <- function(x, i) {
+    old_class <- class(x)
+    x <- as.list(x)
+    x <- x[i]
+    class(x) <- old_class
+    return(x)
 }
 
 #' @title Extract outliers found in training data
