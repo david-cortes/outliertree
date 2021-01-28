@@ -764,6 +764,7 @@ int decimals_diff(double val1, double val2);
 void dealloc_ModelOutputs(ModelOutputs &model_outputs);
 
 extern bool interrupt_switch;
+extern bool handle_is_locked;
 void set_interrup_global_variable(int s);
 class SignalSwitcher
 {

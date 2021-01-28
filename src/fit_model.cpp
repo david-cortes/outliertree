@@ -32,7 +32,6 @@
 *    along with OutlierTree.  If not, see <https://www.gnu.org/licenses/>.
 ********************************************************************************************************************/
 #include "outlier_tree.hpp"
-bool interrupt_switch;
 
 /*    Fit outliers model based on conditional distributions obtaines thorugh decision-tree splitting
 *    
