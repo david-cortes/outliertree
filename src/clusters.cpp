@@ -121,8 +121,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     bool has_low_values  = false;
     bool has_high_values = false;
     long double running_mean = 0;
-    long double mean_prev    = 0;
     long double running_ssq  = 0;
+    long double mean_prev    = 0;
     double xval;
     double mean;
     double sd;
@@ -141,6 +141,7 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
 
     /* calculate statistics with tails and previous outliers excluded */
     cnt = end_non_tail - st_non_tail + 1;
+    mean_prev = x[ ix_arr[st_non_tail] ];
     for (size_t row = st_non_tail; row <= end_non_tail; row++) {
         xval = x[ ix_arr[row] ];
         running_mean += (xval - running_mean) / (long double)(row - st_non_tail + 1);
@@ -313,8 +314,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
         size_t st_disp  = has_low_values?  st_normals  : st;
         size_t end_disp = has_high_values? end_normals : end;
         running_mean = 0;
-        mean_prev    = 0;
         running_ssq  = 0;
+        mean_prev    = orig_x[ix_arr[st_disp]];
         for (size_t row = st_disp; row <= end_disp; row++) {
             xval = orig_x[ix_arr[row]];
             running_mean += (xval - running_mean) / (long double)(row - st_disp + 1);

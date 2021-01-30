@@ -475,8 +475,8 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
               [&workspace](const size_t a, const size_t b){return workspace.target_numeric_col[a] < workspace.target_numeric_col[b];});
 
     long double running_mean = 0;
-    long double mean_prev    = 0;
     long double running_ssq  = 0;
+    long double mean_prev    = workspace.target_numeric_col[workspace.ix_arr[workspace.st]];
     double xval;
     for (size_t row = workspace.st; row <= workspace.end; row++) {
         xval = workspace.target_numeric_col[workspace.ix_arr[row]];

@@ -145,8 +145,8 @@ void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows
             private(running_mean, mean_prev, running_ssq, cnt, col_stop, xval, min_val, max_val, min_decimals_col)
     for (size_t_for col = 0; col < ncols; col++) {
         running_mean = 0;
-        mean_prev = 0;
         running_ssq = 0;
+        mean_prev = numeric_data[col * nrows];
         min_val =  HUGE_VAL;
         max_val = -HUGE_VAL;
         cnt = 0;
@@ -178,11 +178,12 @@ void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows
 void calc_central_mean_and_sd(size_t ix_arr[], size_t st, size_t end, double x[], size_t size_quarter, double *mean_central, double *sd_central)
 {
     long double running_mean = 0;
-    long double mean_prev    = 0;
     long double running_ssq  = 0;
+    long double mean_prev    = 0;
     double xval;
     size_t st_offset = st + size_quarter;
     if (ix_arr != NULL) {
+        mean_prev = x[ix_arr[st]];
         for (size_t row = st_offset; row <= (end - size_quarter); row++) {
             xval = x[ix_arr[row]];
             running_mean += (xval - running_mean) / (long double)(row - st_offset + 1);
@@ -190,6 +191,7 @@ void calc_central_mean_and_sd(size_t ix_arr[], size_t st, size_t end, double x[]
             mean_prev     = running_mean;
         }
     } else {
+        mean_prev = x[st_offset];
         for (size_t row = st_offset; row <= (end - size_quarter); row++) {
             xval = x[row];
             running_mean += (xval - running_mean) / (long double)(row - st_offset + 1);

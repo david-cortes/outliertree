@@ -83,8 +83,8 @@ long double calc_sd(NumericBranch &branch)
 long double calc_sd(size_t ix_arr[], double *restrict x, size_t st, size_t end, double *restrict mean)
 {
     long double running_mean = 0;
-    long double mean_prev    = 0;
     long double running_ssq  = 0;
+    long double mean_prev    = x[ix_arr[st]];
     double xval;
     for (size_t row = st; row <= end; row++) {
         xval = x[ix_arr[row]];
@@ -255,8 +255,8 @@ void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, dou
     long double this_gain;
     long double cnt_dbl = (long double)(end - st + 1);
     long double running_mean = 0;
-    long double mean_prev    = 0;
     long double running_ssq  = 0;
+    long double mean_prev    = 0;
     double xval;
     long double info_left;
     long double info_NA = 0;
@@ -283,6 +283,7 @@ void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, dou
     std::sort(ix_arr + st_non_na, ix_arr + end + 1, [&x](const size_t a, const size_t b){return x[a] < x[b];});
 
     /* calculate SD*N backwards first, then forwards */
+    mean_prev = y[ix_arr[end]];
     for (size_t i = end; i >= st_non_na; i--) {
         xval = y[ix_arr[i]];
         running_mean += (xval - running_mean) / (long double)(end - i + 1);
@@ -297,7 +298,7 @@ void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, dou
     /* look for the best split point, by moving one observation at a time to the left branch*/
     running_mean = 0;
     running_ssq  = 0;
-    mean_prev    = 0;
+    mean_prev    = y[ix_arr[st_non_na]];
     for (size_t i = st_non_na; i <= (end - min_size); i++) {
         xval = y[ix_arr[i]];
         running_mean += (xval - running_mean) / (long double)(i - st_non_na + 1);
