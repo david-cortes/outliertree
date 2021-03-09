@@ -536,6 +536,7 @@ class OutlierTree:
         ### Booleans are taken as categoricals
         if df_bool.shape[1] > 0:
             self.cols_bool_ = df_bool.columns.values.copy()
+            self._cat_mapping += [np.array([False,True])]*df_bool.shape[1]
             if df_cat is not None:
                 df_cat = pd.concat([df_cat, df_bool], axis = 1)
             else:
