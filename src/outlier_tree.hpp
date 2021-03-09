@@ -63,7 +63,7 @@ typedef void (*sig_t_)(int);
 *************************/
 #define extract_bit(number, bit) (((number) >> (bit)) & 1) /* https://stackoverflow.com/questions/2249731/how-do-i-get-bit-by-bit-data-from-an-integer-value-in-c */
 #define pow2(n) ( ((size_t) 1) << (n) ) /* https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-an-integer-based-power-function-powint-int */
-#define avg_between(a, b) (((a) + (b)) * 0.5)
+#define avg_between(a, b) ((a) + 0.5*((b) - (a)))
 #define square(x) ((x) * (x))
 #ifndef isinf
     #define isinf std::isinf
@@ -648,8 +648,8 @@ void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, 
     Prototypes from clusters.cpp
 ************************************/
 #define calculate_max_outliers(n, perc) (  (n) * (perc) + (long double)2 * sqrtl( (n) * (perc) * ((long double)1 - perc) ) + (long double)1  )
-#define z_score(x, mu, sd) (  ((x) - (mu)) / (sd)  )
-#define chebyshyov_bound(sd) (1.0 / square(sd))
+#define z_score(x, mu, sd) (  ((x) - (mu)) / std::max((sd), 1e-12)  )
+#define chebyshyov_bound(zval) (1.0 / square(std::max((zval), 1.)))
 
 bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_t st, size_t end,
                               double *restrict outlier_scores, size_t *restrict outlier_clusters, size_t *restrict outlier_trees,

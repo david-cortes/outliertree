@@ -158,6 +158,9 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     if ((!isinf(left_tail) || !isinf(right_tail)) && !is_log_transf && !is_exp_transf) {
         sd *= 0.5;
     }
+    sd = std::fmax(sd, 1e-15);
+    while (std::numeric_limits<double>::epsilon() > sd*std::fmin(min_gap, z_norm))
+        sd *= 4;
     cluster.cluster_mean = mean;
     cluster.cluster_sd = sd;
     cnt = end - st + 1;
@@ -234,6 +237,14 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
             cluster.lower_lim = exp(x[ix_arr[st]] - min_gap * sd) + log_minval;
         }
 
+        if (cluster.lower_lim > -HUGE_VAL) {
+            double eps = 1e-15;
+            while (cluster.lower_lim >= orig_x[ix_arr[st]]) {
+                cluster.lower_lim -= eps;
+                eps *= 4.;
+            }
+        }
+
         cluster.display_lim_low = orig_x[ix_arr[st]];
 
     }
@@ -304,6 +315,14 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
             cluster.upper_lim = log(x[ix_arr[end]] + min_gap * sd) * orig_sd + orig_mean;
         } else {
             cluster.upper_lim = exp(x[ix_arr[end]] + min_gap * sd) + log_minval;
+        }
+
+        if (cluster.upper_lim < HUGE_VAL) {
+            double eps = 1e-15;
+            while (cluster.upper_lim <= orig_x[ix_arr[end]]) {
+                cluster.upper_lim += eps;
+                eps *= 4.;
+            }
         }
 
         cluster.display_lim_high = orig_x[ix_arr[end]];

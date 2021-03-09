@@ -645,6 +645,8 @@ bool check_is_outlier_in_tree(std::vector<size_t> &clusters_in_tree, size_t curr
                                                             model_outputs.all_clusters[col][cl].cluster_sd
                                                             )
                     );
+                    if (is_na_or_inf(outlier_score))
+                        outlier_score = 1. - std::numeric_limits<double>::epsilon();
                 } else {
                     outlier_score = model_outputs.all_clusters[col][cl].score_categ[cat_val_this];
                 }
