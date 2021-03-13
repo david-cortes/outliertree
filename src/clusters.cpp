@@ -184,6 +184,12 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                 }
                 cluster.display_lim_low = orig_x[ix_arr[row + 1]];
                 cluster.perc_above = (long double)(end - st_normals + 1) / (long double)(end - st + 1);
+
+                double eps = 1e-15;
+                while (cluster.display_lim_low <= cluster.lower_lim) {
+                    cluster.lower_lim -= eps;
+                    eps *= 4;
+                }
                 break;
             }
             if (z_score(x[ix_arr[row]], mean, sd) > -z_outlier) break;
@@ -263,6 +269,12 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                 }
                 cluster.display_lim_high = orig_x[ix_arr[row - 1]];
                 cluster.perc_below = (long double)(end_normals - st + 1) / (long double)(end - st + 1);
+
+                double eps = 1e-15;
+                while (cluster.display_lim_high >= cluster.upper_lim) {
+                    cluster.upper_lim += eps;
+                    eps *= 4;
+                }
                 break;
             }
             if (z_score(x[ix_arr[row]], mean, sd) < z_outlier) break;
