@@ -7,7 +7,7 @@ NULL
 
 #' @title Outlier Tree
 #' @description Fit Outlier Tree model to normal data with perhaps some outliers.
-#' @param df  Data Frame with normal data that might contain some outliers. See details for allowed column types.
+#' @param df  Data Frame with regular (i.e. non-outlier) data that might contain some outliers. See details for allowed column types.
 #' @param max_depth Maximum depth of the trees to grow. Can also pass zero, in which case it will only look
 #' for outliers with no conditions (i.e. takes each column as a 1-d distribution and looks for outliers in
 #' there independently of the values in other columns).

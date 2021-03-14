@@ -134,6 +134,14 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     size_t end_normals   = 0;
     double min_gap = z_outlier - z_norm;
 
+    double curr_gap, next_gap, eps, lim_by_orig;
+
+    /* Note: there is no good reason and no theory behind these numbers.
+       TODO: find a better way of setting this */
+    double min_gap_orig_scale = log(sqrtl((long double)(end - st + 1))) / 2.;
+    min_gap_orig_scale = std::fmax(1.1, min_gap_orig_scale);
+    min_gap_orig_scale = std::fmin(2.5, min_gap_orig_scale);
+
     /* TODO: here it's not necessary to sort the whole data, only top/bottom N */
 
     /* sort the data */
@@ -165,6 +173,9 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     cluster.cluster_sd = sd;
     cnt = end - st + 1;
 
+    /* TODO: review how to better set this limit */
+    tail_size = std::min(tail_size, (size_t)ceill(log2l((long double)(end - st + 1))));
+
     /* see if the minimum and/or maximum values qualify for outliers */
     if (-z_score(x[ix_arr[st]],  mean, sd) >= z_outlier && x[ix_arr[st]]  > left_tail)  has_low_values  = true;
     if ( z_score(x[ix_arr[end]], mean, sd) >= z_outlier && x[ix_arr[end]] < right_tail) has_high_values = true;
@@ -174,6 +185,22 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
         for (size_t row = st; row < st + tail_size; row++) {
 
             if (( z_score(x[ix_arr[row + 1]], mean, sd) - z_score(x[ix_arr[row]], mean, sd) ) >= min_gap) {
+                
+                /* if the variable was transformed, check that the gap is still wide in the original scale */
+                if (is_exp_transf || is_log_transf) {
+                    curr_gap = orig_x[ix_arr[row + 1]] - orig_x[ix_arr[row]];
+                    next_gap = 0;
+                    for (size_t rr = row + 1; rr < end; rr++) {
+                        if (orig_x[ix_arr[rr+1]] > orig_x[ix_arr[rr]]) {
+                            next_gap = orig_x[ix_arr[rr+1]] - orig_x[ix_arr[rr]];
+                            break;
+                        }
+                    }
+
+                    if (next_gap > 0 && curr_gap/next_gap < min_gap_orig_scale)
+                        continue;
+                }
+
                 st_normals = row + 1;
                 if (is_exp_transf) {
                     cluster.lower_lim = log(x[ix_arr[row + 1]] - min_gap * sd) * orig_sd + orig_mean;
@@ -185,7 +212,7 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                 cluster.display_lim_low = orig_x[ix_arr[row + 1]];
                 cluster.perc_above = (long double)(end - st_normals + 1) / (long double)(end - st + 1);
 
-                double eps = 1e-15;
+                eps = 1e-15;
                 while (cluster.display_lim_low <= cluster.lower_lim) {
                     cluster.lower_lim -= eps;
                     eps *= 4;
@@ -244,10 +271,21 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
         }
 
         if (cluster.lower_lim > -HUGE_VAL) {
-            double eps = 1e-15;
+            eps = 1e-15;
             while (cluster.lower_lim >= orig_x[ix_arr[st]]) {
                 cluster.lower_lim -= eps;
                 eps *= 4.;
+            }
+        }
+
+        if (is_exp_transf || is_log_transf) {
+            for (size_t row = st; row < end; row++) {
+                if (orig_x[ix_arr[row+1]] > orig_x[ix_arr[row]]) {
+                    curr_gap = orig_x[ix_arr[row+1]] - orig_x[ix_arr[row]];
+                    lim_by_orig = orig_x[ix_arr[st]] - min_gap_orig_scale * curr_gap;
+                    cluster.lower_lim = std::fmin(cluster.lower_lim, lim_by_orig);
+                    break;
+                }
             }
         }
 
@@ -259,6 +297,22 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
         for (size_t row = end; row > (end - tail_size); row--) {
 
             if (( z_score(x[ix_arr[row]], mean, sd) - z_score(x[ix_arr[row - 1]], mean, sd) ) >= min_gap) {
+                
+                /* if the variable was transformed, check that the gap is still wide in the original scale */
+                if (is_exp_transf || is_log_transf) {
+                    curr_gap = orig_x[ix_arr[row]] - orig_x[ix_arr[row - 1]];
+                    next_gap = 0;
+                    for (size_t rr = row-1; rr > st; rr--) {
+                        if (orig_x[ix_arr[rr]] > orig_x[ix_arr[rr-1]]) {
+                            next_gap = orig_x[ix_arr[rr]] - orig_x[ix_arr[rr-1]];
+                            break;
+                        }
+                    }
+
+                    if (next_gap > 0 && curr_gap/next_gap < min_gap_orig_scale)
+                        continue;
+                }
+
                 end_normals = row - 1;
                 if (is_exp_transf) {
                     cluster.upper_lim = log(x[ix_arr[row - 1]] + min_gap * sd) * orig_sd + orig_mean;
@@ -270,7 +324,7 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                 cluster.display_lim_high = orig_x[ix_arr[row - 1]];
                 cluster.perc_below = (long double)(end_normals - st + 1) / (long double)(end - st + 1);
 
-                double eps = 1e-15;
+                eps = 1e-15;
                 while (cluster.display_lim_high >= cluster.upper_lim) {
                     cluster.upper_lim += eps;
                     eps *= 4;
@@ -330,10 +384,21 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
         }
 
         if (cluster.upper_lim < HUGE_VAL) {
-            double eps = 1e-15;
+            eps = 1e-15;
             while (cluster.upper_lim <= orig_x[ix_arr[end]]) {
                 cluster.upper_lim += eps;
                 eps *= 4.;
+            }
+        }
+
+        if (is_exp_transf || is_log_transf) {
+            for (size_t row = end; row < st; row--) {
+                if (orig_x[ix_arr[row]] > orig_x[ix_arr[row-1]]) {
+                    curr_gap = orig_x[ix_arr[row]] - orig_x[ix_arr[row-1]];
+                    lim_by_orig = orig_x[ix_arr[end]] + min_gap_orig_scale * curr_gap;
+                    cluster.upper_lim = std::fmax(cluster.upper_lim, lim_by_orig);
+                    break;
+                }
             }
         }
 

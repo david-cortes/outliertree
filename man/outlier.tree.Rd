@@ -26,7 +26,7 @@ outlier.tree(
 )
 }
 \arguments{
-\item{df}{Data Frame with normal data that might contain some outliers. See details for allowed column types.}
+\item{df}{Data Frame with regular (i.e. non-outlier) data that might contain some outliers. See details for allowed column types.}
 
 \item{max_depth}{Maximum depth of the trees to grow. Can also pass zero, in which case it will only look
 for outliers with no conditions (i.e. takes each column as a 1-d distribution and looks for outliers in

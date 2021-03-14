@@ -265,7 +265,7 @@ class OutlierTree:
         Parameters
         ----------
         df : DataFrame(n_rows, n_cols)
-            Pandas' DataFrame with normal data that might contain some outliers.
+            Pandas' DataFrame with regular (i.e. non-outlier) data that might contain some outliers.
         cols_ignore : boolean array(n_cols, ) or string array(n_ignore, )
             Array containing columns which will not be split, but will be evaluated for usage in splitting other columns.
             Can pass either a boolean array with the same number of columns as 'df', or a list/array of column names
