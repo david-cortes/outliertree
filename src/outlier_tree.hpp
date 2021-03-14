@@ -649,7 +649,7 @@ void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, 
 ************************************/
 #define calculate_max_outliers(n, perc) (  (n) * (perc) + (long double)2 * sqrtl( (n) * (perc) * ((long double)1 - perc) ) + (long double)1  )
 #define z_score(x, mu, sd) (  ((x) - (mu)) / std::max((sd), 1e-12)  )
-#define chebyshyov_bound(zval) (1.0 / square(std::max((zval), 1.)))
+#define chebyshyov_bound(zval) (1.0 / std::max(square(zval), 1.))
 
 bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_t st, size_t end,
                               double *restrict outlier_scores, size_t *restrict outlier_clusters, size_t *restrict outlier_trees,
