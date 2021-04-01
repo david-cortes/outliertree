@@ -190,9 +190,9 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     model_outputs.start_ix_cat_counts[0] = 0;
     if (tot_cols > ncols_numeric) {
         input_data.max_categ = calculate_category_indices(&model_outputs.start_ix_cat_counts[0], input_data.ncat, input_data.ncols_categ,
-                                                          (bool*) &input_data.skip_col[ncols_numeric]);
-        input_data.max_categ = calculate_category_indices(&model_outputs.start_ix_cat_counts[input_data.ncols_categ], input_data.ncat_ord, input_data.ncols_ord,
-                                                          (bool*) &input_data.skip_col[input_data.ncols_numeric + input_data.ncols_categ], input_data.max_categ);
+                                                          (bool*) input_data.skip_col.data() + ncols_numeric);
+        input_data.max_categ = calculate_category_indices(model_outputs.start_ix_cat_counts.data() + input_data.ncols_categ, input_data.ncat_ord, input_data.ncols_ord,
+                                                          (bool*) input_data.skip_col.data() + input_data.ncols_numeric + input_data.ncols_categ, input_data.max_categ);
     } else {
         input_data.max_categ = 0;
     }

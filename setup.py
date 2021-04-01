@@ -65,7 +65,7 @@ if platform[:3] != "dar":
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.6.0',
+    version = '1.7.0',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     author_email = 'david.cortes.rivera@gmail.com',
