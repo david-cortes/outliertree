@@ -22,6 +22,7 @@ global-exclude *.html
 global-exclude *.Rmd
 global-exclude *.Rd
 global-exclude *.ipynb
+global-exclude *.md
 prune gritbot_original
 prune man
 prune R
