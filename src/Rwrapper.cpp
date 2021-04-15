@@ -36,14 +36,12 @@ Rcpp::RawVector serialize_OutlierTree(ModelOutputs *model_outputs)
         Rcpp::Rcerr << "Error: model is too big to serialize, resulting object will not be usable.\n" << std::endl;
         return Rcpp::RawVector();
     }
-    // Rcpp::RawVector retval((size_t)vec_size);
-    Rcpp::RawVector retval;
     size_t vec_size_ = (size_t)vec_size;
-    retval = Rcpp::unwindProtect(alloc_RawVec, (void*)&vec_size_);
+    Rcpp::RawVector retval = Rcpp::unwindProtect(alloc_RawVec, (void*)&vec_size_);
     if (!retval.size())
         return retval;
     ss.seekg(0, ss.beg);
-    ss.read(reinterpret_cast<char*>(&retval[0]), retval.size());
+    ss.read(reinterpret_cast<char*>(RAW(retval)), retval.size());
     return retval;
 }
 
@@ -51,7 +49,7 @@ Rcpp::RawVector serialize_OutlierTree(ModelOutputs *model_outputs)
 SEXP deserialize_OutlierTree(Rcpp::RawVector src)
 {
     std::stringstream ss;
-    ss.write(reinterpret_cast<char*>(&src[0]), src.size());
+    ss.write(reinterpret_cast<char*>(RAW(src)), src.size());
     ss.seekg(0, ss.beg);
     std::unique_ptr<ModelOutputs> model_outputs = std::unique_ptr<ModelOutputs>(new ModelOutputs());
     {
@@ -80,9 +78,9 @@ double* set_R_nan_as_C_nan(double *restrict x_R, std::vector<double> &x_C, size_
 
 /* for predicting outliers */
 Rcpp::List describe_outliers(ModelOutputs &model_outputs,
-                             double *arr_num,
-                             int    *arr_cat,
-                             int    *arr_ord,
+                             double *restrict arr_num,
+                             int    *restrict arr_cat,
+                             int    *restrict arr_ord,
                              Rcpp::ListOf<Rcpp::StringVector> cat_levels,
                              Rcpp::ListOf<Rcpp::StringVector> ord_levels,
                              Rcpp::StringVector colnames_num,
@@ -1056,6 +1054,37 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
     return outp;
 }
 
+struct args_describe_outliers {
+    ModelOutputs *model_outputs;
+    double *arr_num;
+    int    *arr_cat;
+    int    *arr_ord;
+    Rcpp::ListOf<Rcpp::StringVector> *cat_levels;
+    Rcpp::ListOf<Rcpp::StringVector> *ord_levels;
+    Rcpp::StringVector *colnames_num;
+    Rcpp::StringVector *colnames_cat;
+    Rcpp::StringVector *colnames_ord;
+    Rcpp::NumericVector *min_date;
+    Rcpp::NumericVector *min_ts;
+};
+
+SEXP describe_outliers_wrapper(void *args_)
+{
+    args_describe_outliers *args = (args_describe_outliers*)args_;
+    return describe_outliers(*(args->model_outputs),
+                             args->arr_num,
+                             args->arr_cat,
+                             args->arr_ord,
+                             *(args->cat_levels),
+                             *(args->ord_levels),
+                             *(args->colnames_num),
+                             *(args->colnames_cat),
+                             *(args->colnames_ord),
+                             *(args->min_date),
+                             *(args->min_ts));
+}
+
+
 /* for extracting info about flaggable outliers */
 Rcpp::List extract_outl_bounds(ModelOutputs &model_outputs,
                                Rcpp::ListOf<Rcpp::StringVector> cat_levels,
@@ -1150,13 +1179,13 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
         cols_ignore_ptr = &cols_ignore[0];
     }
     std::vector<double> Xcpp;
-    double *arr_num_C = set_R_nan_as_C_nan(&arr_num[0], Xcpp, arr_num.size(), nthreads);
+    double *arr_num_C = set_R_nan_as_C_nan(REAL(arr_num), Xcpp, arr_num.size(), nthreads);
 
     std::unique_ptr<ModelOutputs> model_outputs = std::unique_ptr<ModelOutputs>(new ModelOutputs());
     found_outliers = fit_outliers_models(*model_outputs,
                                          arr_num_C, ncols_numeric,
-                                         &arr_cat[0], ncols_categ, &ncat[0],
-                                         &arr_ord[0], ncols_ord,   &ncat_ord[0],
+                                         INTEGER(arr_cat), ncols_categ, INTEGER(ncat),
+                                         INTEGER(arr_ord), ncols_ord,   INTEGER(ncat_ord),
                                          nrows, cols_ignore_ptr, nthreads,
                                          categ_as_bin, ord_as_bin, cat_bruteforce_subset, categ_from_maj, take_mid,
                                          max_depth, max_perc_outliers, min_size_numeric, min_size_categ,
@@ -1172,17 +1201,20 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
     if (!Rf_xlength(outp["serialized_obj"]))
         return outp;
     if (return_outliers) {
-        outp["outliers_info"] = describe_outliers(*model_outputs,
-                                                  arr_num_C,
-                                                  &arr_cat[0],
-                                                  &arr_ord[0],
-                                                  cat_levels,
-                                                  ord_levels,
-                                                  colnames_num,
-                                                  colnames_cat,
-                                                  colnames_ord,
-                                                  min_date,
-                                                  min_ts);
+        args_describe_outliers temp = {
+            model_outputs.get(),
+            arr_num_C,
+            INTEGER(arr_cat),
+            INTEGER(arr_ord),
+            &cat_levels,
+            &ord_levels,
+            &colnames_num,
+            &colnames_cat,
+            &colnames_ord,
+            &min_date,
+            &min_ts
+        };
+        outp["outliers_info"] = Rcpp::unwindProtect(describe_outliers_wrapper, (void*)&temp);
     }
     /* add number of trees and clusters */
     size_t ntrees = 0, nclust = 0;
@@ -1211,22 +1243,25 @@ Rcpp::List predict_OutlierTree(SEXP ptr_model, size_t nrows, int nthreads,
                                Rcpp::NumericVector min_ts)
 {
     std::vector<double> Xcpp;
-    double *arr_num_C = set_R_nan_as_C_nan(&arr_num[0], Xcpp, arr_num.size(), nthreads);
+    double *arr_num_C = set_R_nan_as_C_nan(REAL(arr_num), Xcpp, arr_num.size(), nthreads);
 
     ModelOutputs *model_outputs = static_cast<ModelOutputs*>(R_ExternalPtrAddr(ptr_model));
-    bool found_outliers = find_new_outliers(&arr_num[0], &arr_cat[0], &arr_ord[0],
+    bool found_outliers = find_new_outliers(REAL(arr_num), INTEGER(arr_cat), INTEGER(arr_ord),
                                             nrows, nthreads, *model_outputs);
-    Rcpp::List outp = describe_outliers(*model_outputs,
-                                        arr_num_C,
-                                        &arr_cat[0],
-                                        &arr_ord[0],
-                                        cat_levels,
-                                        ord_levels,
-                                        colnames_num,
-                                        colnames_cat,
-                                        colnames_ord,
-                                        min_date,
-                                        min_ts);
+    args_describe_outliers temp = {
+        model_outputs,
+        arr_num_C,
+        INTEGER(arr_cat),
+        INTEGER(arr_ord),
+        &cat_levels,
+        &ord_levels,
+        &colnames_num,
+        &colnames_cat,
+        &colnames_ord,
+        &min_date,
+        &min_ts
+    };
+    Rcpp::List outp = Rcpp::unwindProtect(describe_outliers_wrapper, (void*)&temp);
     outp["found_outliers"] = Rcpp::LogicalVector(found_outliers);
     forget_row_outputs(*model_outputs);
     return outp;
@@ -1236,7 +1271,7 @@ Rcpp::List predict_OutlierTree(SEXP ptr_model, size_t nrows, int nthreads,
 Rcpp::LogicalVector check_few_values(Rcpp::NumericVector arr_num, size_t nrows, size_t ncols, int nthreads)
 {
     std::vector<char> too_few_vals(ncols, 0);
-    check_more_two_values(&arr_num[0], nrows, ncols, nthreads, too_few_vals.data());
+    check_more_two_values(REAL(arr_num), nrows, ncols, nthreads, too_few_vals.data());
     Rcpp::LogicalVector outp(ncols);
     for (size_t col = 0; col < ncols; col++) {
         outp[col] = (bool) too_few_vals[col];
