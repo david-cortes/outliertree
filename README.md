@@ -4,18 +4,18 @@ Explainable outlier/anomaly detection based on smart decision tree grouping, sim
 
 # Example outputs
 
-Example outliers from [hypothyroid dataset](http://archive.ics.uci.edu/ml/datasets/thyroid+disease):
+Example outliers from the [hypothyroid dataset](http://archive.ics.uci.edu/ml/datasets/thyroid+disease):
 ```
-row [1137] - suspicious column: [age] - suspicious value: [75.000]
-	distribution: 95.122% <= 42.000 - [mean: 31.462] - [sd: 5.281] - [norm. obs: 39]
+row [1138] - suspicious column: [age] - suspicious value: [75.00]
+	distribution: 95.122% <= 42.00 - [mean: 31.46] - [sd: 5.28] - [norm. obs: 39]
 	given:
-		[pregnant] = [t]
+		[pregnant] = [TRUE]
 
 
-row [2229] - suspicious column: [T3] - suspicious vale: [10.600]
-	distribution: 99.951% <= 7.100 - [mean: 1.984] - [sd: 0.750] - [norm. obs: 2050]
+row [2230] - suspicious column: [T3] - suspicious value: [10.60]
+	distribution: 99.951% <= 7.10 - [mean: 1.98] - [sd: 0.75] - [norm. obs: 2050]
 	given:
-		[query hyperthyroid] = [f]
+		[query.hyperthyroid] = [FALSE]
 
 row [745] - suspicious column: [TT4] - suspicious value: [239.00]
 	distribution: 98.571% <= 177.00 - [mean: 135.23] - [sd: 12.57] - [norm. obs: 69]
@@ -28,17 +28,17 @@ row [745] - suspicious column: [TT4] - suspicious value: [239.00]
 (this dataset is also bundled into the R package - e.g. `data(hypothyroid)`)
 
 
-Example outliers from [Titanic dataset](https://www.kaggle.com/c/titanic):
+Example outliers from the [Titanic dataset](https://www.kaggle.com/c/titanic):
 ```
-row [885] - suspicious column: [Fare] - suspicious value: [29.125]
-	distribution: 97.849% <= 15.500 - [mean: 7.887] - [sd: 1.173] - [norm. obs: 91]
+row [1147] - suspicious column: [Fare] - suspicious value: [29.12]
+	distribution: 97.849% <= 15.50 - [mean: 7.89] - [sd: 1.17] - [norm. obs: 91]
 	given:
 		[Pclass] = [3]
 		[SibSp] = [0]
 		[Embarked] = [Q]
 
-row [896] - suspicious column: [Fare] - suspicious value: [0.000]
-	distribution: 99.216% >= 3.171 - [mean: 9.680] - [sd: 6.984] - [norm. obs: 506]
+row [897] - suspicious column: [Fare] - suspicious value: [0.00]
+	distribution: 99.216% >= 3.17 - [mean: 9.68] - [sd: 6.98] - [norm. obs: 506]
 	given:
 		[Pclass] = [3]
 		[SibSp] = [0]
