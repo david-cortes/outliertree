@@ -156,6 +156,8 @@ outliers_model.print_outliers(new_outliers)
 
 Example [IPython notebook](http://nbviewer.ipython.org/github/david-cortes/outliertree/blob/master/example/titanic_outliertree_python.ipynb) using the Titanic dataset.
 
+* For Ruby: see the [external repository](https://github.com/ankane/outliertree/).
+
 * For C++: see functions `fit_outliers_models` and `find_new_outliers` in header `outlier_tree.hpp`.
 
 # Documentation
@@ -163,6 +165,8 @@ Example [IPython notebook](http://nbviewer.ipython.org/github/david-cortes/outli
 * For R : documentation is built-in in the package (e.g. `help(outliertree::outlier.tree)`) - PDF can be downloaded in [CRAN](https://cran.r-project.org/web/packages/outliertree/index.html).
 
 * For Python: documentation is available at [ReadTheDocs](http://outliertree.readthedocs.io/en/latest/) (and it's also built-in in the package as docstrings, e.g. `help(outliertree.OutlierTree.fit)`).
+
+* For Ruby: see the [external repository](https://github.com/ankane/outliertree/) and the [Python documentation)(http://outliertree.readthedocs.io/en/latest/).
 
 * For C++: documentation is available in the source files (not in the header).
 
