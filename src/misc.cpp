@@ -589,6 +589,7 @@ void forget_row_outputs(ModelOutputs &model_outputs)
     model_outputs.outlier_trees_final.clear();
     model_outputs.outlier_depth_final.clear();
     model_outputs.outlier_decimals_distr.clear();
+    model_outputs.min_decimals_col.clear();
 
     model_outputs.outlier_scores_final.shrink_to_fit();
     model_outputs.outlier_clusters_final.shrink_to_fit();
@@ -596,6 +597,7 @@ void forget_row_outputs(ModelOutputs &model_outputs)
     model_outputs.outlier_trees_final.shrink_to_fit();
     model_outputs.outlier_depth_final.shrink_to_fit();
     model_outputs.outlier_decimals_distr.shrink_to_fit();
+    model_outputs.min_decimals_col.shrink_to_fit();
 }
 
 void allocate_row_outputs(ModelOutputs &model_outputs, size_t nrows, size_t max_depth)
@@ -607,6 +609,7 @@ void allocate_row_outputs(ModelOutputs &model_outputs, size_t nrows, size_t max_
     model_outputs.outlier_trees_final.resize(nrows);
     model_outputs.outlier_depth_final.resize(nrows, max_depth + 2);
     model_outputs.outlier_decimals_distr.resize(nrows, 0);
+    model_outputs.min_decimals_col.resize(nrows);
 
     model_outputs.outlier_scores_final.shrink_to_fit();
     model_outputs.outlier_clusters_final.shrink_to_fit();
@@ -614,6 +617,7 @@ void allocate_row_outputs(ModelOutputs &model_outputs, size_t nrows, size_t max_
     model_outputs.outlier_trees_final.shrink_to_fit();
     model_outputs.outlier_depth_final.shrink_to_fit();
     model_outputs.outlier_decimals_distr.shrink_to_fit();
+    model_outputs.min_decimals_col.shrink_to_fit();
 }
 
 void check_more_two_values(double arr_num[], size_t nrows, size_t ncols, int nthreads, char too_few_values[])

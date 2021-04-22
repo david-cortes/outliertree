@@ -216,6 +216,7 @@ outlier.tree <- function(df, max_depth = 4L, min_gain = 1e-2, z_norm = 2.67, z_o
         stop("Model object is too big. Try smaller inputs and/or changing hyperparameters.")
     names(model_data$obj_from_cpp$bounds) <- get.cols.ordered(model_data)
     model_data$obj_from_cpp$bounds        <- model_data$obj_from_cpp$bounds[names(df)]
+    model_data$obj_from_cpp               <- as.environment(model_data$obj_from_cpp)
     
     ### print or store the outliers if requested
     if (outliers_print > 0) {
@@ -300,12 +301,7 @@ outlier.tree <- function(df, max_depth = 4L, min_gain = 1e-2, z_norm = 2.67, z_o
 #' @export 
 predict.outliertree <- function(object, newdata, outliers_print = 15L, min_decimals = 2L,
                                 return_outliers = TRUE, ...) {
-    check.is.model.obj(object)
-    if (check_null_ptr_model(object$obj_from_cpp$ptr_model)) {
-        ptr_new <- deserialize_OutlierTree(object$obj_from_cpp$serialized_obj)
-        eval.parent(substitute(object$obj_from_cpp$ptr_model <- ptr_new))
-        object$obj_from_cpp$ptr_model <- ptr_new
-    }
+    unpack.outlier.tree(object)
     outliers_print  <- check.outliers.print(outliers_print)
     return_outliers <- as.logical(return_outliers)
     if (NROW(newdata) == 0) {
@@ -448,25 +444,25 @@ check.outlierness.bounds <- function(outlier_tree_model) {
 }
 
 #' @title Unpack Outlier Tree model after de-serializing
-#' @description  After persisting an outlier tree model object through `saveRDS`, `save`, or restarting a session, the
-#' underlying C++ objects that constitute the outlier tree model and which live only on the C++ heap memory are not saved along,
-#' thus not restored after loading a saved model through `readRDS` or `load`.
+#' @description  After persisting an outlier tree model object through `saveRDS`, `save`,
+#' or restarting a session, the underlying C++ objects that constitute the outlier tree
+#' model and which live only on the C++ heap memory are not saved along, thus not
+#' restored after loading a saved model through `readRDS` or `load`.
 #' 
-#' The model object however keeps serialized versions of the C++ objects as raw bytes, from which the C++ objects can be
-#' reconstructed, and are done so automatically after calling `predict`, `print`, or `summary` on the
-#' freshly-loaded object from `readRDS` or `load`.
+#' The model object however keeps serialized versions of the C++ objects as raw bytes,
+#' from which the C++ objects can be reconstructed, and are done so automatically after
+#' calling `predict`, `print`, or `summary` on the freshly-loaded object from
+#' `readRDS` or `load`.
 #' 
-#' But due to R's environments system (as opposed to other systems such as Python which can use pass-by-reference), they will
-#' only be re-constructed in the environment that is calling `predict`, `print`, etc. and not in higher-up environments
-#' (i.e. if you call `predict` on the object from inside different functions, each function will have to reconstruct the
-#' C++ objects independently and they will only live within the function that called `predict`).
-#' 
-#' This function serves as an environment-level unpacker that will reconstruct the C++ object in the environment in which
-#' it is called (i.e. if you need to call `predict` from inside multiple functions, use this function before passing the
-#' freshly-loaded model object to those other functions, and then they will not need to reconstruct the C++ objects anymore),
-#' in the same way as `predict` or `print`, but without producing any outputs or messages.
-#' @param model An Outlier Tree object as returned by `outlier.tree`, which has been just loaded from a disk
-#' file through `readRDS`, `load`, or a session restart.
+#' This function allows de-serializing the object bytes without invoking any extra
+#' side effects or computations, akin to XGBoost's `xgb.Booster.complete` or
+#' CatBoost's `catboost.restore_handle`.
+#' @details If the model is going to be used in a production system, it's possible
+#' after de-serialization to delete the raw bytes in order to save memory (e.g.
+#' `otree$obj_from_cpp$serialized_obj <- NULL`). The memory will however not be
+#' freed automatically, as it's managed by R's garbage collector.
+#' @param model An Outlier Tree object as returned by `outlier.tree`, which has
+#' been just loaded from a disk file through `readRDS`, `load`, or a session restart.
 #' @return No return value. Object is modified in-place.
 #' @examples 
 #' ### Warning: this example will generate a temporary .Rds
@@ -480,30 +476,18 @@ check.outlierness.bounds <- function(outlier_tree_model) {
 #' otree2 <- readRDS(temp_file)
 #' file.remove(temp_file)
 #' 
-#' ### will de-serialize inside, but object is short-lived
-#' wrap_predict <- function(model, data) {
-#'     pred <- predict(model, data, outliers_print = 0)
-#'     cat("pointer inside function is this: ")
-#'     print(model$obj_from_cpp$ptr_model)
-#'     return(pred)
-#' }
-#' temp <- wrap_predict(otree2, df)
-#' cat("pointer outside function is this: \n")
-#' print(otree2$obj_from_cpp$ptr_model) ### pointer to the C++ object
+#' cat("Pointer after loading model is this: \n")
+#' print(otree2$obj_from_cpp$ptr_model)
 #' 
-#' ### now unpack the C++ object beforehand
+#' ### now unpack the raw bytes
 #' unpack.outlier.tree(otree2)
-#' print("after unpacking beforehand")
-#' temp <- wrap_predict(otree2, df)
-#' cat("pointer outside function is this: \n")
+#' cat("Pointer after unpacking is this: \n")
 #' print(otree2$obj_from_cpp$ptr_model)
 #' @export
 unpack.outlier.tree <- function(model)  {
     check.is.model.obj(model)
     if (check_null_ptr_model(model$obj_from_cpp$ptr_model)) {
-        ptr_new <- deserialize_OutlierTree(model$obj_from_cpp$serialized_obj)
-        eval.parent(substitute(model$obj_from_cpp$ptr_model <- ptr_new))
-        model$obj_from_cpp$ptr_model <- ptr_new
+        model$obj_from_cpp$ptr_model <- deserialize_OutlierTree(model$obj_from_cpp$serialized_obj)
     }
     return(invisible(NULL))
 }

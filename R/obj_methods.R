@@ -10,12 +10,7 @@
 #' @return The same input `x` that was passed (as `invisible`).
 #' @export
 print.outliertree <- function(x, ...) {
-    check.is.model.obj(x)
-    if (check_null_ptr_model(x$obj_from_cpp$ptr_model)) {
-        ptr_new <- deserialize_OutlierTree(x$obj_from_cpp$serialized_obj)
-        eval.parent(substitute(x$obj_from_cpp$ptr_model <- ptr_new))
-        x$obj_from_cpp$ptr_model <- ptr_new
-    }
+    unpack.outlier.tree(x)
     cat("Outlier Tree model\n")
     if (NROW(x$cols_num))  cat(sprintf("\tNumeric variables: %d\n",     NROW(x$cols_num)))
     if (NROW(x$cols_date)) cat(sprintf("\tDate variables: %d\n",        NROW(x$cols_date)))

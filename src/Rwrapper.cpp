@@ -1246,7 +1246,7 @@ Rcpp::List predict_OutlierTree(SEXP ptr_model, size_t nrows, int nthreads,
     double *arr_num_C = set_R_nan_as_C_nan(REAL(arr_num), Xcpp, arr_num.size(), nthreads);
 
     ModelOutputs *model_outputs = static_cast<ModelOutputs*>(R_ExternalPtrAddr(ptr_model));
-    bool found_outliers = find_new_outliers(REAL(arr_num), INTEGER(arr_cat), INTEGER(arr_ord),
+    bool found_outliers = find_new_outliers(arr_num_C, INTEGER(arr_cat), INTEGER(arr_ord),
                                             nrows, nthreads, *model_outputs);
     args_describe_outliers temp = {
         model_outputs,
