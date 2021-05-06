@@ -49,7 +49,7 @@ summary(hypothyroid)
 
 #### Finding outliers
 ```{r}
-otree <- outlier.tree(hypothyroid)
+otree <- outlier.tree(hypothyroid, nthreads=1)
 ```
 
 (i.e. it's saying that it's abnormal to be pregnant at the age of 75, or to not be classified as hyperthyroidal when having very high thyroid hormone levels)
