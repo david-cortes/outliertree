@@ -29,7 +29,7 @@ observations according to the values of other variables (e.g. if some other vari
 `TRUE` or `FALSE`).
 
 For a full description of the procedure see
-[Explainable outlier detection through decision tree conditioning](http://arxiv.org/abs/2001.00636).
+[Explainable outlier detection through decision tree conditioning](https://arxiv.org/abs/2001.00636).
 
 ### A look at the dataset
 
