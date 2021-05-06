@@ -1,0 +1,91 @@
+---
+title: "Introducing OutlierTree"
+author: "David Cortes"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+    %\VignetteIndexEntry{Introducing OutlierTree}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+    collapse = TRUE,
+    comment = ""
+)
+options(rmarkdown.html_vignette.check_title = FALSE)
+```
+
+This short vignette illustrates basic usage of the
+[OutlierTree](https://cran.r-project.org/package=outliertree) library for outlier
+detection, using the hypothyroid dataset which is bundled with it.
+
+This is a library which flags suspicious values within an observation, contrasting them
+against the normal values in a human-readable format and potentially adding conditions
+within the data that make the observation more suspicious; and does so in a similar way
+as one would do it manually, by checking extreme values in sorted order and filtering
+observations according to the values of other variables (e.g. if some other variable is
+`TRUE` or `FALSE`).
+
+For a full description of the procedure see
+[Explainable outlier detection through decision tree conditioning](http://arxiv.org/abs/2001.00636).
+
+### A look at the dataset
+
+This is a dataset about hospital patients who might potentially have hypo- or hyperthyroidism
+problems. The observations are about anonymous people whose demographic characteristics,
+drug intake, and hormone indicators were recorded, along with the judgement about
+their condition.
+
+It contains many interesting outliers which have something obviously wrong when examined
+visually, but which would nevertheless be missed by other outlier detection methods.
+
+```{r}
+library(outliertree)
+data(hypothyroid)
+summary(hypothyroid)
+```
+
+#### Finding outliers
+```{r}
+otree <- outlier.tree(hypothyroid)
+```
+
+(i.e. it's saying that it's abnormal to be pregnant at the age of 75, or to not be classified as hyperthyroidal when having very high thyroid hormone levels)
+
+### A closer look at some of those outliers
+
+A look at the distributions within the clusters in which some outliers were flagged:
+```{r, fig.height=4, fig.width=5}
+pregnant <- hypothyroid[hypothyroid$pregnant,]
+hist(pregnant$age, breaks=50, col="navy",
+     main="Age distribution among pregnant patients",
+     xlab="Age")
+```
+```{r, fig.height=4, fig.width=5}
+non.hyperthyr <- hypothyroid[!hypothyroid$query.hyperthyroid,]
+hist(non.hyperthyr$T3, breaks=50, col="darkred",
+     main="T3 hormone levels\n(Non-hyperthyroidal patients)",
+     xlab="T3 blood concentration")
+```
+
+### Handling results
+
+The identified outliers, along with all the relevant information, are returned as a list
+of lists, which can be inspected manually and the exact conditions extracted from them
+(see documentation for more details).
+
+They are nevertheless returned as a class of its own in order to provide pretty-printing
+and slicing:
+
+```{r}
+outliers <- predict(otree, hypothyroid, outliers_print=FALSE)
+outliers[1:700]
+```
+```{r}
+outliers[1138]
+```
+```{r}
+outliers[[1138]]
+```

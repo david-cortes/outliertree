@@ -67,6 +67,11 @@ install.packages("outliertree")
 ```
 pip install outliertree
 ```
+or if that fails:
+```
+pip install --no-use-pep517 outliertree
+```
+
 (Package has only been tested in Python 3)
 
 **Note for macOS users:** on macOS, the Python version of this package will compile **without** multi-threading capabilities. This is due to default apple's redistribution of `clang` not providing OpenMP modules, and aliasing it to `gcc` which causes confusions in build scripts. If you have a non-apple version of `clang` with the OpenMP modules, or if you have `gcc` installed, you can compile this package with multi-threading enabled by setting up an environment variable `ENABLE_OMP=1`:
@@ -76,10 +81,6 @@ pip install outliertree
 ```
 (Alternatively, can also pass argument `enable-omp` to the `setup.py` file: `python setup.py install enable-omp`)
 
-**Note2:** the setup script uses a PEP517 environment, which means it will create an isolated virtual environment, install its build dependencies there, compile, and then copy to the actual environment. This can causes issues - for example, if one has NumPy<1.20 and the build environment installs NumPy>=1.20, there will be a binary incompatibility which will make the package fail to import. To avoid PEP517, install with:
-```
-pip install --no-use-pep517 outliertree
-```
 
 * For C++: package doesn't have a build system, nor a `main` function that can produce an executable, but can be built as a shared object and wrapped into other languages with any C++11-compliant compiler (`std=c++11` in most compilers, `/std:c++14` in MSVC). For parallelization, needs OpenMP linkage (`-fopenmp` in most compilers, `/openmp` in MSVC). Package should *not* be built with optimization higher than `O3` (i.e. don't use `-Ofast`). Needs linkage to the `math` library, which should be enabled by default in most C++ compilers, but otherwise would require `-lm` argument. No external dependencies are required.
 
@@ -95,18 +96,18 @@ library(outliertree)
 nrows = 100
 set.seed(1)
 df = data.frame(
-	numeric_col1 = c(rnorm(nrows - 1), 1e6),
-	numeric_col2 = rgamma(nrows, 1),
-	categ_col    = sample(c('categA', 'categB', 'categC'), size = nrows, replace = TRUE)
-	)
+    numeric_col1 = c(rnorm(nrows - 1), 1e6),
+    numeric_col2 = rgamma(nrows, 1),
+    categ_col    = sample(c('categA', 'categB', 'categC'), size = nrows, replace = TRUE)
+)
 
 ### test data frame with another obvious outlier
 nrows_test = 50
 df_test = data.frame(
-	numeric_col1 = rnorm(nrows_test),
-	numeric_col2 = c(-1e6, rgamma(nrows_test - 1, 1)),
-	categ_col    = sample(c('categA', 'categB', 'categC'), size = nrows_test, replace = TRUE)
-	)
+    numeric_col1 = rnorm(nrows_test),
+    numeric_col2 = c(-1e6, rgamma(nrows_test - 1, 1)),
+    categ_col    = sample(c('categA', 'categB', 'categC'), size = nrows_test, replace = TRUE)
+)
 
 ### fit model
 outliers_model = outliertree::outlier.tree(df, outliers_print = 10, save_outliers = TRUE)
@@ -131,17 +132,17 @@ from outliertree import OutlierTree
 nrows = 100
 np.random.seed(1)
 df = pd.DataFrame({
-	"numeric_col1" : np.r_[np.random.normal(size = nrows - 1), np.array([float(1e6)])],
-	"numeric_col2" : np.random.gamma(1, 1, size = nrows),
-	"categ_col"    : np.random.choice(['categA', 'categB', 'categC'], size = nrows)
-	})
+    "numeric_col1" : np.r_[np.random.normal(size = nrows - 1), np.array([float(1e6)])],
+    "numeric_col2" : np.random.gamma(1, 1, size = nrows),
+    "categ_col"    : np.random.choice(['categA', 'categB', 'categC'], size = nrows)
+})
 
 ### test data frame with another obvious outlier
 df_test = pd.DataFrame({
-	"numeric_col1" : np.random.normal(size = nrows),
-	"numeric_col2" : np.r_[np.array([float(-1e6)]), np.random.gamma(1, 1, size = nrows - 1)],
-	"categ_col"    : np.random.choice(['categA', 'categB', 'categC'], size = nrows)
-	})
+    "numeric_col1" : np.random.normal(size = nrows),
+    "numeric_col2" : np.r_[np.array([float(-1e6)]), np.random.gamma(1, 1, size = nrows - 1)],
+    "categ_col"    : np.random.choice(['categA', 'categB', 'categC'], size = nrows)
+})
 
 ### fit model
 outliers_model = OutlierTree()
