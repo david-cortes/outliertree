@@ -97,6 +97,8 @@ typedef void (*sig_t_)(int);
     #define omp_get_thread_num() 0
 #endif
 
+#define unexpected_error() throw std::runtime_error("Unexpected error. Please open an issue in GitHub.\n")
+
 
 /****************************************************************
     Data types and structs that are returned from this module

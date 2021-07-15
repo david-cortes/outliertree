@@ -226,6 +226,11 @@ bool follow_tree(ModelOutputs &model_outputs, PredictionData &prediction_data, s
                                                      true : found_outliers;
                                 break;
                             }
+
+                            default:
+                            {
+                                assert(0);
+                            }
                         }
                         break;
                     }
@@ -278,6 +283,11 @@ bool follow_tree(ModelOutputs &model_outputs, PredictionData &prediction_data, s
                                                                  row, col, col_is_num, num_val_this, cat_val_this)?
                                                      true : found_outliers;
                                 break;
+                            }
+
+                            default:
+                            {
+                                assert(0);
                             }
                         }
                         break;
@@ -332,10 +342,16 @@ bool follow_tree(ModelOutputs &model_outputs, PredictionData &prediction_data, s
                                                      true : found_outliers;
                                 break;
                             }
+
+                            default:
+                            {
+                                assert(0);
+                            }
                         }
                         break;
                     }
 
+                    default: {}
                 }
             }
         }
@@ -548,6 +564,11 @@ bool check_is_outlier_in_tree(std::vector<size_t> &clusters_in_tree, size_t curr
                             if (!isnan(num_val_other) && num_val_other > model_outputs.all_clusters[col][cl].split_point) flag_this_cluster = true;
                             break;
                         }
+
+                        default:
+                        {
+                            assert(0);
+                        }
                     }
                     break;
                 }
@@ -585,6 +606,11 @@ bool check_is_outlier_in_tree(std::vector<size_t> &clusters_in_tree, size_t curr
                         {
                             if (cat_val_other >=0 && cat_val_other != model_outputs.all_clusters[col][cl].split_lev) flag_this_cluster = true;
                             break;
+                        }
+
+                        default:
+                        {
+                            assert(0);
                         }
 
                         /* Note: type 'SingleCateg' is only used temporarily, later gets converted to 'Equal' */
@@ -625,6 +651,11 @@ bool check_is_outlier_in_tree(std::vector<size_t> &clusters_in_tree, size_t curr
                         {
                             if (cat_val_other >=0 && cat_val_other != model_outputs.all_clusters[col][cl].split_lev) flag_this_cluster = true;
                             break;
+                        }
+
+                        default:
+                        {
+                            assert(0);
                         }
                     }
                     break;

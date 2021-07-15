@@ -361,6 +361,12 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                         }
                         break;
                     }
+
+                    default:
+                    {
+                        assert(0);
+                        break;
+                    }
                 }
                 
                 /* add the comparison point */
@@ -392,6 +398,11 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                             {
                                 cond_clust["value_comp"] = Rcpp::as<Rcpp::CharacterVector>(NA_STRING);
                                 break;
+                            }
+
+                            default:
+                            {
+                                unexpected_error();
                             }
                         }
                         break;
@@ -508,6 +519,12 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                         }
                         break;
                     }
+
+                    default:
+                    {
+                        assert(0);
+                        break;
+                    }
                     
                 }
                 lst_cond[row] = Rcpp::List::create(Rcpp::clone(cond_clust));
@@ -542,6 +559,12 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                             case Ordinal:
                             {
                                 cond_clust["column"] = Rcpp::as<Rcpp::CharacterVector>(colnames_ord[model_outputs.all_trees[outl_col][curr_tree].col_num]);
+                                break;
+                            }
+
+                            default:
+                            {
+                                assert(0);
                                 break;
                             }
                         }
@@ -615,6 +638,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                         break;
                                     }
 
+                                    default: {}
                                 }
                                 break;
                             }
@@ -712,6 +736,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                         break;
                                     }
 
+                                    default: {}
                                 }
                                 break;
                             }
@@ -774,10 +799,16 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                         break;
                                     }
 
+                                    default: {}
                                 }
                                 break;
                             }
 
+                            default:
+                            {
+                                assert(0);
+                                break;
+                            }
                         }
                     }
 
@@ -810,6 +841,12 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                             case Ordinal:
                             {
                                 cond_clust["column"] = Rcpp::as<Rcpp::CharacterVector>(colnames_ord[model_outputs.all_trees[outl_col][parent_tree].col_num]);
+                                break;
+                            }
+
+                            default:
+                            {
+                                assert(0);
                                 break;
                             }
                         }
@@ -850,6 +887,11 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                         cond_clust["comparison"] = Rcpp::CharacterVector("is NA");
                                         cond_clust["value_comp"] = Rcpp::as<Rcpp::CharacterVector>(NA_STRING);
                                         break;
+                                    }
+
+                                    default:
+                                    {
+                                        unexpected_error();
                                     }
                                 }
                                 break;
@@ -1027,6 +1069,11 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                                 break;
                             }
 
+                            default:
+                            {
+                                assert(0);
+                                break;
+                            }
                         }
 
                         
@@ -1182,6 +1229,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
     double *arr_num_C = set_R_nan_as_C_nan(REAL(arr_num), Xcpp, arr_num.size(), nthreads);
 
     std::unique_ptr<ModelOutputs> model_outputs = std::unique_ptr<ModelOutputs>(new ModelOutputs());
+    try {
     found_outliers = fit_outliers_models(*model_outputs,
                                          arr_num_C, ncols_numeric,
                                          INTEGER(arr_cat), ncols_categ, INTEGER(ncat),
@@ -1198,6 +1246,10 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
                                          min_ts);
 
     outp["serialized_obj"] = serialize_OutlierTree(model_outputs.get());
+    } catch(std::bad_alloc &e) {
+        Rcpp::stop("Insufficient RAM for fitting the model.\n");
+    }
+
     if (!Rf_xlength(outp["serialized_obj"]))
         return outp;
     if (return_outliers) {

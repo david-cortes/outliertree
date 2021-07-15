@@ -778,6 +778,7 @@ void simplify_when_equal_cond(std::vector<Cluster> &clusters, int ncat_ord[])
                 break;
             }
 
+            default: {}
         }
 
     }
@@ -844,6 +845,8 @@ void simplify_when_equal_cond(std::vector<ClusterTree> &trees, int ncat_ord[])
                                 trees[tree].split_this_branch = Equal;
                                 break;
                             }
+
+                            default: {}
                         }
                     }
 
@@ -875,6 +878,8 @@ void simplify_when_equal_cond(std::vector<ClusterTree> &trees, int ncat_ord[])
                                     trees[tree].split_this_branch = Equal;
                                     break;
                                 }
+
+                                default: {}
                             }
                         }
 
@@ -898,6 +903,8 @@ void simplify_when_equal_cond(std::vector<ClusterTree> &trees, int ncat_ord[])
                                     trees[tree].split_this_branch = Equal;
                                     break;
                                 }
+
+                                default: {}
                             }
                         }
 
@@ -943,6 +950,7 @@ void simplify_when_equal_cond(std::vector<ClusterTree> &trees, int ncat_ord[])
                 break;
             }
 
+            default: {}
         }
 
     }

@@ -953,7 +953,10 @@ void recursive_split_numeric(Workspace &workspace,
                 break;
             }
 
-
+            default:
+            {
+                unexpected_error();
+            }
         }
 
         /* continue splitting recursively - need to remember from where */
@@ -1030,6 +1033,11 @@ void recursive_split_numeric(Workspace &workspace,
                 {
                     (*workspace.tree)[(*workspace.tree)[tree_from].parent].tree_right = 0;
                     break;
+                }
+
+                default:
+                {
+                    unexpected_error();
                 }
             }
             workspace.tree->pop_back();
@@ -1817,7 +1825,10 @@ void recursive_split_categ(Workspace &workspace,
                 break;
             }
 
-
+            default:
+            {
+                unexpected_error();
+            }
         }
 
 
@@ -1964,6 +1975,11 @@ void recursive_split_categ(Workspace &workspace,
                         (*workspace.tree)[(*workspace.tree)[tree_from].parent].binary_branches.pop_back();
                         workspace.tree->pop_back();
                         break;
+                    }
+
+                    default:
+                    {
+                        unexpected_error();
                     }
                 }
             }
