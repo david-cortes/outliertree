@@ -43,6 +43,7 @@
 #include <unordered_set>
 #include <exception>
 #include <stdexcept>
+#include <cassert>
 #include <math.h>
 #include <cmath>
 #include <stddef.h>
