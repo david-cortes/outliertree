@@ -282,137 +282,152 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
 
     /* now run the procedure on each column separately */
     int tid;
+    bool threw_exception = false;
+    std::exception_ptr ex = NULL;
     nthreads = std::min(nthreads, (int)(ncols_numeric + ncols_categ + ncols_ord));
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic, 1) private(tid) shared(workspace, model_outputs, input_data, model_params, tot_cols)
     for (size_t_for col = 0; col < tot_cols; col++) {
 
-        if (interrupt_switch) continue;
+        if (interrupt_switch || threw_exception) continue;
 
         if (cols_ignore != NULL && cols_ignore[col]) continue;
         if (input_data.skip_col[col] && col < input_data.ncols_numeric) continue;
         tid = omp_get_thread_num();
 
-        /* re-use thread-private memory if possible */
-        if (!check_workspace_is_allocated(workspace[tid]))
-            allocate_thread_workspace(workspace[tid], input_data.nrows, input_data.max_categ);
+        try {
+            /* re-use thread-private memory if possible */
+            if (!check_workspace_is_allocated(workspace[tid]))
+                allocate_thread_workspace(workspace[tid], input_data.nrows, input_data.max_categ);
+                
+            /* numerical column */
+            if (col < input_data.ncols_numeric) {
+                process_numeric_col(model_outputs.all_clusters[col],
+                                    model_outputs.all_trees[col],
+                                    col,
+                                    workspace[tid],
+                                    input_data,
+                                    model_params, model_outputs);
+                calculate_cluster_minimums(model_outputs, col);
+            }
+
+            /* categorical column */
+            else if (col < (input_data.ncols_numeric + input_data.ncols_categ)) {
+                process_categ_col(model_outputs.all_clusters[col],
+                                  model_outputs.all_trees[col],
+                                  col, false,
+                                  workspace[tid],
+                                  input_data,
+                                  model_params, model_outputs);
+                calculate_cluster_poss_categs(model_outputs, col, col - input_data.ncols_numeric);
+            }
+
+            /* ordinal column */
+            else {
+                process_categ_col(model_outputs.all_clusters[col],
+                                  model_outputs.all_trees[col],
+                                  col, true,
+                                  workspace[tid],
+                                  input_data,
+                                  model_params, model_outputs);
+                calculate_cluster_poss_categs(model_outputs, col, col - input_data.ncols_numeric);
+            }
+
+            /* shrink the dynamic vectors to what ended up used only */
+            #ifdef TEST_MODE_DEFINE
+            prune_unused_trees(model_outputs.all_trees[col]);
+            #endif
+            if (
+                model_outputs.all_clusters[col].size() == 0 ||
+                model_outputs.all_trees[col].size() == 0 ||
+                check_tree_is_not_needed(model_outputs.all_trees[col][0])
+            )
+            {
+                model_outputs.all_trees[col].clear();
+                model_outputs.all_clusters[col].clear();
+            }
+            model_outputs.all_trees[col].shrink_to_fit();
+            model_outputs.all_clusters[col].shrink_to_fit();
             
-        /* numerical column */
-        if (col < input_data.ncols_numeric) {
-            process_numeric_col(model_outputs.all_clusters[col],
-                                model_outputs.all_trees[col],
-                                col,
-                                workspace[tid],
-                                input_data,
-                                model_params, model_outputs);
-            calculate_cluster_minimums(model_outputs, col);
-        }
+            /* simplify single-elements in subset to 'equals' or 'not equals' */
+            simplify_when_equal_cond(model_outputs.all_clusters[col], ncat_ord);
+            simplify_when_equal_cond(model_outputs.all_trees[col],    ncat_ord);
 
-        /* categorical column */
-        else if (col < (input_data.ncols_numeric + input_data.ncols_categ)) {
-            process_categ_col(model_outputs.all_clusters[col],
-                              model_outputs.all_trees[col],
-                              col, false,
-                              workspace[tid],
-                              input_data,
-                              model_params, model_outputs);
-            calculate_cluster_poss_categs(model_outputs, col, col - input_data.ncols_numeric);
-        }
+            /* remember only the best (rarest) value for each row */
+            #pragma omp critical
+            if (workspace[tid].col_has_outliers) {
 
-        /* ordinal column */
-        else {
-            process_categ_col(model_outputs.all_clusters[col],
-                              model_outputs.all_trees[col],
-                              col, true,
-                              workspace[tid],
-                              input_data,
-                              model_params, model_outputs);
-            calculate_cluster_poss_categs(model_outputs, col, col - input_data.ncols_numeric);
-        }
+                found_outliers = true;
+                for (size_t row = 0; row < input_data.nrows; row++) {
 
-        /* shrink the dynamic vectors to what ended up used only */
-        #ifdef TEST_MODE_DEFINE
-        prune_unused_trees(model_outputs.all_trees[col]);
-        #endif
-        if (
-            model_outputs.all_clusters[col].size() == 0 ||
-            model_outputs.all_trees[col].size() == 0 ||
-            check_tree_is_not_needed(model_outputs.all_trees[col][0])
-        )
-        {
-            model_outputs.all_trees[col].clear();
-            model_outputs.all_clusters[col].clear();
-        }
-        model_outputs.all_trees[col].shrink_to_fit();
-        model_outputs.all_clusters[col].shrink_to_fit();
-        
-        /* simplify single-elements in subset to 'equals' or 'not equals' */
-        simplify_when_equal_cond(model_outputs.all_clusters[col], ncat_ord);
-        simplify_when_equal_cond(model_outputs.all_trees[col],    ncat_ord);
+                    if (workspace[tid].outlier_scores[row] < 1.0) {
 
-        /* remember only the best (rarest) value for each row */
-        #pragma omp critical
-        if (workspace[tid].col_has_outliers) {
-
-            found_outliers = true;
-            for (size_t row = 0; row < input_data.nrows; row++) {
-
-                if (workspace[tid].outlier_scores[row] < 1.0) {
-
-                    if (
-                        model_outputs.outlier_scores_final[row] >= 1.0 ||
-                        (
-                            workspace[tid].outlier_depth[row] < model_outputs.outlier_depth_final[row] &&
+                        if (
+                            model_outputs.outlier_scores_final[row] >= 1.0 ||
                             (
-                                !model_outputs.all_clusters[col][workspace[tid].outlier_clusters[row]].has_NA_branch ||
-                                model_outputs.all_clusters[model_outputs.outlier_columns_final[row]][model_outputs.outlier_clusters_final[row]].has_NA_branch
-                            )
-                        ) ||
-                            (
-                            model_outputs.all_clusters[model_outputs.outlier_columns_final[row]][model_outputs.outlier_clusters_final[row]].has_NA_branch &&
-                            !model_outputs.all_clusters[col][workspace[tid].outlier_clusters[row]].has_NA_branch
+                                workspace[tid].outlier_depth[row] < model_outputs.outlier_depth_final[row] &&
+                                (
+                                    !model_outputs.all_clusters[col][workspace[tid].outlier_clusters[row]].has_NA_branch ||
+                                    model_outputs.all_clusters[model_outputs.outlier_columns_final[row]][model_outputs.outlier_clusters_final[row]].has_NA_branch
+                                )
                             ) ||
-                            (
-                            workspace[tid].outlier_depth[row] == model_outputs.outlier_depth_final[row] &&
-                                model_outputs.all_clusters[col][workspace[tid].outlier_clusters[row]].has_NA_branch
-                                    ==
-                                model_outputs.all_clusters[model_outputs.outlier_columns_final[row]][model_outputs.outlier_clusters_final[row]].has_NA_branch
-                                &&
-                                model_outputs.all_clusters[model_outputs.outlier_columns_final[row]][model_outputs.outlier_clusters_final[row]].cluster_size
-                                    <
-                                model_outputs.all_clusters[col][workspace[tid].outlier_clusters[row]].cluster_size
-                            ) ||
-                            (
+                                (
+                                model_outputs.all_clusters[model_outputs.outlier_columns_final[row]][model_outputs.outlier_clusters_final[row]].has_NA_branch &&
+                                !model_outputs.all_clusters[col][workspace[tid].outlier_clusters[row]].has_NA_branch
+                                ) ||
+                                (
                                 workspace[tid].outlier_depth[row] == model_outputs.outlier_depth_final[row] &&
-                                model_outputs.all_clusters[model_outputs.outlier_columns_final[row]][model_outputs.outlier_clusters_final[row]].cluster_size
-                                    ==
-                                model_outputs.all_clusters[col][workspace[tid].outlier_clusters[row]].cluster_size
-                                &&
-                                model_outputs.all_clusters[col][workspace[tid].outlier_clusters[row]].has_NA_branch
-                                    ==
-                                model_outputs.all_clusters[model_outputs.outlier_columns_final[row]][model_outputs.outlier_clusters_final[row]].has_NA_branch
-                                &&
-                                workspace[tid].outlier_scores[row] < model_outputs.outlier_scores_final[row]
-                            )
-                    )
-                    {
-                        model_outputs.outlier_scores_final[row] = workspace[tid].outlier_scores[row];
-                        model_outputs.outlier_clusters_final[row] = workspace[tid].outlier_clusters[row];
-                        model_outputs.outlier_trees_final[row] = workspace[tid].outlier_trees[row];
-                        model_outputs.outlier_depth_final[row] = workspace[tid].outlier_depth[row];
-                        model_outputs.outlier_columns_final[row] = col;
+                                    model_outputs.all_clusters[col][workspace[tid].outlier_clusters[row]].has_NA_branch
+                                        ==
+                                    model_outputs.all_clusters[model_outputs.outlier_columns_final[row]][model_outputs.outlier_clusters_final[row]].has_NA_branch
+                                    &&
+                                    model_outputs.all_clusters[model_outputs.outlier_columns_final[row]][model_outputs.outlier_clusters_final[row]].cluster_size
+                                        <
+                                    model_outputs.all_clusters[col][workspace[tid].outlier_clusters[row]].cluster_size
+                                ) ||
+                                (
+                                    workspace[tid].outlier_depth[row] == model_outputs.outlier_depth_final[row] &&
+                                    model_outputs.all_clusters[model_outputs.outlier_columns_final[row]][model_outputs.outlier_clusters_final[row]].cluster_size
+                                        ==
+                                    model_outputs.all_clusters[col][workspace[tid].outlier_clusters[row]].cluster_size
+                                    &&
+                                    model_outputs.all_clusters[col][workspace[tid].outlier_clusters[row]].has_NA_branch
+                                        ==
+                                    model_outputs.all_clusters[model_outputs.outlier_columns_final[row]][model_outputs.outlier_clusters_final[row]].has_NA_branch
+                                    &&
+                                    workspace[tid].outlier_scores[row] < model_outputs.outlier_scores_final[row]
+                                )
+                        )
+                        {
+                            model_outputs.outlier_scores_final[row] = workspace[tid].outlier_scores[row];
+                            model_outputs.outlier_clusters_final[row] = workspace[tid].outlier_clusters[row];
+                            model_outputs.outlier_trees_final[row] = workspace[tid].outlier_trees[row];
+                            model_outputs.outlier_depth_final[row] = workspace[tid].outlier_depth[row];
+                            model_outputs.outlier_columns_final[row] = col;
+                        }
                     }
-                }
 
+                }
             }
         }
 
-
+        catch(...) {
+            #pragma omp critical
+            {
+                if (!threw_exception) {
+                    threw_exception = true;
+                    ex = std::current_exception();
+                }
+            }
+        }
     }
 
     check_interrupt_switch(ss);
     #if defined(DONT_THROW_ON_INTERRUPT)
     if (interrupt_switch) return false;
     #endif
+
+    if (threw_exception)
+        std::rethrow_exception(ex);
 
     /* once finished, determine how many decimals to report for numerical outliers */
     if (found_outliers)

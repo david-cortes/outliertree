@@ -41,6 +41,8 @@
 #include <algorithm>
 #include <numeric>
 #include <unordered_set>
+#include <exception>
+#include <stdexcept>
 #include <math.h>
 #include <cmath>
 #include <stddef.h>
