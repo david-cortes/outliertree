@@ -720,7 +720,7 @@ void recursive_split_numeric(Workspace &workspace,
             if ((workspace.this_split_NA - workspace.st) > model_params.min_size_numeric) {
 
                 (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
-                workspace.clusters->emplace_back(Categorical, col, IsNa, (char*)NULL, (int)0, true);
+                workspace.clusters->emplace_back(Categorical, col, IsNa, (signed char*)NULL, (int)0, true);
                 workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, &workspace.ix_arr[0], workspace.st,
                                                                   workspace.this_split_NA - 1, &workspace.outlier_scores[0], &workspace.outlier_clusters[0],
                                                                   &workspace.outlier_trees[0], &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
@@ -733,7 +733,7 @@ void recursive_split_numeric(Workspace &workspace,
 
                 if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
                     (*workspace.tree)[tree_from].all_branches.push_back(workspace.tree->size());
-                    workspace.tree->emplace_back(tree_from, col, IsNa, (char*)NULL, 0);
+                    workspace.tree->emplace_back(tree_from, col, IsNa, (signed char*)NULL, 0);
                     backup_recursion_state(workspace, *state_backup);
                     workspace.end = workspace.this_split_NA - 1;
                     recursive_split_numeric(workspace, input_data, model_params, curr_depth + 1, true);
@@ -791,7 +791,7 @@ void recursive_split_numeric(Workspace &workspace,
                 workspace.best_gain = workspace.this_gain;
                 workspace.column_type_best = Categorical;
                 workspace.col_best = col;
-                memcpy(&workspace.buffer_subset_categ_best[0], &workspace.buffer_subset_categ[0], input_data.ncat[col] * sizeof(char));
+                memcpy(&workspace.buffer_subset_categ_best[0], &workspace.buffer_subset_categ[0], input_data.ncat[col] * sizeof(signed char));
             }
 
         }
@@ -1417,7 +1417,7 @@ void recursive_split_categ(Workspace &workspace,
             if ((workspace.this_split_NA - workspace.st) > model_params.min_size_categ) {
 
                 (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
-                workspace.clusters->emplace_back(Categorical, col, IsNa, (char*)NULL, (int)0, true);
+                workspace.clusters->emplace_back(Categorical, col, IsNa, (signed char*)NULL, (int)0, true);
                 workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
                                                               &workspace.ix_arr[0], workspace.st, workspace.this_split_NA - 1,
                                                               workspace.ncat_this, model_params.categ_from_maj,
@@ -1436,7 +1436,7 @@ void recursive_split_categ(Workspace &workspace,
 
                 if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
                     (*workspace.tree)[tree_from].all_branches.push_back(workspace.tree->size());
-                    workspace.tree->emplace_back(tree_from, col, IsNa, (char*)NULL, 0);
+                    workspace.tree->emplace_back(tree_from, col, IsNa, (signed char*)NULL, 0);
                     backup_recursion_state(workspace, *state_backup);
                     workspace.end = workspace.this_split_NA - 1;
                     recursive_split_categ(workspace, input_data, model_params, curr_depth + 1, true);
@@ -1611,7 +1611,7 @@ void recursive_split_categ(Workspace &workspace,
                     workspace.best_gain = workspace.this_gain;
                     workspace.column_type_best = Categorical;
                     workspace.col_best = col;
-                    memcpy(&workspace.buffer_subset_categ_best[0], &workspace.buffer_subset_categ[0], input_data.ncat[col] * sizeof(char));
+                    memcpy(&workspace.buffer_subset_categ_best[0], &workspace.buffer_subset_categ[0], input_data.ncat[col] * sizeof(signed char));
                 }
 
             }

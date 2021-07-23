@@ -74,7 +74,7 @@
 */
 void find_outlier_categories(size_t categ_counts[], size_t ncateg, size_t tot, double max_perc_outliers,
                              long double perc_threshold[], size_t buffer_ix[], long double buffer_perc[],
-                             double z_norm, char is_outlier[], bool *found_outliers, bool *new_is_outlier,
+                             double z_norm, signed char is_outlier[], bool *found_outliers, bool *new_is_outlier,
                              double *next_most_comm)
 {
     //TODO: must also establish bounds for new, unseen categories
@@ -90,7 +90,7 @@ void find_outlier_categories(size_t categ_counts[], size_t ncateg, size_t tot, d
     size_t size_tail = 0;
 
     /* reset the temporary arrays and fill them */
-    memset(is_outlier, 0, ncateg * sizeof(char));
+    memset(is_outlier, 0, ncateg * sizeof(signed char));
     for (size_t cat = 0; cat < ncateg; cat++) {
         buffer_ix[cat] = cat;
         buffer_perc[cat] = (categ_counts[cat] > 0)? ((long double)categ_counts[cat] / tot_dbl) : 0;
@@ -225,13 +225,13 @@ void find_outlier_categories(size_t categ_counts[], size_t ncateg, size_t tot, d
 *        Category to which the majority of the observations belong.
 */
 void find_outlier_categories_by_maj(size_t categ_counts[], size_t ncateg, size_t tot, double max_perc_outliers,
-                                    long double prior_prob[], double z_outlier, char is_outlier[],
+                                    long double prior_prob[], double z_outlier, signed char is_outlier[],
                                     bool *found_outliers, bool *new_is_outlier, int *categ_maj)
 {
     /* initialize parameters as needed */
     *found_outliers = false;
     *new_is_outlier = false;
-    memset(is_outlier, 0, ncateg * sizeof(char));
+    memset(is_outlier, 0, ncateg * sizeof(signed char));
     size_t max_outliers = (size_t) calculate_max_outliers((long double)tot, max_perc_outliers);
     long double tot_dbl = (long double) (tot + 1);
     size_t n_non_maj;
@@ -283,7 +283,7 @@ void find_outlier_categories_by_maj(size_t categ_counts[], size_t ncateg, size_t
 *        Proportion of the least common non-outlier category.
 */
 bool find_outlier_categories_no_cond(size_t categ_counts[], size_t ncateg, size_t tot,
-                                     char is_outlier[], double *next_most_comm)
+                                     signed char is_outlier[], double *next_most_comm)
 {
     /* if sample is too small, don't flag any as outliers */
     if (tot < 1000) return false;
@@ -296,7 +296,7 @@ bool find_outlier_categories_no_cond(size_t categ_counts[], size_t ncateg, size_
 
     /* look if there's any category meeting the first condition and none meeting the second one */
     bool has_outlier_cat = false;
-    memset(is_outlier, 0, sizeof(char) * ncateg);
+    memset(is_outlier, 0, sizeof(signed char) * ncateg);
     for (size_t cat = 0; cat < ncateg; cat++) {
         if (categ_counts[cat] > max_outliers && categ_counts[cat] < max_next_most_comm) {
             has_outlier_cat = false;

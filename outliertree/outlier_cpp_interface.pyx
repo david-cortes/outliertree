@@ -36,7 +36,7 @@ cdef extern from "outlier_tree.hpp":
         size_t       col_num
         SplitType    split_type
         double       split_point
-        vector[char] split_subset
+        vector[signed char] split_subset
         int          split_lev
         bool_t       has_NA_branch
 
@@ -49,7 +49,7 @@ cdef extern from "outlier_tree.hpp":
         double    display_lim_high
         double    display_mean
         double    display_sd
-        vector[char] subset_common
+        vector[signed char] subset_common
         double    perc_in_subset
         double    perc_next_most_comm
         int       categ_maj
@@ -69,7 +69,7 @@ cdef extern from "outlier_tree.hpp":
         ColType   column_type
         size_t    col_num
         double split_point
-        vector[char] split_subset
+        vector[signed char] split_subset
         int split_lev
 
         size_t tree_NA

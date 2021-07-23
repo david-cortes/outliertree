@@ -407,7 +407,7 @@ void divide_subset_split(size_t ix_arr[], double x[], size_t st, size_t end, dou
 }
 
 /* for categorical */
-void divide_subset_split(size_t ix_arr[], int x[], size_t st, size_t end, char subset_categ[], int ncat, bool has_NA, size_t *split_NA, size_t *st_right)
+void divide_subset_split(size_t ix_arr[], int x[], size_t st, size_t end, signed char subset_categ[], int ncat, bool has_NA, size_t *split_NA, size_t *st_right)
 {
     size_t temp;
 
@@ -544,7 +544,7 @@ void set_tree_as_numeric(ClusterTree &tree, double split_point, size_t col)
     tree.col_num = col;
 }
 
-void set_tree_as_categorical(ClusterTree &tree, int ncat, char *split_subset, size_t col)
+void set_tree_as_categorical(ClusterTree &tree, int ncat, signed char *split_subset, size_t col)
 {
     tree.column_type = Categorical;
     tree.col_num = col;

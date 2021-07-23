@@ -41,7 +41,7 @@
 /* TODO: columns that split by numeric should output the sum/sum_sq to pass it to the cluster functions, instead of recalculating them later */
 
 
-void subset_to_onehot(size_t ix_arr[], size_t n_true, size_t n_tot, char onehot[])
+void subset_to_onehot(size_t ix_arr[], size_t n_true, size_t n_tot, signed char onehot[])
 {
     memset(onehot, 0, sizeof(bool) * n_tot);
     for (size_t i = 0; i <= n_true; i++) onehot[ix_arr[i]] = 1;
@@ -62,7 +62,7 @@ size_t move_zero_count_to_front(size_t *restrict cat_sorted, size_t *restrict ca
     return st_cat;
 }
 
-void flag_zero_counts(char split_subset[], size_t buffer_cat_cnt[], size_t ncat_x)
+void flag_zero_counts(signed char split_subset[], size_t buffer_cat_cnt[], size_t ncat_x)
 {
     for (size_t cat = 0; cat < ncat_x; cat++)
         if (buffer_cat_cnt[cat] == 0) split_subset[cat] = -1;
@@ -372,7 +372,7 @@ void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, dou
 void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, double *restrict y, long double sd_y, double ymean,
                            bool x_is_ordinal, size_t ncat_x, size_t *restrict buffer_cat_cnt, long double *restrict buffer_cat_sum,
                            long double *restrict buffer_cat_sum_sq, size_t *restrict buffer_cat_sorted,
-                           bool has_na, size_t min_size, long double *gain, char *restrict split_subset, int *restrict split_point)
+                           bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset, int *restrict split_point)
 {
 
     /* output parameters and variables to use */
@@ -383,7 +383,7 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
     double sd_y_d = (double) sd_y;
 
     /* reset the buffers */
-    memset(split_subset,      0, sizeof(char)   *  ncat_x);
+    memset(split_subset,      0, sizeof(signed char)   *  ncat_x);
     memset(buffer_cat_cnt,    0, sizeof(size_t) * (ncat_x + 1));
     memset(buffer_cat_sum,    0, sizeof(long double) * (ncat_x + 1));
     memset(buffer_cat_sum_sq, 0, sizeof(long double) * (ncat_x + 1));
@@ -754,7 +754,7 @@ void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *rest
 void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_cat_sorted,
-                       bool has_na, size_t min_size, long double *gain, char *restrict split_subset)
+                       bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset)
 {
     *gain = -HUGE_VAL;
     size_t st_non_na;
@@ -959,7 +959,7 @@ void split_categx_categy_separate(size_t *restrict ix_arr, size_t st, size_t end
 void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                                 size_t ncat_x, size_t ncat_y, long double base_info,
                                 size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_split,
-                                bool has_na, size_t min_size, long double *gain, char *restrict split_subset)
+                                bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset)
 {
     *gain = -HUGE_VAL;
     long double this_gain;

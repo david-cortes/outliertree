@@ -469,7 +469,7 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
 void define_categ_cluster_no_cond(int *restrict x, size_t *restrict ix_arr, size_t st, size_t end, size_t ncateg,
                                   double *restrict outlier_scores, size_t *restrict outlier_clusters, size_t *restrict outlier_trees,
                                   size_t *restrict outlier_depth, Cluster &cluster,
-                                  size_t *restrict categ_counts, char *restrict is_outlier, double perc_next_most_comm)
+                                  size_t *restrict categ_counts, signed char *restrict is_outlier, double perc_next_most_comm)
 {
     size_t cnt_common = end - st + 1;
     cluster.cluster_size = cnt_common;
@@ -571,7 +571,7 @@ bool define_categ_cluster(int *restrict x, size_t *restrict ix_arr, size_t st, s
                           double max_perc_outliers, double z_norm, double z_outlier,
                           long double *restrict perc_threshold, long double *restrict prop_prior,
                           size_t *restrict buffer_categ_counts, long double *restrict buffer_categ_pct,
-                          size_t *restrict buffer_categ_ix, char *restrict buffer_outliers,
+                          size_t *restrict buffer_categ_ix, signed char *restrict buffer_outliers,
                           bool *restrict drop_cluster)
 {
     bool found_outliers, new_is_outlier;
@@ -723,10 +723,10 @@ void simplify_when_equal_cond(std::vector<Cluster> &clusters, int ncat_ord[])
                 } else {
 
                     size_subset_excl = std::accumulate(clusters[clust].split_subset.begin(), clusters[clust].split_subset.end(), (size_t)0,
-                                                       [](const size_t a, const char b){return a + ((b < 0)? 1 : 0);});
+                                                       [](const size_t a, const signed char b){return a + ((b < 0)? 1 : 0);});
                     if (size_subset_excl > 0) continue;
                     size_subset = std::accumulate(clusters[clust].split_subset.begin(), clusters[clust].split_subset.end(), (size_t)0,
-                                                  [](const size_t a, const char b){return a + ((b > 0)? 1 : 0);});
+                                                  [](const size_t a, const signed char b){return a + ((b > 0)? 1 : 0);});
                     if (size_subset == 1) {
 
                         do {col_equal++;} while (clusters[clust].split_subset[col_equal] <= 0);
@@ -809,7 +809,7 @@ void simplify_when_equal_cond(std::vector<ClusterTree> &trees, int ncat_ord[])
             case Categorical:
             {
                 size_subset_excl = std::accumulate(trees[tree].split_subset.begin(), trees[tree].split_subset.end(), (size_t)0,
-                                                   [](const size_t a, const char b){return a + ((b < 0)? 1 : 0);});
+                                                   [](const size_t a, const signed char b){return a + ((b < 0)? 1 : 0);});
                 if (size_subset_excl > 0) continue;
 
                 col_equal = -1;
@@ -855,7 +855,7 @@ void simplify_when_equal_cond(std::vector<ClusterTree> &trees, int ncat_ord[])
                 else {
 
                     size_subset = std::accumulate(trees[tree].split_subset.begin(), trees[tree].split_subset.end(), (size_t)0,
-                                                  [](const size_t a, const char b){return a + ((b > 0)? 1 : 0);});
+                                                  [](const size_t a, const signed char b){return a + ((b > 0)? 1 : 0);});
                     if (size_subset == 1) {
 
                         do {col_equal++;} while (trees[tree].split_subset[col_equal] <= 0);
