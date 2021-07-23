@@ -767,6 +767,7 @@ void check_more_two_values(double arr_num[], size_t nrows, size_t ncols, int nth
 void calc_min_decimals_to_print(ModelOutputs &model_outputs, double *restrict numeric_data, int nthreads);
 int decimals_diff(double val1, double val2);
 void dealloc_ModelOutputs(ModelOutputs &model_outputs);
+ModelOutputs get_empty_ModelOutputs();
 
 extern bool interrupt_switch;
 extern bool handle_is_locked;

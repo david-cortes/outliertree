@@ -122,6 +122,8 @@ cdef extern from "outlier_tree.hpp":
 
     void dealloc_ModelOutputs(ModelOutputs &model_outputs)
 
+    ModelOutputs get_empty_ModelOutputs()
+
     bool_t cy_check_interrupt_switch()
 
     void cy_tick_off_interrupt_switch()
@@ -146,7 +148,7 @@ cdef class OutlierCppObject:
 
     def __init__(self):
         dealloc_ModelOutputs(self.model_outputs)
-        self.model_outputs = ModelOutputs()
+        self.model_outputs = get_empty_ModelOutputs()
 
     def __dealloc__(self):
         dealloc_ModelOutputs(self.model_outputs)

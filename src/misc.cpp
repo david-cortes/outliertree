@@ -690,6 +690,11 @@ void dealloc_ModelOutputs(ModelOutputs &model_outputs)
     model_outputs.~ModelOutputs();
 }
 
+ModelOutputs get_empty_ModelOutputs()
+{
+    return ModelOutputs();
+}
+
 bool interrupt_switch = false;
 bool handle_is_locked = false;
 
