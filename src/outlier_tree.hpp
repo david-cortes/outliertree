@@ -768,6 +768,7 @@ void calc_min_decimals_to_print(ModelOutputs &model_outputs, double *restrict nu
 int decimals_diff(double val1, double val2);
 void dealloc_ModelOutputs(ModelOutputs &model_outputs);
 ModelOutputs get_empty_ModelOutputs();
+bool get_has_openmp();
 
 extern bool interrupt_switch;
 extern bool handle_is_locked;

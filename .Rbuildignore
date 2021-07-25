@@ -14,5 +14,7 @@
 ^pyproject.toml$
 .*\.md$
 ^requirements.txt$
-.*\.py
+.*\.py$
 ^LICENSE$
+^a\.out$
+^a\.exe

@@ -20,6 +20,8 @@ build/
 *.obj
 *.dynlib
 *.dll
+*.out
+*.exe
 *.pyd
 *.Rproj
 test.py

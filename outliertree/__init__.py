@@ -1,6 +1,6 @@
 import numpy as np, pandas as pd, re, warnings, ctypes, multiprocessing, os, operator
 from copy import deepcopy
-from ._outlier_cpp_interface import OutlierCppObject, check_few_values
+from ._outlier_cpp_interface import OutlierCppObject, check_few_values, _get_has_openmp
 
 
 class OutlierTree:
@@ -171,6 +171,13 @@ class OutlierTree:
             nthreads = multiprocessing.cpu_count()
         assert nthreads > 0
         assert isinstance(nthreads, int)
+
+        if (nthreads > 1) and (not _get_has_openmp()):
+            msg_omp  = "Attempting to use more than 1 thread, but "
+            msg_omp += "package was built without multi-threading "
+            msg_omp += "support - see the project's GitHub page for "
+            msg_omp += "more information."
+            warnings.warn(msg_omp)
 
         ### store them
         self.max_depth         =  max_depth

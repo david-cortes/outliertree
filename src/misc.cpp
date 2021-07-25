@@ -695,6 +695,15 @@ ModelOutputs get_empty_ModelOutputs()
     return ModelOutputs();
 }
 
+bool get_has_openmp()
+{
+    #ifdef _OPENMP
+    return true;
+    #else
+    return false;
+    #endif
+}
+
 bool interrupt_switch = false;
 bool handle_is_locked = false;
 

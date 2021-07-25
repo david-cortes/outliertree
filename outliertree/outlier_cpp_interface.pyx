@@ -102,6 +102,8 @@ cdef extern from "outlier_tree.hpp":
         vector[vector[bool_t]] cat_outlier_any_cl
         size_t max_depth
 
+    bool_t get_has_openmp() nogil except +
+
     bool_t fit_outliers_models(ModelOutputs &model_outputs,
                                double *numeric_data,     size_t ncols_numeric,
                                int    *categorical_data, size_t ncols_categ,   int *ncat,
@@ -128,6 +130,8 @@ cdef extern from "outlier_tree.hpp":
 
     void cy_tick_off_interrupt_switch()
 
+def _get_has_openmp():
+    return get_has_openmp()
 
 def check_few_values(np.ndarray[double, ndim = 2] arr, int nthreads = 1):
     cdef size_t nrows = arr.shape[0]
