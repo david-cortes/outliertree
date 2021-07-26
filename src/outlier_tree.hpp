@@ -48,6 +48,7 @@
 #include <cmath>
 #include <stddef.h>
 #include <limits.h>
+#include <limits>
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
