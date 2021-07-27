@@ -21,3 +21,7 @@ check_few_values <- function(arr_num, nrows, ncols, nthreads) {
     .Call(`_outliertree_check_few_values`, arr_num, nrows, ncols, nthreads)
 }
 
+R_has_openmp <- function() {
+    .Call(`_outliertree_R_has_openmp`)
+}
+

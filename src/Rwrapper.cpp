@@ -1331,4 +1331,15 @@ Rcpp::LogicalVector check_few_values(Rcpp::NumericVector arr_num, size_t nrows, 
     return outp;
 }
 
+
+// [[Rcpp::export(rng = false)]]
+bool R_has_openmp()
+{
+    #ifdef _OPENMP
+    return true;
+    #else
+    return false;
+    #endif
+}
+
 #endif /* _FOR_R */

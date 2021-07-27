@@ -1,7 +1,7 @@
 check.is.df <- function(df) {
-    if ("tibble" %in% names(df))        { df <- as.data.frame(df) }
-    if (!("data.frame" %in% class(df))) { stop("Input data must be a data.frame.") }
-    if (length(class(df)) > 1)          { df <- as.data.frame(df) }
+    if (inherits(df, c("tibble", "data.table")) || length(class(df)) > 1L)
+        df <- as.data.frame(df) 
+    if (!is.data.frame(df)) { stop("Input data must be a data.frame.") }
     if (!NCOL(df)) { stop("Input data frame has no columns.")}
     if (!NROW(df)) { stop("Input data frame has no rows.")   }
     return(df)
@@ -266,7 +266,15 @@ check.nthreads <- function(nthreads) {
     } else if (nthreads < 1L) {
         nthreads <- parallel::detectCores()
     }
-    return(as.integer(nthreads))
+    nthreads <- as.integer(nthreads)
+    if (nthreads > 1L && !R_has_openmp()) {
+        msg <- paste0("Attempting to use more than 1 thread, but ",
+                      "package was compiled without OpenMP support.")
+        if (tolower(Sys.info()[["sysname"]]) == "darwin")
+            msg <- paste0(msg, " See https://mac.r-project.org/openmp/")
+        warning(msg)
+    }
+    return(nthreads)
 }
 
 check.outliers.print <- function(outliers_print) {

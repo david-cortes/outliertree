@@ -102,6 +102,15 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// R_has_openmp
+bool R_has_openmp();
+RcppExport SEXP _outliertree_R_has_openmp() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    rcpp_result_gen = Rcpp::wrap(R_has_openmp());
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_outliertree_deserialize_OutlierTree", (DL_FUNC) &_outliertree_deserialize_OutlierTree, 1},
@@ -109,6 +118,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_outliertree_fit_OutlierTree", (DL_FUNC) &_outliertree_fit_OutlierTree, 33},
     {"_outliertree_predict_OutlierTree", (DL_FUNC) &_outliertree_predict_OutlierTree, 13},
     {"_outliertree_check_few_values", (DL_FUNC) &_outliertree_check_few_values, 4},
+    {"_outliertree_R_has_openmp", (DL_FUNC) &_outliertree_R_has_openmp, 0},
     {NULL, NULL, 0}
 };
 
