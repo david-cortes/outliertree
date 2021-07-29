@@ -25,6 +25,8 @@ class build_ext_subclass( build_ext ):
         if not is_msvc:
             self.add_march_native()
             self.add_openmp_linkage()
+            if sys.platform[:3].lower() != "win":
+                self.add_link_time_optimization()
 
         if is_msvc:
             for e in self.extensions:
@@ -58,6 +60,13 @@ class build_ext_subclass( build_ext ):
         elif self.test_supports_compile_arg(arg_mcpu_native):
             for e in self.extensions:
                 e.extra_compile_args.append(arg_mcpu_native)
+
+    def add_link_time_optimization(self):
+        arg_lto = "-flto"
+        if self.test_supports_compile_arg(arg_lto):
+            for e in self.extensions:
+                e.extra_compile_args.append(arg_lto)
+                e.extra_link_args.append(arg_lto)
 
     def add_openmp_linkage(self):
         arg_omp1 = "-fopenmp"
@@ -116,7 +125,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.7.4-1',
+    version = '1.7.4-2',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     author_email = 'david.cortes.rivera@gmail.com',
