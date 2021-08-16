@@ -600,7 +600,7 @@ class OutlierTree:
                 df_cat[self.cols_cat_[cl]] = pd.Categorical(df_cat[self.cols_cat_[cl]], self._cat_mapping[cl]).codes.astype(ctypes.c_int)
                 if np.any(new_cat):
                     warn_new_cols = True
-                    cols_warn_new.append(self._cat_mapping[cl])
+                    cols_warn_new.append(self.cols_cat_[cl])
                     df_cat.loc[new_cat, self.cols_cat_[cl]] = self._cat_mapping[cl].shape[0]
 
         if df_ord is not None:
@@ -609,7 +609,7 @@ class OutlierTree:
                 df_ord[self.cols_ord_[cl]] = pd.Categorical(df_ord[self.cols_ord_[cl]], self._ord_mapping[cl]).codes.astype(ctypes.c_int)
                 if np.any(new_cat):
                     warn_new_cols = True
-                    cols_warn_new.append(self._ord_mapping[cl])
+                    cols_warn_new.append(self.cols_ord_[cl])
                     df_ord.loc[new_cat, self.cols_ord_[cl]] = self._ord_mapping[cl].shape[0]
 
         if self.cols_bool_.shape[0] > 0:
