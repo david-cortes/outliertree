@@ -37,3 +37,7 @@ build/
 	*
 .Rproj.user
 .Rhistory
+config.log
+config.status
+src/Makevars
+autom4te.cache/*

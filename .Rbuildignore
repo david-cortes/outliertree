@@ -18,3 +18,7 @@
 ^LICENSE$
 ^a\.out$
 ^a\.exe
+^config\.log$
+^config\.status$
+^src/Makevars$
+^autom4te.cache/.*$

@@ -30,3 +30,4 @@ prune R
 prune data
 prune docs
 prune example
+prune autom4te.cache

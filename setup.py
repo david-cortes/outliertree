@@ -25,6 +25,7 @@ class build_ext_subclass( build_ext ):
         if not is_msvc:
             self.add_march_native()
             self.add_openmp_linkage()
+            self.add_restrict_qualifier()
             if sys.platform[:3].lower() != "win":
                 self.add_link_time_optimization()
 
@@ -72,6 +73,7 @@ class build_ext_subclass( build_ext ):
         arg_omp1 = "-fopenmp"
         arg_omp2 = "-qopenmp"
         arg_omp3 = "-xopenmp"
+        arg_omp4 = "-fiopenmp"
         args_apple_omp = ["-Xclang", "-fopenmp", "-lomp"]
         if self.test_supports_compile_arg(arg_omp1):
             for e in self.extensions:
@@ -89,6 +91,10 @@ class build_ext_subclass( build_ext ):
             for e in self.extensions:
                 e.extra_compile_args.append(arg_omp3)
                 e.extra_link_args.append(arg_omp3)
+        elif self.test_supports_compile_arg(arg_omp4):
+            for e in self.extensions:
+                e.extra_compile_args.append(arg_omp4)
+                e.extra_link_args.append(arg_omp4)
         else:
             set_omp_false()
 
@@ -121,11 +127,43 @@ class build_ext_subclass( build_ext ):
             pass
         return is_supported
 
+    def add_restrict_qualifier(self):
+        supports_restrict = False
+        try:
+            if not hasattr(self.compiler, "compiler_cxx"):
+                return None
+            print("--- Checking compiler support for '__restrict' qualifier")
+            fname = "outliertree_compiler_testing.cpp"
+            with open(fname, "w") as ftest:
+                ftest.write(u"int main(int argc, char**argv) {return 0;}\n")
+            try:
+                cmd = [self.compiler.compiler_cxx[0]]
+            except:
+                cmd = list(self.compiler.compiler_cxx)
+            val_good = subprocess.call(cmd + [fname])
+            try:
+                with open(fname, "w") as ftest:
+                    ftest.write(u"int main(int argc, char**argv) {double *__restrict x = nullptr; return 0;}\n")
+                val = subprocess.call(cmd + [fname])
+                supports_restrict = (val == val_good)
+            except:
+                return None
+        except:
+            pass
+        try:
+            os.remove(fname)
+        except:
+            pass
+        
+        if supports_restrict:
+            for e in self.extensions:
+                e.define_macros += [("SUPPORTS_RESTRICT", "1")]
+
 
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.7.4-3',
+    version = '1.7.5',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     author_email = 'david.cortes.rivera@gmail.com',
