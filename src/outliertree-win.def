@@ -1,0 +1,3 @@
+LIBRARY outliertree.dll
+EXPORTS
+ R_init_outliertree
