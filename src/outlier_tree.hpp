@@ -78,7 +78,7 @@ typedef void (*sig_t_)(int);
 #define is_na_or_inf(x) (isnan(x) || isinf(x))
 
 /* Aliasing for compiler optimizations */
-#if defined(__GNUG__) || defined(__GNUC__) || defined(_MSC_VER) || defined(__clang__) || defined(__INTEL_COMPILER) || defined(SUPPORTS_RESTRICT)
+#if defined(__GNUG__) || defined(__GNUC__) || defined(_MSC_VER) || defined(__clang__) || defined(__INTEL_COMPILER) || defined(__IBMCPP__) || defined(__ibmxl__) || defined(SUPPORTS_RESTRICT)
     #define restrict __restrict
 #else
     #define restrict 
