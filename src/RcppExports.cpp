@@ -5,6 +5,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // deserialize_OutlierTree
 SEXP deserialize_OutlierTree(Rcpp::RawVector src);
 RcppExport SEXP _outliertree_deserialize_OutlierTree(SEXP srcSEXP) {
