@@ -143,7 +143,7 @@ class build_ext_subclass( build_ext ):
             val_good = subprocess.call(cmd + [fname])
             try:
                 with open(fname, "w") as ftest:
-                    ftest.write(u"#include <cstddef>\nint main(int argc, char**argv) {double *__restrict x = nullptr; return 0;}\n")
+                    ftest.write(u"int main(int argc, char**argv) {double *__restrict x = 0; return 0;}\n")
                 val = subprocess.call(cmd + [fname])
                 supports_restrict = (val == val_good)
             except:
@@ -163,7 +163,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.7.5',
+    version = '1.7.5-1',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     author_email = 'david.cortes.rivera@gmail.com',
