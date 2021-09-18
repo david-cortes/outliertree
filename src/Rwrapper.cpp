@@ -11,13 +11,17 @@
 #include <cereal/types/vector.hpp>
 #include <sstream>
 #include <string>
+#include <limits>
 
 /* This is the package's header */
 #include "outlier_tree.hpp"
 
 SEXP alloc_RawVec(void *data)
 {
-    return Rcpp::RawVector(*(size_t*)data);
+    size_t vec_size = *(size_t*)data;
+    if (vec_size > (size_t)std::numeric_limits<R_xlen_t>::max())
+        Rcpp::stop("Resulting model is too large for R to handle.");
+    return Rcpp::RawVector((R_xlen_t)vec_size);
 }
 
 /* for model serialization and re-usage in R */
@@ -45,8 +49,20 @@ Rcpp::RawVector serialize_OutlierTree(ModelOutputs *model_outputs)
     return retval;
 }
 
+SEXP safe_XPtr(void *model_ptr)
+{
+    return Rcpp::XPtr<ModelOutputs>((ModelOutputs*)model_ptr, true);
+}
+
+void R_delete_model(SEXP R_ptr)
+{
+    ModelOutputs *model = static_cast<ModelOutputs*>(R_ExternalPtrAddr(R_ptr));
+    delete model;
+    R_ClearExternalPtr(R_ptr);
+}
+
 // [[Rcpp::export(rng = false)]]
-SEXP deserialize_OutlierTree(Rcpp::RawVector src)
+SEXP deserialize_OutlierTree(Rcpp::RawVector src, SEXP ptr_obj)
 {
     std::stringstream ss;
     ss.write(reinterpret_cast<char*>(RAW(src)), src.size());
@@ -56,7 +72,20 @@ SEXP deserialize_OutlierTree(Rcpp::RawVector src)
         cereal::BinaryInputArchive iarchive(ss);
         iarchive(*model_outputs);
     }
-    return Rcpp::XPtr<ModelOutputs>(model_outputs.release(), true);
+    R_SetExternalPtrAddr(ptr_obj, model_outputs.get());
+    R_RegisterCFinalizerEx(ptr_obj, R_delete_model, TRUE);
+    model_outputs.release();
+    return R_NilValue;
+}
+
+SEXP safe_int(void *x)
+{
+    return Rcpp::wrap(*(int*)x);
+}
+
+SEXP safe_bool(void *x)
+{
+    return Rcpp::wrap(*(bool*)x);
 }
 
 // [[Rcpp::export(rng = false)]]
@@ -73,6 +102,16 @@ double* set_R_nan_as_C_nan(double *restrict x_R, std::vector<double> &x_C, size_
         if (isnan(x_R[i]) || Rcpp::NumericVector::is_na(x_R[i]) || Rcpp::traits::is_nan<REALSXP>(x_R[i]))
             x_C[i] = NAN;
     return x_C.data();
+}
+
+double* set_R_nan_as_C_nan(double *restrict x_R, Rcpp::NumericVector &x_C, size_t n, int nthreads)
+{
+    x_C = Rcpp::NumericVector(x_R, x_R + n);
+    #pragma omp parallel for schedule(static) num_threads(nthreads) shared(x_R, x_C, n)
+    for (size_t_for i = 0; i < n; i++)
+        if (isnan(x_R[i]) || Rcpp::NumericVector::is_na(x_R[i]) || Rcpp::traits::is_nan<REALSXP>(x_R[i]))
+            x_C[i] = NAN;
+    return REAL(x_C);
 }
 
 
@@ -1196,6 +1235,24 @@ Rcpp::List extract_outl_bounds(ModelOutputs &model_outputs,
     return outp;
 }
 
+struct args_extract_outl_bounds {
+    ModelOutputs *model_outputs;
+    Rcpp::ListOf<Rcpp::StringVector> *cat_levels;
+    Rcpp::ListOf<Rcpp::StringVector> *ord_levels;
+    Rcpp::NumericVector *min_date;
+    Rcpp::NumericVector *min_ts;
+};
+
+SEXP extract_outl_bounds_wrapper(void *args_)
+{
+    args_extract_outl_bounds *args = (args_extract_outl_bounds*)args_;
+    return extract_outl_bounds(*(args->model_outputs),
+                               *(args->cat_levels),
+                               *(args->ord_levels),
+                               *(args->min_date),
+                               *(args->min_ts));
+}
+
 
 /* external functions for fitting the model and predicting outliers */
 // [[Rcpp::export(rng = false)]]
@@ -1215,8 +1272,17 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
                            Rcpp::NumericVector min_date,
                            Rcpp::NumericVector min_ts)
 {
+    Rcpp::List outp = Rcpp::List::create(
+        Rcpp::_["ptr_model"] = R_NilValue,
+        Rcpp::_["serialized_obj"] = R_NilValue,
+        Rcpp::_["bounds"] = R_NilValue,
+        Rcpp::_["outliers_info"] = R_NilValue,
+        Rcpp::_["ntrees"] = R_NilValue,
+        Rcpp::_["nclust"] = R_NilValue,
+        Rcpp::_["found_outliers"] = R_NilValue
+    );
+
     bool found_outliers;
-    Rcpp::List outp;
     size_t tot_cols = ncols_numeric + ncols_categ + ncols_ord;
     std::vector<char> cols_ignore;
     char *cols_ignore_ptr = NULL;
@@ -1239,15 +1305,17 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
                                          max_depth, max_perc_outliers, min_size_numeric, min_size_categ,
                                          min_gain, gain_as_pct, follow_all, z_norm, z_outlier);
 
-    outp["bounds"] = extract_outl_bounds(*model_outputs,
-                                         cat_levels,
-                                         ord_levels,
-                                         min_date,
-                                         min_ts);
-
+    args_extract_outl_bounds temp = {
+        model_outputs.get(),
+        &cat_levels,
+        &ord_levels,
+        &min_date,
+        &min_ts
+    };
+    outp["bounds"] = Rcpp::unwindProtect(extract_outl_bounds_wrapper, (void*)&temp);
     outp["serialized_obj"] = serialize_OutlierTree(model_outputs.get());
     } catch(std::bad_alloc &e) {
-        Rcpp::stop("Insufficient RAM for fitting the model.\n");
+        Rcpp::stop("Insufficient memory.\n");
     }
 
     if (!Rf_xlength(outp["serialized_obj"]))
@@ -1268,18 +1336,22 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
         };
         outp["outliers_info"] = Rcpp::unwindProtect(describe_outliers_wrapper, (void*)&temp);
     }
+    forget_row_outputs(*model_outputs);
+
     /* add number of trees and clusters */
     size_t ntrees = 0, nclust = 0;
     for (size_t col = 0; col < model_outputs->all_trees.size(); col++) {
     	ntrees += model_outputs->all_trees[col].size();
     	nclust += model_outputs->all_clusters[col].size();
     }
-    outp["ntrees"] = Rcpp::wrap((int) ntrees);
-    outp["nclust"] = Rcpp::wrap((int) nclust);
-    outp["found_outliers"] = Rcpp::wrap(found_outliers);
+    int ntrees_int = (int)ntrees;
+    int nclust_int = (int)nclust;
+    outp["ntrees"] = Rcpp::unwindProtect(safe_int, (void*)&ntrees_int);
+    outp["nclust"] = Rcpp::unwindProtect(safe_int, (void*)&nclust_int);
+    outp["found_outliers"] = Rcpp::unwindProtect(safe_bool, (void*)&found_outliers);
     
-    forget_row_outputs(*model_outputs);
-    outp["ptr_model"] = Rcpp::XPtr<ModelOutputs>(model_outputs.release(), true);
+    outp["ptr_model"] = Rcpp::unwindProtect(safe_XPtr, model_outputs.get());
+    model_outputs.release();
     return outp;
 }
 
@@ -1294,7 +1366,7 @@ Rcpp::List predict_OutlierTree(SEXP ptr_model, size_t nrows, int nthreads,
                                Rcpp::NumericVector min_date,
                                Rcpp::NumericVector min_ts)
 {
-    std::vector<double> Xcpp;
+    Rcpp::NumericVector Xcpp;
     double *arr_num_C = set_R_nan_as_C_nan(REAL(arr_num), Xcpp, arr_num.size(), nthreads);
 
     ModelOutputs *model_outputs = static_cast<ModelOutputs*>(R_ExternalPtrAddr(ptr_model));
@@ -1313,18 +1385,25 @@ Rcpp::List predict_OutlierTree(SEXP ptr_model, size_t nrows, int nthreads,
         &min_date,
         &min_ts
     };
-    Rcpp::List outp = Rcpp::unwindProtect(describe_outliers_wrapper, (void*)&temp);
-    outp["found_outliers"] = Rcpp::LogicalVector(found_outliers);
+
+    Rcpp::List outp;
+    try {
+        outp = Rcpp::unwindProtect(describe_outliers_wrapper, (void*)&temp);
+    } catch(...) {
+        forget_row_outputs(*model_outputs);
+        throw;
+    }
     forget_row_outputs(*model_outputs);
+    outp["found_outliers"] = Rcpp::LogicalVector(found_outliers);
     return outp;
 }
 
 // [[Rcpp::export(rng = false)]]
 Rcpp::LogicalVector check_few_values(Rcpp::NumericVector arr_num, size_t nrows, size_t ncols, int nthreads)
 {
+    Rcpp::LogicalVector outp(ncols);
     std::vector<char> too_few_vals(ncols, 0);
     check_more_two_values(REAL(arr_num), nrows, ncols, nthreads, too_few_vals.data());
-    Rcpp::LogicalVector outp(ncols);
     for (size_t col = 0; col < ncols; col++) {
         outp[col] = (bool) too_few_vals[col];
     }

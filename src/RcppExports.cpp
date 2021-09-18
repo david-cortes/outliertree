@@ -11,12 +11,13 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // deserialize_OutlierTree
-SEXP deserialize_OutlierTree(Rcpp::RawVector src);
-RcppExport SEXP _outliertree_deserialize_OutlierTree(SEXP srcSEXP) {
+SEXP deserialize_OutlierTree(Rcpp::RawVector src, SEXP ptr_obj);
+RcppExport SEXP _outliertree_deserialize_OutlierTree(SEXP srcSEXP, SEXP ptr_objSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< Rcpp::RawVector >::type src(srcSEXP);
-    rcpp_result_gen = Rcpp::wrap(deserialize_OutlierTree(src));
+    Rcpp::traits::input_parameter< SEXP >::type ptr_obj(ptr_objSEXP);
+    rcpp_result_gen = Rcpp::wrap(deserialize_OutlierTree(src, ptr_obj));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -118,7 +119,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_outliertree_deserialize_OutlierTree", (DL_FUNC) &_outliertree_deserialize_OutlierTree, 1},
+    {"_outliertree_deserialize_OutlierTree", (DL_FUNC) &_outliertree_deserialize_OutlierTree, 2},
     {"_outliertree_check_null_ptr_model", (DL_FUNC) &_outliertree_check_null_ptr_model, 1},
     {"_outliertree_fit_OutlierTree", (DL_FUNC) &_outliertree_fit_OutlierTree, 33},
     {"_outliertree_predict_OutlierTree", (DL_FUNC) &_outliertree_predict_OutlierTree, 13},

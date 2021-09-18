@@ -348,6 +348,8 @@ typedef struct ClusterTree {
 
 } ClusterTree;
 
+/* TODO: should separate the results from the actual model object */
+
 /* these are needed for prediction time, and are thus returned from the function that fits the model */
 typedef struct ModelOutputs {
     std::vector< std::vector<ClusterTree> > all_trees;  /* clusters in which observations can be outliers, required for prediction time */
@@ -382,11 +384,6 @@ typedef struct ModelOutputs {
         archive(
                 this->all_trees,
                 this->all_clusters,
-                this->outlier_scores_final,
-                this->outlier_clusters_final,
-                this->outlier_columns_final,
-                this->outlier_trees_final,
-                this->outlier_depth_final,
                 this->start_ix_cat_counts,
                 this->prop_categ,
                 this->col_transf,

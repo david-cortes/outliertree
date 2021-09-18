@@ -216,26 +216,26 @@ outlier.tree <- function(df, max_depth = 4L, min_gain = 1e-2, z_norm = 2.67, z_o
         stop("Model object is too big. Try smaller inputs and/or changing hyperparameters.")
     names(model_data$obj_from_cpp$bounds) <- get.cols.ordered(model_data)
     model_data$obj_from_cpp$bounds        <- model_data$obj_from_cpp$bounds[names(df)]
-    model_data$obj_from_cpp               <- as.environment(model_data$obj_from_cpp)
     
     ### print or store the outliers if requested
     if (outliers_print > 0) {
         if (model_data$obj_from_cpp$found_outliers) {
-                report.outliers(model_data$obj_from_cpp$outliers_info, row.names(df), outliers_print, min_decimals)
-            } else {
-                report.no.outliers()
-            }
+            report.outliers(model_data$obj_from_cpp$outliers_info, row.names(df), outliers_print, min_decimals)
+        } else {
+            report.no.outliers()
+        }
     }
     if (save_outliers) {
         if (model_data$obj_from_cpp$found_outliers) {
-                model_data$outliers_data <- outliers.to.list(df, model_data$obj_from_cpp$outliers_info)
-            } else {
-                model_data$outliers_data <- produce.empty.outliers(row.names(df))
-            }
+            model_data$outliers_data <- outliers.to.list(df, model_data$obj_from_cpp$outliers_info)
+        } else {
+            model_data$outliers_data <- produce.empty.outliers(row.names(df))
+        }
     } else {
         model_data$outliers_data <- NULL
     }
-    model_data$obj_from_cpp$outliers_info <-NULL
+    model_data$obj_from_cpp$outliers_info   <-  NULL
+    model_data$obj_from_cpp$found_outliers  <-  NULL
     
     ### return object with corresponding class
     model_data$nthreads <- nthreads
@@ -487,7 +487,7 @@ check.outlierness.bounds <- function(outlier_tree_model) {
 unpack.outlier.tree <- function(model)  {
     check.is.model.obj(model)
     if (check_null_ptr_model(model$obj_from_cpp$ptr_model)) {
-        model$obj_from_cpp$ptr_model <- deserialize_OutlierTree(model$obj_from_cpp$serialized_obj)
+        deserialize_OutlierTree(model$obj_from_cpp$serialized_obj, model$obj_from_cpp$ptr_model)
     }
     return(invisible(NULL))
 }
