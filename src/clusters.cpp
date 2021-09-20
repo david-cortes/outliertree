@@ -174,7 +174,7 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     cnt = end - st + 1;
 
     /* TODO: review how to better set this limit */
-    tail_size = std::min(tail_size, (size_t)ceill(log2l((long double)(end - st + 1))));
+    tail_size = std::min(tail_size, log2ceil(end - st + 1));
 
     /* see if the minimum and/or maximum values qualify for outliers */
     if (-z_score(x[ix_arr[st]],  mean, sd) >= z_outlier && x[ix_arr[st]]  > left_tail)  has_low_values  = true;

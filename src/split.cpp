@@ -36,7 +36,7 @@
 
 /* TODO: don't divide the gains by tot at every calculation as it makes it slower */
 
-/* TODO: sorting here is the slowest thing, so it could be improved by using radix sort for categorical/ordinal and timsort for numerical */
+/* TODO: sorting here is the slowest thing, so it could be improved by using radix sort for categorical/ordinal */
 
 /* TODO: columns that split by numeric should output the sum/sum_sq to pass it to the cluster functions, instead of recalculating them later */
 
