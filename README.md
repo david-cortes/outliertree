@@ -166,7 +166,7 @@ Example [IPython notebook](http://nbviewer.ipython.org/github/david-cortes/outli
 
 * For Python: documentation is available at [ReadTheDocs](http://outliertree.readthedocs.io/en/latest/) (and it's also built-in in the package as docstrings, e.g. `help(outliertree.OutlierTree.fit)`).
 
-* For Ruby: see the [external repository](https://github.com/ankane/outliertree/) and the [Python documentation)(http://outliertree.readthedocs.io/en/latest/).
+* For Ruby: see the [external repository](https://github.com/ankane/outliertree/) and the [Python documentation](http://outliertree.readthedocs.io/en/latest/).
 
 * For C++: documentation is available in the source files (not in the header).
 
