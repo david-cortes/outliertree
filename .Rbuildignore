@@ -1,6 +1,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
-^build/.*
+^build/.*[^r][^d][^s]$
 ^dist/.*
 ^docs/.*
 ^example/.*
