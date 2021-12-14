@@ -32,7 +32,7 @@ class build_ext_subclass( build_ext ):
 
         if is_msvc:
             for e in self.extensions:
-                e.extra_compile_args += ['/openmp', '/O2', '/std:c++14']
+                e.extra_compile_args += ['/openmp', '/O2', '/std:c++14', '/fp:except-']
                 ### Note: MSVC never implemented C++11
         elif is_clang:
             for e in self.extensions:
@@ -171,7 +171,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.7.6-2',
+    version = '1.7.6-3',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     author_email = 'david.cortes.rivera@gmail.com',
