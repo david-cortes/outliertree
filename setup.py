@@ -26,6 +26,7 @@ class build_ext_subclass( build_ext ):
             self.add_march_native()
             self.add_openmp_linkage()
             self.add_restrict_qualifier()
+            self.add_no_math_errno()
             if sys.platform[:3].lower() != "win":
                 self.add_link_time_optimization()
 
@@ -68,6 +69,13 @@ class build_ext_subclass( build_ext ):
             for e in self.extensions:
                 e.extra_compile_args.append(arg_lto)
                 e.extra_link_args.append(arg_lto)
+
+    def add_no_math_errno(self):
+        arg_fnme = "-fno-math-errno"
+        if self.test_supports_compile_arg(arg_fnme):
+            for e in self.extensions:
+                e.extra_compile_args.append(arg_fnme)
+                e.extra_link_args.append(arg_fnme)
 
     def add_openmp_linkage(self):
         arg_omp1 = "-fopenmp"
@@ -163,7 +171,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.7.6',
+    version = '1.7.6-2',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     author_email = 'david.cortes.rivera@gmail.com',
