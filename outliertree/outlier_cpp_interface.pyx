@@ -206,7 +206,7 @@ cdef class OutlierCppObject:
         cdef size_t cl_ix
         if cols_ignore.shape[0] > 0:
             ptr_cols_ignore = &cols_ignore_c[0]
-            for cl_ix in range(cols_ignore.shape[0]):
+            for cl_ix in range(<size_t>cols_ignore.shape[0]):
                 cols_ignore_c[cl_ix] = <bool_t> cols_ignore[cl_ix]
 
         cdef bool_t found_outliers

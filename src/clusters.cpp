@@ -664,7 +664,7 @@ bool define_categ_cluster(int *restrict x, size_t *restrict ix_arr, size_t st, s
 
             cluster.perc_in_subset = (long double) buffer_categ_counts[cluster.categ_maj] / tot_dbl;
             for (size_t cat = 0; cat < ncateg; cat++) {
-                if (cat == cluster.categ_maj)
+                if ((int)cat == cluster.categ_maj)
                     continue;
                 if (cluster.subset_common[cat] != 0) {
                     cluster.score_categ[cat] = (long double)(tot - buffer_categ_counts[cluster.categ_maj] + 1)
