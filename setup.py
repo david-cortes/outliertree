@@ -23,7 +23,8 @@ class build_ext_subclass( build_ext ):
         is_clang = hasattr(self.compiler, 'compiler_cxx') and ("clang++" in self.compiler.compiler_cxx)
 
         if not is_msvc:
-            self.add_march_native()
+            if not self.check_cflags_or_cxxflags_contain_arch():
+                self.add_march_native()
             self.add_openmp_linkage()
             self.add_restrict_qualifier()
             self.add_no_math_errno()
@@ -53,6 +54,15 @@ class build_ext_subclass( build_ext ):
                 # e.define_macros += [("TEST_MODE_DEFINE", None)]
 
         build_ext.build_extensions(self)
+
+    def check_cflags_or_cxxflags_contain_arch(self):
+        arch_list = ["-march", "-mcpu", "-mtune", "-msse", "-msse2", "-msse3", "-mssse3", "-msse4", "-msse4a", "-msse4.1", "-msse4.2", "-mavx", "-mavx2"]
+        for env_var in ("CFLAGS", "CXXFLAGS"):
+            if env_var in os.environ:
+                for flag in arch_list:
+                    if flag in os.environ[env_var]:
+                        return True
+        return False
 
     def add_march_native(self):
         arg_march_native = "-march=native"
@@ -179,7 +189,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.7.6-4',
+    version = '1.7.6-5',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     author_email = 'david.cortes.rivera@gmail.com',

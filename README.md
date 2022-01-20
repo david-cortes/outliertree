@@ -80,6 +80,21 @@ brew install libomp
 And then reinstall this package: `pip install --force-reinstall outliertree`.
 
 ** *
+**IMPORTANT:** the setup script will try to add compilation flag `-march=native`. This instructs the compiler to tune the package for the CPU in which it is being installed, but the result might not be usable in other computers. If building a binary wheel of this package or putting it into a docker image which will be used in different machines, this can be overriden by manually supplying compilation `CFLAGS` and `CXXFLAGS` as environment variables with something related to architecture. For maximum compatibility (but slowest speed), assuming `x86-64` computers, it's possible to do something like this:
+
+```
+export CFLAGS="-msse2"
+export CXXFLAGS="-msse2"
+pip install outliertree
+```
+
+or for creating wheels:
+```
+export CFLAGS="-msse2"
+export CXXFLAGS="-msse2"
+python setup.py bwheel
+```
+** *
 
 * For C++: package doesn't have a build system, nor a `main` function that can produce an executable, but can be built as a shared object and wrapped into other languages with any C++11-compliant compiler (`std=c++11` in most compilers, `/std:c++14` in MSVC). For parallelization, needs OpenMP linkage (`-fopenmp` in most compilers, `/openmp` in MSVC). Package should *not* be built with optimization higher than `O3` (i.e. don't use `-Ofast`). Needs linkage to the `math` library, which should be enabled by default in most C++ compilers, but otherwise would require `-lm` argument. No external dependencies are required.
 
