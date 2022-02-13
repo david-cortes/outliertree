@@ -711,7 +711,7 @@ class OutlierTree:
     def _generate_empty_out_df(self, nrows):
         empty_dict_col = [dict() for row in range(nrows)]
         return pd.DataFrame({
-            "suspicious_value"  :  deepcopy(empty_dict_col),
+            "suspicious_value" :  deepcopy(empty_dict_col),
             "group_statistics" :  deepcopy(empty_dict_col),
             "conditions"       :  [list() for row in range(nrows)],
             "tree_depth"       :  np.nan,

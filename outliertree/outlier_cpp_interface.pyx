@@ -130,6 +130,8 @@ cdef extern from "outlier_tree.hpp":
 
     void cy_tick_off_interrupt_switch()
 
+    ModelOutputs deepcopy(const ModelOutputs &inp)
+
 def _get_has_openmp():
     return get_has_openmp()
 
@@ -156,6 +158,11 @@ cdef class OutlierCppObject:
 
     def __dealloc__(self):
         dealloc_ModelOutputs(self.model_outputs)
+
+    def __deepcopy__(self, memo):
+        other = OutlierCppObject()
+        other.model_outputs = deepcopy(self.model_outputs)
+        return other
 
     def get_model_outputs(self):
         return self.model_outputs

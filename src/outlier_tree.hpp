@@ -789,3 +789,6 @@ bool cy_check_interrupt_switch();
 void cy_tick_off_interrupt_switch();
 #endif
 size_t log2ceil(size_t v);
+#ifdef _FOR_PYTHON
+ModelOutputs deepcopy(const ModelOutputs &inp);
+#endif
