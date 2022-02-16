@@ -71,13 +71,13 @@ void flag_zero_counts(signed char split_subset[], size_t buffer_cat_cnt[], size_
 long double calc_sd(size_t cnt, long double sum, long double sum_sq)
 {
     if (cnt < 3) return 0;
-    return sqrtl( (sum_sq - (square(sum) / (long double) cnt) + SD_REG) / (long double) (cnt - 1) );
+    return std::sqrt( (sum_sq - (square(sum) / (long double) cnt) + SD_REG) / (long double) (cnt - 1) );
 }
 
 long double calc_sd(NumericBranch &branch)
 {
     if (branch.cnt < 3) return 0;
-    return sqrtl((branch.sum_sq - (square(branch.sum) / (long double) branch.cnt) + SD_REG) / (long double) (branch.cnt - 1));
+    return std::sqrt((branch.sum_sq - (square(branch.sum) / (long double) branch.cnt) + SD_REG) / (long double) (branch.cnt - 1));
 }
 
 long double calc_sd(size_t ix_arr[], double *restrict x, size_t st, size_t end, double *restrict mean)
@@ -93,7 +93,7 @@ long double calc_sd(size_t ix_arr[], double *restrict x, size_t st, size_t end, 
         mean_prev     = running_mean;
     }
     *mean = (double) running_mean;
-    return sqrtl(running_ssq / (long double)(end - st));
+    return std::sqrt(running_ssq / (long double)(end - st));
 
 }
 

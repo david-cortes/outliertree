@@ -39,5 +39,6 @@ build/
 .Rhistory
 config.log
 config.status
+configure~
 src/Makevars
 autom4te.cache/*

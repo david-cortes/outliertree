@@ -560,16 +560,17 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
 
     /* remove outliers if any were found */
     if (workspace.has_outliers)
-        workspace.st = move_outliers_to_front(&workspace.ix_arr[0], &workspace.outlier_scores[0], workspace.st, workspace.end);
+        workspace.st = move_outliers_to_front(workspace.ix_arr.data(), workspace.outlier_scores.data(), workspace.st, workspace.end);
 
     /* update statistics if they've changed */
     if (workspace.has_outliers || workspace.exp_transf || workspace.log_transf)
-        workspace.sd_y = calc_sd(&workspace.ix_arr[0], workspace.target_numeric_col,
+        workspace.sd_y = calc_sd(workspace.ix_arr.data(), workspace.target_numeric_col,
                                  workspace.st, workspace.end, &workspace.mean_y);
     else
         workspace.sd_y = sqrtl(running_ssq / (long double)(workspace.end - workspace.st));
 
-    if (model_params.max_depth > 0) recursive_split_numeric(workspace, input_data, model_params, 0, false);
+    if (model_params.max_depth > 0 && workspace.sd_y > 0)
+        recursive_split_numeric(workspace, input_data, model_params, 0, false);
 }
 
 void recursive_split_numeric(Workspace &workspace,
@@ -582,16 +583,20 @@ void recursive_split_numeric(Workspace &workspace,
     workspace.best_gain = -HUGE_VAL;
     workspace.column_type_best = NoType;
     workspace.lev_has_outliers = false;
-    if (curr_depth > 0) workspace.sd_y = calc_sd(&workspace.ix_arr[0], workspace.target_numeric_col,
-                                                 workspace.st, workspace.end, &workspace.mean_y);
 
     /* these are used to keep track of where to continue after calling a further recursion */
     size_t ix1, ix2, ix3;
     SplitType spl1, spl2;
     size_t tree_from = workspace.tree->size() - 1;
+    std::unique_ptr<RecursionState> state_backup;
+
+    if (curr_depth > 0) {
+        workspace.sd_y = calc_sd(workspace.ix_arr.data(), workspace.target_numeric_col,
+                                 workspace.st, workspace.end, &workspace.mean_y);
+        if (workspace.sd_y <= 0) goto abandon_column;
+    }
 
     /* when using 'follow_all' need to keep track of a lot more things */
-    std::unique_ptr<RecursionState> state_backup;
     if (model_params.follow_all) state_backup = std::unique_ptr<RecursionState>(new RecursionState);
 
     
@@ -602,9 +607,9 @@ void recursive_split_numeric(Workspace &workspace,
 
         if (col == workspace.target_col_num) continue;
         if (input_data.skip_col[col]) continue;
-        split_numericx_numericy(&workspace.ix_arr[0], workspace.st, workspace.end, input_data.numeric_data + col * input_data.nrows,
+        split_numericx_numericy(workspace.ix_arr.data(), workspace.st, workspace.end, input_data.numeric_data + col * input_data.nrows,
                                 workspace.target_numeric_col, workspace.sd_y, (bool)(input_data.has_NA[col]), model_params.min_size_numeric,
-                                model_params.take_mid, &workspace.buffer_sd[0], &(workspace.this_gain), &(workspace.this_split_point),
+                                model_params.take_mid, workspace.buffer_sd.data(), &(workspace.this_gain), &(workspace.this_split_point),
                                 &(workspace.this_split_ix), &(workspace.this_split_NA));
         if (model_params.gain_as_pct) workspace.this_gain /= workspace.sd_y;
 
@@ -996,6 +1001,7 @@ void recursive_split_numeric(Workspace &workspace,
 
     /* if tree has no clusters and no subtrees, disconnect it from parent and then drop */
     if (check_tree_is_not_needed((*workspace.tree)[tree_from])) {
+        abandon_column:
 
         if (tree_from == 0) {
             workspace.tree->clear();
@@ -1212,8 +1218,8 @@ void recursive_split_categ(Workspace &workspace,
     if (model_params.follow_all) state_backup = std::unique_ptr<RecursionState>(new RecursionState);
 
     if (curr_depth > 0) {
-        workspace.base_info_orig = total_info(&workspace.ix_arr[0], workspace.untransf_target_col, workspace.st, workspace.end,
-                                              workspace.ncat_this, &workspace.buffer_cat_cnt[0]);
+        workspace.base_info_orig = total_info(workspace.ix_arr.data(), workspace.untransf_target_col, workspace.st, workspace.end,
+                                              workspace.ncat_this, workspace.buffer_cat_cnt.data());
 
         /* check that there's still more than 1 category */
         size_t ncat_present = 0;
@@ -1223,8 +1229,8 @@ void recursive_split_categ(Workspace &workspace,
         }
         if (ncat_present < 2) goto drop_if_not_needed;
         if (workspace.col_is_bin && workspace.ncat_this > 2) {
-            workspace.base_info = total_info(&workspace.ix_arr[0], workspace.target_categ_col, workspace.st, workspace.end,
-                                             2, &workspace.buffer_cat_cnt[0]);
+            workspace.base_info = total_info(workspace.ix_arr.data(), workspace.target_categ_col, workspace.st, workspace.end,
+                                             2, workspace.buffer_cat_cnt.data());
             if (workspace.buffer_cat_cnt[0] < model_params.min_size_categ || workspace.buffer_cat_cnt[1] == model_params.min_size_categ) goto drop_if_not_needed;
         } else {
             workspace.base_info = workspace.base_info_orig;
