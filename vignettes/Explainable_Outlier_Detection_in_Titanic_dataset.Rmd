@@ -1,7 +1,6 @@
 ---
 title: "Explainable Outlier Detection in Titanic dataset"
 author: "David Cortes"
-date: "4/19/2020"
 output:
     rmarkdown::html_document:
         theme: "spacelab"
@@ -18,7 +17,9 @@ vignette: >
 
 This short notebook illustrates basic usage of the [OutlierTree](https://github.com/david-cortes/outliertree) library for explainable outlier detection using the Titanic dataset. For more details, you can check the package's documentation [at CRAN](https://cran.r-project.org/package=outliertree) or through R's help (e.g. `?outliertree::outlier.tree`). For a more interesting and interactive example, see the documentation of the main function (`outlier.tree`), which uses a larger dataset.
 
-The dataset is very popular and can be downloaded from different sources, such as Kaggle or many university webpages. This notebook took it from the following link: https://github.com/jbryer/CompStats/raw/master/Data/titanic3.csv
+The dataset is very popular and can be downloaded from different sources, such as Kaggle or many university webpages. This vignette took it from the following link: https://github.com/jbryer/CompStats/raw/master/Data/titanic3.csv
+
+The data comes bundled in the package so there is no need to download it from the link above.
 
 ### Loading the raw data
 
@@ -26,8 +27,9 @@ The dataset is very popular and can be downloaded from different sources, such a
 library(magrittr)
 library(dplyr)
 library(kableExtra)
+library(outliertree)
+data("titanic")
 
-titanic <- read.csv("titanic3.csv", na="")
 titanic %>%
 	head(5) %>%
 	kable() %>%

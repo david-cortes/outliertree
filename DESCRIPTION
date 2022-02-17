@@ -14,7 +14,7 @@ Description: Outlier detection method that flags suspicious values within observ
 License: GPL (>= 3)
 Imports: Rcpp (>= 1.0.1)
 Depends: R (>= 3.5.0)
-Suggests: knitr, rmarkdown
+Suggests: knitr, rmarkdown, kableExtra, magrittr, dplyr
 LinkingTo: Rcpp, Rcereal
 LazyData: true
 VignetteBuilder: knitr

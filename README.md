@@ -134,7 +134,7 @@ summary(new_outliers)
 ```
 (see documentation for more examples)
 
-Example [RMarkdown](http://htmlpreview.github.io/?https://github.com/david-cortes/outliertree/blob/master/example/titanic_outliertree_r.html) using the Titanic dataset.
+Example [RMarkdown](http://htmlpreview.github.io/?https://github.com/david-cortes/outliertree/blob/master/vignettes/Explainable_Outlier_Detection_in_Titanic_dataset.html) using the Titanic dataset.
 
 
 * For Python:

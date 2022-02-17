@@ -22,3 +22,4 @@
 ^config\.status$
 ^src/Makevars$
 ^autom4te.cache/.*$
+^vignettes/Explainable_Outlier_Detection_in_Titanic_dataset\.html$

@@ -330,7 +330,6 @@ div.tocify {
 
 <h1 class="title toc-ignore">Explainable Outlier Detection in Titanic dataset</h1>
 <h4 class="author">David Cortes</h4>
-<h4 class="date">4/19/2020</h4>
 
 </div>
 
@@ -338,18 +337,20 @@ div.tocify {
 <div id="explainable-outlier-detection-in-titanic-dataset" class="section level1">
 <h1>Explainable Outlier Detection in Titanic dataset</h1>
 <p>This short notebook illustrates basic usage of the <a href="https://github.com/david-cortes/outliertree">OutlierTree</a> library for explainable outlier detection using the Titanic dataset. For more details, you can check the package’s documentation <a href="https://cran.r-project.org/package=outliertree">at CRAN</a> or through R’s help (e.g. <code>?outliertree::outlier.tree</code>). For a more interesting and interactive example, see the documentation of the main function (<code>outlier.tree</code>), which uses a larger dataset.</p>
-<p>The dataset is very popular and can be downloaded from different sources, such as Kaggle or many university webpages. This notebook took it from the following link: <a href="https://github.com/jbryer/CompStats/raw/master/Data/titanic3.csv" class="uri">https://github.com/jbryer/CompStats/raw/master/Data/titanic3.csv</a></p>
+<p>The dataset is very popular and can be downloaded from different sources, such as Kaggle or many university webpages. This vignette took it from the following link: <a href="https://github.com/jbryer/CompStats/raw/master/Data/titanic3.csv" class="uri">https://github.com/jbryer/CompStats/raw/master/Data/titanic3.csv</a></p>
+<p>The data comes bundled in the package so there is no need to download it from the link above.</p>
 <div id="loading-the-raw-data" class="section level3">
 <h3>Loading the raw data</h3>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(magrittr)</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(kableExtra)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>titanic <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">&quot;titanic3.csv&quot;</span>, <span class="at">na=</span><span class="st">&quot;&quot;</span>)</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>titanic <span class="sc">%&gt;%</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">head</span>(<span class="dv">5</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">kable</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">kable_styling</span>()</span></code></pre></div>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(outliertree)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">data</span>(<span class="st">&quot;titanic&quot;</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>titanic <span class="sc">%&gt;%</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">head</span>(<span class="dv">5</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">kable</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">kable_styling</span>()</span></code></pre></div>
 <table class="table" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
