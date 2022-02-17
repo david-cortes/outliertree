@@ -21,6 +21,10 @@ class build_ext_subclass( build_ext ):
     def build_extensions(self):
         is_msvc = self.compiler.compiler_type == "msvc"
         is_clang = hasattr(self.compiler, 'compiler_cxx') and ("clang++" in self.compiler.compiler_cxx)
+        is_windows = sys.platform[:3] == "win"
+        is_mingw = (is_windows and
+                    (self.compiler.compiler_type.lower()
+                     in ["mingw32", "mingw64", "mingw", "msys", "msys2", "gcc", "g++"]))
 
         if not is_msvc:
             if not self.check_cflags_or_cxxflags_contain_arch():
@@ -34,7 +38,7 @@ class build_ext_subclass( build_ext ):
 
         if is_msvc:
             for e in self.extensions:
-                e.extra_compile_args += ['/openmp', '/O2', '/std:c++14', '/fp:except-']
+                e.extra_compile_args += ['/openmp', '/O2', '/std:c++14', '/fp:except-', '/wd4267', '/wd4018']
                 ### Note: MSVC never implemented C++11
         elif is_clang:
             for e in self.extensions:
@@ -45,6 +49,9 @@ class build_ext_subclass( build_ext ):
                 # e.extra_compile_args = ['-fopenmp', '-O2', '-march=native', '-std=c++11']
                 # e.extra_link_args    = ['-fopenmp']
                 e.extra_compile_args += ['-O2', '-std=c++11']
+
+                if is_mingw:
+                    e.extra_compile_args += ['-Wno-sign-compare', '-Wno-maybe-uninitialized']
 
                 # e.extra_compile_args = ['-O2', '-march=native', '-std=c++11']
 
