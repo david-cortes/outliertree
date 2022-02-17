@@ -4,7 +4,7 @@ author: "David Cortes"
 output:
     rmarkdown::html_document:
         theme: "spacelab"
-        highlight: "kate"
+        highlight: "pygments"
         toc: true
         toc_float: true
 vignette: >
@@ -27,53 +27,61 @@ The dataset is very popular and can be downloaded from different sources, such a
 
 The data comes bundled in the package so there is no need to download it from the link above.
 
-### Loading the raw data
+# Loading the raw data
 
 ```{r message=FALSE}
-library(magrittr)
-library(dplyr)
+library(data.table)
 library(kableExtra)
 library(outliertree)
 data("titanic")
 
-titanic %>%
-	head(5) %>%
-	kable() %>%
-	kable_styling()
+titanic |>
+    head(5) |>
+    kable() |>
+    kable_styling()
 ```
 
-### Pre-processing the data
+# Pre-processing the data
 
 ```{r}
 ## Capitalize column names and some values for easier reading
 capitalize <- function(x) gsub("^(\\w)", "\\U\\1\\E", x, perl=TRUE)
-titanic %<>%
-	rename_all(capitalize) %>%
-	mutate(Sex = capitalize(Sex)) %>%
-	rename(SibSp = Sibsp)
+
+titanic <- as.data.table(titanic)
+titanic[
+    , setnames(.SD, names(.SD), capitalize(names(.SD)))
+][
+    , setnames(.SD, "Sibsp", "SibSp")
+][
+    , Sex := capitalize(Sex)
+] -> titanic
 
 ## Convert 'survived' to yes/no for easier reading
-titanic %<>%
-	mutate(Survived = recode(Survived, `1`="Yes", `0`="No"))
+titanic[
+    , Survived := ifelse(Survived, "Yes", "No")
+]
 
 ## Some columns are not useful, such as name (an ID), ticket number (another ID),
 ## or destination (too many values, many non-repeated)
-titanic %<>%
-	select(-Name, -Ticket, -Home.dest)
+titanic[
+    , !c("Name", "Ticket", "Home.dest")
+] -> titanic
 
 ## Ordinal columns need to be passed as ordered factors
 cols_ord <- c("Pclass", "Parch", "SibSp")
-titanic %<>%
-	mutate_at(.vars=cols_ord, function(.) factor(., ordered = TRUE))
+titanic[
+    , (cols_ord) := lapply(.SD, function(x) factor(x, ordered = TRUE))
+    , .SDcols = cols_ord
+]
 
 ## A look at the processed data
-titanic %>%
-	head(5) %>%
-	kable() %>%
+titanic |>
+	head(5) |>
+	kable() |>
 	kable_styling()
 ```
 
-### Fitting a model
+# Fitting a model
 
 ```{r, eval=FALSE}
 library(outliertree)
@@ -90,7 +98,7 @@ otree <- outlier.tree(titanic, nthreads=1)
 otree
 ```
 
-### Examining the results more closely
+# Examining the results more closely
 
 ```{r}
 ## Double-check the data (last 2 outliers)
@@ -99,11 +107,13 @@ titanic[c(1147, 1164), ]
 
 ```{r}
 ## Distribution of the group from which those two outliers were flagged
-titanic %>%
-	filter(Pclass == 3,
-		   SibSp == 0,
-		   Embarked == "Q") %$%
-	Fare %>%
+titanic[
+    Pclass == 3 &
+    SibSp == 0 &
+    Embarked == "Q"
+][
+    , Fare
+] |>
 	hist(breaks = 100, col = "navy", xlab="Fare",
 		 main="Distribution of Fare within cluster")
 ```
@@ -124,7 +134,7 @@ only_flagged <- pred[!is.na(sapply(pred, function(x) x$outlier_score))]
 ## To print selected rows only
 print(pred, only_these_rows = 1147)
 ```
-### Trying different hyperparameters
+# Trying different hyperparameters
 
 ```{r, eval=FALSE}
 ## In order to flag more outliers, one can also experiment
