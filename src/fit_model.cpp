@@ -190,9 +190,9 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     model_outputs.start_ix_cat_counts[0] = 0;
     if (tot_cols > ncols_numeric) {
         input_data.max_categ = calculate_category_indices(model_outputs.start_ix_cat_counts.data(), input_data.ncat, input_data.ncols_categ,
-                                                          (bool*) input_data.skip_col.data() + ncols_numeric);
+                                                          input_data.skip_col.data() + ncols_numeric);
         input_data.max_categ = calculate_category_indices(model_outputs.start_ix_cat_counts.data() + input_data.ncols_categ, input_data.ncat_ord, input_data.ncols_ord,
-                                                          (bool*) input_data.skip_col.data() + input_data.ncols_numeric + input_data.ncols_categ, input_data.max_categ);
+                                                          input_data.skip_col.data() + input_data.ncols_numeric + input_data.ncols_categ, input_data.max_categ);
     } else {
         input_data.max_categ = 0;
     }
@@ -219,12 +219,12 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                     if (ncols_categ > 0) {
                         calculate_all_cat_counts(model_outputs.start_ix_cat_counts.data(), input_data.cat_counts.data(), input_data.ncat,
                                                  input_data.categorical_data, input_data.ncols_categ, input_data.nrows,
-                                                 (bool*) input_data.has_NA.data() + ncols_numeric, (bool*) input_data.skip_col.data() + input_data.ncols_numeric,
+                                                 input_data.has_NA.data() + ncols_numeric, input_data.skip_col.data() + input_data.ncols_numeric,
                                                  std::min(input_data.ncols_categ, (size_t)std::max(1, nthreads - 1)) );
 
                         check_cat_col_unsplittable(model_outputs.start_ix_cat_counts.data(), input_data.cat_counts.data(), input_data.ncat,
                                                    input_data.ncols_categ, std::min(model_params.min_size_numeric, model_params.min_size_categ), input_data.nrows,
-                                                   (bool*) input_data.skip_col.data() + input_data.ncols_numeric,
+                                                   input_data.skip_col.data() + input_data.ncols_numeric,
                                                    std::min(input_data.ncols_categ, (size_t)std::max(1, nthreads - 1)));
                     }
 
@@ -236,13 +236,13 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                     if (ncols_ord > 0) {
                         calculate_all_cat_counts(model_outputs.start_ix_cat_counts.data() + input_data.ncols_categ, input_data.cat_counts.data(), input_data.ncat_ord,
                                                  input_data.ordinal_data, input_data.ncols_ord, input_data.nrows,
-                                                 (bool*) input_data.has_NA.data() + input_data.ncols_numeric + input_data.ncols_categ,
-                                                 (bool*) input_data.skip_col.data() + input_data.ncols_numeric + input_data.ncols_categ,
+                                                 input_data.has_NA.data() + input_data.ncols_numeric + input_data.ncols_categ,
+                                                 input_data.skip_col.data() + input_data.ncols_numeric + input_data.ncols_categ,
                                                  std::max((int)1, nthreads - (int)input_data.ncols_categ) );
 
                         check_cat_col_unsplittable(model_outputs.start_ix_cat_counts.data() + input_data.ncols_categ, input_data.cat_counts.data(), input_data.ncat_ord,
                                                    ncols_ord, std::min(model_params.min_size_numeric, model_params.min_size_categ), input_data.nrows,
-                                                   (bool*) input_data.skip_col.data() + input_data.ncols_numeric + input_data.ncols_categ,
+                                                   input_data.skip_col.data() + input_data.ncols_numeric + input_data.ncols_categ,
                                                    std::max((int)1, nthreads - (int)input_data.ncols_categ));
                     }
                 }
@@ -260,7 +260,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
 
     /* for numerical columns, check if they have NAs or if total variance is  too small */
     check_missing_no_variance(input_data.numeric_data, input_data.ncols_numeric, input_data.nrows,
-                              (bool*) input_data.has_NA.data(), (bool*) input_data.skip_col.data(),
+                              input_data.has_NA.data(), input_data.skip_col.data(),
                               model_outputs.min_decimals_col.data(), nthreads);
 
     /* determine an approximate size for the output clusters, and reserve memory right away */

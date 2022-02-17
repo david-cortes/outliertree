@@ -39,7 +39,7 @@
 *    at which position will the counts for a given column start. Note that NAs are stored as the last index in each
 *    column, so each one needs one extra category
 */
-int calculate_category_indices(size_t start_ix_cat_counts[], int ncat[], size_t ncols, bool skip_col[], int max_categ)
+int calculate_category_indices(size_t start_ix_cat_counts[], int ncat[], size_t ncols, char skip_col[], int max_categ)
 {
     for (size_t col = 0; col < ncols; col++) {
         max_categ = std::max(ncat[col], max_categ);
@@ -53,7 +53,7 @@ int calculate_category_indices(size_t start_ix_cat_counts[], int ncat[], size_t 
 /* Save the counts of each category for each column in the array determined above */
 void calculate_all_cat_counts(size_t start_ix_cat_counts[], size_t cat_counts[], int ncat[],
                               int categorical_data[], size_t ncols, size_t nrows,
-                              bool has_NA[], bool skip_col[], int nthreads)
+                              char has_NA[], char skip_col[], int nthreads)
 {
     size_t col_st_offset;
     size_t col_stop;
@@ -80,7 +80,7 @@ void calculate_all_cat_counts(size_t start_ix_cat_counts[], size_t cat_counts[],
 
 /* Check if some column has a large majority that would make any split fail to meet minimum sizes */
 void check_cat_col_unsplittable(size_t start_ix_cat_counts[], size_t cat_counts[], int ncat[],
-                                size_t ncols, size_t min_conditioned_size, size_t nrows, bool skip_col[], int nthreads)
+                                size_t ncols, size_t min_conditioned_size, size_t nrows, char skip_col[], int nthreads)
 {
     size_t largest_cnt;
     #pragma omp parallel for num_threads(nthreads) private(largest_cnt) shared(ncols, nrows, ncat, cat_counts, start_ix_cat_counts, min_conditioned_size, skip_col)
@@ -127,8 +127,8 @@ void calculate_lowerlim_proportion(long double *restrict prop_small, long double
 
 /* Check if a numerical column has no variance (i.e. will not be splittable).
    Along the way, also record the number of decimals to display for this column. */
-void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows, bool has_NA[],
-                               bool skip_col[], int min_decimals[], int nthreads)
+void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows, char has_NA[],
+                               char skip_col[], int min_decimals[], int nthreads)
 {
     long double running_mean;
     long double mean_prev;

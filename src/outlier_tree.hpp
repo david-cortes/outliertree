@@ -802,17 +802,17 @@ typedef struct {
 } RecursionState;
 
 
-int calculate_category_indices(size_t start_ix_cat_counts[], int ncat[], size_t ncols, bool skip_col[], int max_categ = 0);
+int calculate_category_indices(size_t start_ix_cat_counts[], int ncat[], size_t ncols, char skip_col[], int max_categ = 0);
 void calculate_all_cat_counts(size_t start_ix_cat_counts[], size_t cat_counts[], int ncat[],
                               int categorical_data[], size_t ncols, size_t nrows,
-                              bool has_NA[], bool skip_col[], int nthreads);
+                              char has_NA[], char skip_col[], int nthreads);
 void check_cat_col_unsplittable(size_t start_ix_cat_counts[], size_t cat_counts[], int ncat[],
-                                size_t ncols, size_t min_conditioned_size, size_t nrows, bool skip_col[], int nthreads);
+                                size_t ncols, size_t min_conditioned_size, size_t nrows, char skip_col[], int nthreads);
 void calculate_lowerlim_proportion(long double *restrict prop_small, long double *restrict prop,
                                    size_t start_ix_cat_counts[], size_t cat_counts[],
                                    size_t ncols, size_t nrows, double z_norm, double z_tail);
-void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows, bool has_NA[],
-                               bool skip_col[], int min_decimals[], int nthreads);
+void check_missing_no_variance(double numeric_data[], size_t ncols, size_t nrows, char has_NA[],
+                               char skip_col[], int min_decimals[], int nthreads);
 void calc_central_mean_and_sd(size_t ix_arr[], size_t st, size_t end, double x[], size_t size_quarter, double *mean_central, double *sd_central);
 void check_for_tails(size_t ix_arr[], size_t st, size_t end, double *restrict x,
                      double z_norm, double max_perc_outliers,

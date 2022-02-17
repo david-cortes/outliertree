@@ -42,3 +42,4 @@ config.status
 configure~
 src/Makevars
 autom4te.cache/*
+example/titanic3.csv
