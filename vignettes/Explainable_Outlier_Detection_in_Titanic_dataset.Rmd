@@ -12,6 +12,12 @@ vignette: >
     %\VignetteEngine{knitr::rmarkdown}
     %\VignetteEncoding{UTF-8}
 ---
+```{r, include = FALSE}
+### Don't overload CRAN servers
+### https://stackoverflow.com/questions/28961431/computationally-heavy-r-vignettes
+is_check <- ("CheckExEnv" %in% search()) || any(c("_R_CHECK_TIMINGS_",
+             "_R_CHECK_LICENSE_") %in% names(Sys.getenv()))
+```
 
 # Explainable Outlier Detection in Titanic dataset
 
@@ -69,11 +75,18 @@ titanic %>%
 
 ### Fitting a model
 
-```{r comment=NA}
+```{r, eval=FALSE}
 library(outliertree)
 
 ## Fit model with default hyperparameters
 otree <- outlier.tree(titanic)
+otree
+```
+```{r, echo=FALSE, comment=NA}
+library(outliertree)
+
+## Fit model with default hyperparameters
+otree <- outlier.tree(titanic, nthreads=1)
 otree
 ```
 
@@ -113,18 +126,29 @@ print(pred, only_these_rows = 1147)
 ```
 ### Trying different hyperparameters
 
-```{r comment=NA}
+```{r, eval=FALSE}
 ## In order to flag more outliers, one can also experiment
 ## with lowering the threshold hyperparameters
 outlier.tree(titanic, z_outlier = 6., outliers_print = 5)
 ```
+```{r, echo=FALSE, comment=NA}
+## In order to flag more outliers, one can also experiment
+## with lowering the threshold hyperparameters
+outlier.tree(titanic, z_outlier = 6., outliers_print = 5, nthreads=1)
+```
 
 
 
-```{r comment=NA}
+```{r, eval=FALSE}
 ## One can also lower the gain threshold, but this tends
 ## to result in more spurious outliers which come from
 ## not-so-good splits (not recommended)
 outlier.tree(titanic, z_outlier = 6., min_gain = 1e-6, outliers_print = 5)
+```
+```{r, echo=FALSE, comment=NA}
+## One can also lower the gain threshold, but this tends
+## to result in more spurious outliers which come from
+## not-so-good splits (not recommended)
+outlier.tree(titanic, z_outlier = 6., min_gain = 1e-6, outliers_print = 5, nthreads=1)
 ```
 
