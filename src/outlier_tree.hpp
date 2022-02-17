@@ -493,7 +493,7 @@ public:
     }
 };
 
-typedef struct {
+struct Workspace {
     
     std::vector<size_t> ix_arr;           /* indices from the target column */
     size_t st;                            /* chunk of the indices to take for current function calls */
@@ -561,10 +561,10 @@ typedef struct {
     ExhaustedColumnTracker exhausted_col_tracker;
     bool has_zero_variance;
 
-} Workspace;
+};
 
 /* info holders to shorten function call arguments */
-typedef struct {
+struct ModelParams {
     bool    categ_as_bin;
     bool    ord_as_bin;
     bool    cat_bruteforce_subset;
@@ -581,16 +581,16 @@ typedef struct {
     double  z_outlier;
     double  z_tail;
     std::vector<long double> prop_small; /* this is not a parameter, but a shared array determined from the parameters and data */
-} ModelParams;
+};
 
 /* Note: the vectors here are filled within the function that fits the model, while the pointers are passed from outside */
-typedef struct {
+struct InputData {
     double  *restrict numeric_data;     size_t ncols_numeric;
     int     *restrict categorical_data; size_t ncols_categ;   int *restrict ncat;
     int     *restrict ordinal_data;     size_t ncols_ord;     int *restrict ncat_ord;
     size_t  nrows; size_t tot_cols; std::vector<char> has_NA; std::vector<char> skip_col; int max_categ;
     std::vector<size_t> cat_counts;
-} InputData;
+};
 
 
 void process_numeric_col(std::vector<Cluster> &cluster_root,
@@ -622,12 +622,12 @@ void recursive_split_categ(Workspace &workspace,
     (This is the module from which
      new data can be flagged as outliers)
 ********************************************/
-typedef struct {
+struct PredictionData {
     double  *restrict numeric_data;
     int     *restrict categorical_data;
     int     *restrict ordinal_data;
     size_t nrows;
-} PredictionData;
+};
 
 bool find_new_outliers(double *restrict numeric_data,
                        int    *restrict categorical_data,
@@ -645,19 +645,21 @@ bool check_is_outlier_in_tree(std::vector<size_t> &clusters_in_tree, size_t curr
 *********************************/
 #define SD_REG 1e-5 /* Regularization for standard deviation estimation */
 
-typedef struct {
+/* TODO: should make long doubles optional */
+
+struct NumericBranch {
     size_t      cnt;
     long double sum;
     long double sum_sq;
-} NumericBranch;
+};
 
-typedef struct {
+struct NumericSplit {
     NumericBranch NA_branch    = {0, 0, 0};
     NumericBranch left_branch  = {0, 0, 0};
     NumericBranch right_branch = {0, 0, 0};
-} NumericSplit;
+};
 
-typedef struct {
+struct CategSplit {
     size_t *restrict NA_branch;     /* array of counts of the target variable's categories */
     size_t *restrict left_branch;   /* array of counts of the target variable's categories */
     size_t *restrict right_branch;  /* array of counts of the target variable's categories */
@@ -666,7 +668,7 @@ typedef struct {
     size_t size_NA    = 0;
     size_t size_left  = 0;
     size_t size_right = 0;
-} CategSplit;
+};
 
 void subset_to_onehot(size_t ix_arr[], size_t n_true, size_t n_tot, signed char onehot[]);
 size_t move_zero_count_to_front(size_t *restrict cat_sorted, size_t *restrict cat_cnt, size_t ncat_x);
