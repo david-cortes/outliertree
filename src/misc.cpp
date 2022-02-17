@@ -510,6 +510,7 @@ void backup_recursion_state(Workspace &workspace, RecursionState &state_backup)
     state_backup.has_outliers_restore = workspace.has_outliers;
     state_backup.lev_has_outliers_restore = workspace.lev_has_outliers;
     state_backup.temp_ptr_x = workspace.temp_ptr_x;
+    state_backup.is_binary_split_restore = workspace.is_binary_split;
 }
 
 void restore_recursion_state(Workspace &workspace, RecursionState &state_backup)
@@ -534,6 +535,7 @@ void restore_recursion_state(Workspace &workspace, RecursionState &state_backup)
     workspace.has_outliers = state_backup.has_outliers_restore;
     workspace.lev_has_outliers = state_backup.lev_has_outliers_restore;
     workspace.temp_ptr_x = state_backup.temp_ptr_x;
+    workspace.is_binary_split = state_backup.is_binary_split_restore;
 }
 
 /* Next split on the trees is only decided after they are already initialized */

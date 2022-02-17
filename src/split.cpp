@@ -380,11 +380,13 @@ void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, dou
 *        Split level for ordinal X variables (left branch is <= this).
 *    - has_zero_variance (out)
 *        Whether the 'x' column has zero variance (contains only one unique value).
+*    - binary_split
+*        Whether the produced split is binary (single category at each branch).
 */
 void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, double *restrict y, long double sd_y, double ymean,
                            bool x_is_ordinal, size_t ncat_x, size_t *restrict buffer_cat_cnt, long double *restrict buffer_cat_sum,
                            long double *restrict buffer_cat_sum_sq, size_t *restrict buffer_cat_sorted,
-                           bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset, int *restrict split_point, bool *restrict has_zero_variance)
+                           bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset, int *restrict split_point, bool *restrict has_zero_variance, bool *restrict binary_split)
 {
 
     /* output parameters and variables to use */
@@ -394,6 +396,7 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
     size_t st_cat = 0;
     double sd_y_d = (double) sd_y;
     *has_zero_variance = false;
+    *binary_split = false;
 
     /* reset the buffers */
     memset(split_subset,      0, sizeof(signed char)   *  ncat_x);
@@ -454,6 +457,8 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
         split_info.right_branch = {buffer_cat_cnt[1], buffer_cat_sum[1], buffer_cat_sum_sq[1]};
         *gain = numeric_gain(split_info, 1.0) * sd_y;
         split_subset[0] = 1;
+
+        *binary_split = true;
     }
 
     /* subset and ordinal splits */
@@ -467,7 +472,7 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
         }
 
         /* if it's an ordinal variable, must respect the order */
-        for (size_t cat = 0; cat < ncat_x; cat++) buffer_cat_sorted[cat] = cat;
+        std::iota(buffer_cat_sorted, buffer_cat_sorted + ncat_x, (size_t)0);
 
         if (!x_is_ordinal) {
             /* otherwise, sort the categories according to their mean of y */
@@ -482,6 +487,10 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
                           return (buffer_cat_sum[a] / (long double) buffer_cat_cnt[a]) >
                                  (buffer_cat_sum[b] / (long double) buffer_cat_cnt[b]);
                       });
+
+            if (ncat_x - st_cat == 2) {
+                *binary_split = true;
+            }
         }
 
         /* try moving each category to the left branch in the given order */
@@ -671,12 +680,14 @@ void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, doubl
 *        Threshold for splitting on values of 'x'. If no split is posible, will return -1.
 *    - has_zero_variance (out)
 *        Whether the 'x' column has zero variance (contains only one unique value).
+*    - binary_split
+*        Whether the produced split is binary (single category at each branch).
 */
 void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_y, size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_ord_cnt,
                        bool has_na, size_t min_size, long double *gain, int *split_point,
-                       bool *restrict has_zero_variance)
+                       bool *restrict has_zero_variance, bool *restrict binary_split)
 {
     *gain = -HUGE_VAL;
     *split_point = -1;
@@ -686,6 +697,7 @@ void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *rest
     split_info.ncat = ncat_y;
     split_info.tot = end - st + 1;
     *has_zero_variance = false;
+    *binary_split = false;
 
     /* check that there are enough observations for a split */
     if ((end - st + 1) < (2 * min_size)) return;
@@ -725,11 +737,14 @@ void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *rest
     int n_unique_cat = 0;
     for (size_t cat = 0; cat < ncat_x; cat++) {
         n_unique_cat += buffer_ord_cnt[cat] > 0;
-        if (n_unique_cat >= 2) break;
+        if (n_unique_cat >= 3) break;
     }
     if (n_unique_cat <= 1) {
         *has_zero_variance = true;
         return;
+    }
+    if (n_unique_cat == 2) {
+        *binary_split = true;
     }
 
     /* look for the best split point, by moving one observation at a time to the left branch*/
@@ -796,12 +811,14 @@ void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *rest
 *        (value of 1 means it's on the left branch, 0 in the right branch, -1 not applicable)
 *    - has_zero_variance (out)
 *        Whether the 'x' column has zero variance (contains only one unique value).
+*    - binary_split
+*        Whether the produced split is binary (single category at each branch).
 */
 void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_cat_sorted,
                        bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset,
-                       bool *restrict has_zero_variance)
+                       bool *restrict has_zero_variance, bool *restrict binary_split)
 {
     *gain = -HUGE_VAL;
     size_t st_non_na;
@@ -812,6 +829,7 @@ void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *rest
     split_info.ncat = 2;
     split_info.tot = end - st + 1;
     *has_zero_variance = false;
+    *binary_split = false;
 
     /* check that there are enough observations for a split */
     if ((end - st + 1) < (2 * min_size)) return;
@@ -858,7 +876,7 @@ void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *rest
     }
 
     /* sort the categories according to their mean of y */
-    for (size_t cat = 0; cat < ncat_x; cat++) buffer_cat_sorted[cat] = cat;
+    std::iota(buffer_cat_sorted, buffer_cat_sorted + ncat_x, (size_t)0);
     st_cat = move_zero_count_to_front(buffer_cat_sorted, buffer_cat_cnt, ncat_x);
     std::sort(buffer_cat_sorted + st_cat, buffer_cat_sorted + ncat_x,
               [&buffer_crosstab, &buffer_cat_cnt](const size_t a, const size_t b)
@@ -866,6 +884,9 @@ void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *rest
                   return ((long double) buffer_crosstab[2 * a] / (long double) buffer_cat_cnt[a]) >
                          ((long double) buffer_crosstab[2 * b] / (long double) buffer_cat_cnt[b]);
               });
+    if (ncat_x - st_cat == 2) {
+        *binary_split = true;
+    }
 
     /* look for the best split subset, by moving one category at a time to the left branch*/
     for (size_t cat = st_cat; cat < (ncat_x - 1); cat++) {
@@ -1015,12 +1036,14 @@ void split_categx_categy_separate(size_t *restrict ix_arr, size_t st, size_t end
 *        (value of 1 means it's on the left branch, 0 in the right branch, -1 not applicable)
 *    - has_zero_variance (out)
 *        Whether the 'x' column has zero variance (contains only one unique value).
+*    - binary_split
+*        Whether the produced split is binary (single category at each branch).
 */
 void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                                 size_t ncat_x, size_t ncat_y, long double base_info,
                                 size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_split,
                                 bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset,
-                                bool *restrict has_zero_variance)
+                                bool *restrict has_zero_variance, bool *restrict binary_split)
 {
     *gain = -HUGE_VAL;
     long double this_gain;
@@ -1030,6 +1053,7 @@ void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, 
     split_info.ncat = ncat_y;
     size_t st_non_na;
     *has_zero_variance = false;
+    *binary_split = false;
 
     /* will divide into 3 branches: NA, within subset, outside subset */
     memset(buffer_split, 0, 3 * ncat_y * sizeof(size_t));
@@ -1059,11 +1083,14 @@ void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, 
     int n_unique_cat = 0;
     for (size_t cat = 0; cat < ncat_x; cat++) {
         n_unique_cat += buffer_cat_cnt[cat] > 0;
-        if (n_unique_cat >= 2) break;
+        if (n_unique_cat >= 3) break;
     }
     if (n_unique_cat <= 1) {
         *has_zero_variance = true;
         return;
+    }
+    if (n_unique_cat == 2) {
+        *binary_split = true;
     }
 
     /* put all categories on the right branch */
@@ -1084,6 +1111,10 @@ void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, 
     size_t curr_exponent = 0;
     size_t last_bit;
     size_t ncomb = pow2(ncat_x) - 1;
+
+    /* TODO: this is highly inefficient:
+       - categories with zero count can be discarded beforehand.
+       - could use C++ next_permutation instead. */
 
     /* iteration is done by putting a category in the left branch if the bit at its
        position in the binary representation of the combination number is a 1 */

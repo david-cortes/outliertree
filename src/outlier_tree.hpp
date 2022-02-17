@@ -488,8 +488,10 @@ public:
         this->tracker->push_branch();
     }
     ~ExhaustedColumnsLevel() {
-        if (this->pop)
+        if (this->pop) {
             this->tracker->pop_branch();
+            this->pop = false;
+        }
     }
 };
 
@@ -560,7 +562,8 @@ struct Workspace {
 
     ExhaustedColumnTracker exhausted_col_tracker;
     bool has_zero_variance;
-
+    bool is_binary_split;
+    bool best_cat_split_is_binary;
 };
 
 /* info holders to shorten function call arguments */
@@ -691,7 +694,7 @@ void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, dou
 void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, double *restrict y, long double sd_y, double ymean,
                            bool x_is_ordinal, size_t ncat_x, size_t *restrict buffer_cat_cnt, long double *restrict buffer_cat_sum,
                            long double *restrict buffer_cat_sum_sq, size_t *restrict buffer_cat_sorted,
-                           bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset, int *restrict split_point, bool *restrict has_zero_variance);
+                           bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset, int *restrict split_point, bool *restrict has_zero_variance, bool *restrict binary_split);
 void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, int *restrict y,
                            size_t ncat_y, long double base_info, size_t *restrict buffer_cat_cnt,
                            bool has_na, size_t min_size, bool take_mid, long double *restrict gain, double *restrict split_point,
@@ -700,12 +703,12 @@ void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *rest
                        size_t ncat_y, size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_ord_cnt,
                        bool has_na, size_t min_size, long double *gain, int *split_point,
-                       bool *restrict has_zero_variance);
+                       bool *restrict has_zero_variance, bool *restrict binary_split);
 void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_cat_sorted,
                        bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset,
-                       bool *restrict has_zero_variance);
+                       bool *restrict has_zero_variance, bool *restrict binary_split);
 void split_categx_categy_separate(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                                   size_t ncat_x, size_t ncat_y, long double base_info,
                                   size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab,
@@ -714,7 +717,7 @@ void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, 
                                 size_t ncat_x, size_t ncat_y, long double base_info,
                                 size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_split,
                                 bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset,
-                                bool *restrict has_zero_variance);
+                                bool *restrict has_zero_variance, bool *restrict binary_split);
 
 
 
@@ -795,6 +798,7 @@ typedef struct {
     double sd_y_restore;
     bool has_outliers_restore;
     bool lev_has_outliers_restore;
+    bool is_binary_split_restore;
 } RecursionState;
 
 

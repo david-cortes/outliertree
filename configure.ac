@@ -1,4 +1,4 @@
-AC_INIT([outliertree], 1.8.0)
+AC_INIT([outliertree], 1.8.1)
 AC_LANG(C++)
 AC_COMPILE_IFELSE(
     [AC_LANG_PROGRAM([[]], [[double *__restrict x;]])],
