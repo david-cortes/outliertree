@@ -1,0 +1,6 @@
+pandas>=0.24.0
+numpy
+cython
+Sphinx==4.2.0
+docutils==0.16
+sphinx-rtd-theme==1.0.0

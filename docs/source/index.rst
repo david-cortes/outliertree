@@ -21,10 +21,13 @@ Package is available on PyPI, can be installed with
 Quick example notebook
 ======================
 
+
 * `Explainable outlier detection in the Titanic dataset <http://nbviewer.ipython.org/github/david-cortes/outliertree/blob/master/example/titanic_outliertree_python.ipynb>`_.
+
 
 Methods
 =======
+
 
 * `OutlierTree <#outliertree.OutlierTree>`_
 * `fit <#outliertree.OutlierTree.fit>`_
@@ -32,18 +35,15 @@ Methods
 * `predict <#outliertree.OutlierTree.predict>`_
 * `print_outliers <#outliertree.OutlierTree.print_outliers>`_
 
-OutlierTree
-===============
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+OutlierTree
+===========
 
 .. automodule:: outliertree
-    :members:
-    :undoc-members:
-    :show-inheritance:
-    :inherited-members:
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :inherited-members:
 
 
 Indices and tables

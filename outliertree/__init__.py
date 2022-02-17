@@ -1060,7 +1060,7 @@ class OutlierTree:
 
         References
         ----------
-        .. [1] GritBot software : https://www.rulequest.com/gritbot-info.html
+        .. [gritbot] GritBot software : https://www.rulequest.com/gritbot-info.html
         """
         save_folder = os.path.expanduser(save_folder)
         assert os.path.exists(save_folder)
