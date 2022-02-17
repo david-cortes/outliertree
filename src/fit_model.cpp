@@ -569,8 +569,10 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
     else
         workspace.sd_y = sqrtl(running_ssq / (long double)(workspace.end - workspace.st));
 
-    if (model_params.max_depth > 0 && workspace.sd_y > 0)
+    if (model_params.max_depth > 0 && workspace.sd_y > 0) {
+        workspace.exhausted_col_tracker.initialize(input_data.tot_cols, model_params.max_depth);
         recursive_split_numeric(workspace, input_data, model_params, 0, false);
+    }
 }
 
 void recursive_split_numeric(Workspace &workspace,
@@ -589,12 +591,14 @@ void recursive_split_numeric(Workspace &workspace,
     SplitType spl1, spl2;
     size_t tree_from = workspace.tree->size() - 1;
     std::unique_ptr<RecursionState> state_backup;
+    ExhaustedColumnsLevel level_col_tracker;
 
     if (curr_depth > 0) {
         workspace.sd_y = calc_sd(workspace.ix_arr.data(), workspace.target_numeric_col,
                                  workspace.st, workspace.end, &workspace.mean_y);
         if (workspace.sd_y <= 0) goto abandon_column;
     }
+    level_col_tracker.initialize(&workspace.exhausted_col_tracker);
 
     /* when using 'follow_all' need to keep track of a lot more things */
     if (model_params.follow_all) state_backup = std::unique_ptr<RecursionState>(new RecursionState);
@@ -607,10 +611,16 @@ void recursive_split_numeric(Workspace &workspace,
 
         if (col == workspace.target_col_num) continue;
         if (input_data.skip_col[col]) continue;
+        if (workspace.exhausted_col_tracker.is_exhausted[col]) continue;
         split_numericx_numericy(workspace.ix_arr.data(), workspace.st, workspace.end, input_data.numeric_data + col * input_data.nrows,
                                 workspace.target_numeric_col, workspace.sd_y, (bool)(input_data.has_NA[col]), model_params.min_size_numeric,
                                 model_params.take_mid, workspace.buffer_sd.data(), &(workspace.this_gain), &(workspace.this_split_point),
-                                &(workspace.this_split_ix), &(workspace.this_split_NA));
+                                &(workspace.this_split_ix), &(workspace.this_split_NA), &workspace.has_zero_variance);
+        if (workspace.has_zero_variance) {
+            workspace.has_zero_variance = false;
+            workspace.exhausted_col_tracker.push_col(col);
+            continue;
+        }
         if (model_params.gain_as_pct) workspace.this_gain /= workspace.sd_y;
 
         /* if the gain is not insignificant, check clusters created by this split */
@@ -706,19 +716,25 @@ void recursive_split_numeric(Workspace &workspace,
     for (size_t col = 0; col < input_data.ncols_categ; col++) {
 
         if (input_data.skip_col[col + input_data.ncols_numeric]) continue;
+        if (workspace.exhausted_col_tracker.is_exhausted[col + input_data.ncols_numeric]) continue;
 
-        split_categx_numericy(&workspace.ix_arr[0], workspace.st, workspace.end, input_data.categorical_data + col * input_data.nrows,
-                              workspace.target_numeric_col, workspace.sd_y, workspace.mean_y, false, input_data.ncat[col], &workspace.buffer_cat_cnt[0],
-                              &workspace.buffer_cat_sum[0], &workspace.buffer_cat_sum_sq[0], &workspace.buffer_cat_sorted[0],
+        split_categx_numericy(workspace.ix_arr.data(), workspace.st, workspace.end, input_data.categorical_data + col * input_data.nrows,
+                              workspace.target_numeric_col, workspace.sd_y, workspace.mean_y, false, input_data.ncat[col], workspace.buffer_cat_cnt.data(),
+                              workspace.buffer_cat_sum.data(), workspace.buffer_cat_sum_sq.data(), workspace.buffer_cat_sorted.data(),
                               (bool)(input_data.has_NA[col + input_data.ncols_numeric]), model_params.min_size_numeric,
-                              &(workspace.this_gain), &workspace.buffer_subset_categ[0], NULL);
+                              &(workspace.this_gain), workspace.buffer_subset_categ.data(), NULL, &workspace.has_zero_variance);
+        if (workspace.has_zero_variance) {
+            workspace.has_zero_variance = false;
+            workspace.exhausted_col_tracker.push_col(col + input_data.ncols_numeric);
+            continue;
+        }
         if (model_params.gain_as_pct) workspace.this_gain /= workspace.sd_y;
 
         if (workspace.this_gain >= model_params.min_gain) {
 
             /* data is not arranged inside the splitting function, need to now assign to the branches as determined */
-            divide_subset_split(&workspace.ix_arr[0], input_data.categorical_data + col * input_data.nrows, workspace.st, workspace.end,
-                                &workspace.buffer_subset_categ[0], input_data.ncat[col], (bool)(workspace.buffer_cat_cnt[input_data.ncat[col]] > 0),
+            divide_subset_split(workspace.ix_arr.data(), input_data.categorical_data + col * input_data.nrows, workspace.st, workspace.end,
+                                workspace.buffer_subset_categ.data(), input_data.ncat[col], (bool)(workspace.buffer_cat_cnt[input_data.ncat[col]] > 0),
                                 &(workspace.this_split_NA), &(workspace.this_split_ix));
 
             /* NA branch */
@@ -726,9 +742,9 @@ void recursive_split_numeric(Workspace &workspace,
 
                 (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
                 workspace.clusters->emplace_back(Categorical, col, IsNa, (signed char*)NULL, (int)0, true);
-                workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, &workspace.ix_arr[0], workspace.st,
-                                                                  workspace.this_split_NA - 1, &workspace.outlier_scores[0], &workspace.outlier_clusters[0],
-                                                                  &workspace.outlier_trees[0], &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
+                workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, workspace.ix_arr.data(), workspace.st,
+                                                                  workspace.this_split_NA - 1, workspace.outlier_scores.data(), workspace.outlier_clusters.data(),
+                                                                  workspace.outlier_trees.data(), workspace.outlier_depth.data(), workspace.clusters->back(), *(workspace.clusters),
                                                                   workspace.clusters->size() - 1, tree_from, curr_depth + 1,
                                                                   workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                                   workspace.orig_mean, workspace.orig_sd,
@@ -749,10 +765,10 @@ void recursive_split_numeric(Workspace &workspace,
 
             /* left branch */
             (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
-            workspace.clusters->emplace_back(Categorical, col, InSubset, &workspace.buffer_subset_categ[0], input_data.ncat[col], is_NA_branch);
-            workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, &workspace.ix_arr[0], workspace.this_split_NA,
-                                                              workspace.this_split_ix - 1, &workspace.outlier_scores[0], &workspace.outlier_clusters[0],
-                                                              &workspace.outlier_trees[0], &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
+            workspace.clusters->emplace_back(Categorical, col, InSubset, workspace.buffer_subset_categ.data(), input_data.ncat[col], is_NA_branch);
+            workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, workspace.ix_arr.data(), workspace.this_split_NA,
+                                                              workspace.this_split_ix - 1, workspace.outlier_scores.data(), workspace.outlier_clusters.data(),
+                                                              workspace.outlier_trees.data(), workspace.outlier_depth.data(), workspace.clusters->back(), *(workspace.clusters),
                                                               workspace.clusters->size() - 1, tree_from, curr_depth + 1,
                                                               workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                               workspace.orig_mean, workspace.orig_sd,
@@ -762,7 +778,7 @@ void recursive_split_numeric(Workspace &workspace,
 
             if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
                 (*workspace.tree)[tree_from].all_branches.push_back(workspace.tree->size());
-                workspace.tree->emplace_back(tree_from, col, InSubset, &workspace.buffer_subset_categ[0], input_data.ncat[col]);
+                workspace.tree->emplace_back(tree_from, col, InSubset, workspace.buffer_subset_categ.data(), input_data.ncat[col]);
                 backup_recursion_state(workspace, *state_backup);
                 workspace.st = workspace.this_split_NA;
                 workspace.end = workspace.this_split_ix - 1;
@@ -772,10 +788,10 @@ void recursive_split_numeric(Workspace &workspace,
 
             /* right branch */
             (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
-            workspace.clusters->emplace_back(Categorical, col, NotInSubset, &workspace.buffer_subset_categ[0], input_data.ncat[col], is_NA_branch);
-            workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, &workspace.ix_arr[0], workspace.this_split_ix,
-                                                              workspace.end, &workspace.outlier_scores[0], &workspace.outlier_clusters[0],
-                                                              &workspace.outlier_trees[0], &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
+            workspace.clusters->emplace_back(Categorical, col, NotInSubset, workspace.buffer_subset_categ.data(), input_data.ncat[col], is_NA_branch);
+            workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, workspace.ix_arr.data(), workspace.this_split_ix,
+                                                              workspace.end, workspace.outlier_scores.data(), workspace.outlier_clusters.data(),
+                                                              workspace.outlier_trees.data(), workspace.outlier_depth.data(), workspace.clusters->back(), *(workspace.clusters),
                                                               workspace.clusters->size() - 1, tree_from, curr_depth + 1,
                                                               workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                               workspace.orig_mean, workspace.orig_sd,
@@ -785,7 +801,7 @@ void recursive_split_numeric(Workspace &workspace,
 
             if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
                 (*workspace.tree)[tree_from].all_branches.push_back(workspace.tree->size());
-                workspace.tree->emplace_back(tree_from, col, NotInSubset, &workspace.buffer_subset_categ[0], input_data.ncat[col]);
+                workspace.tree->emplace_back(tree_from, col, NotInSubset, workspace.buffer_subset_categ.data(), input_data.ncat[col]);
                 backup_recursion_state(workspace, *state_backup);
                 workspace.st = workspace.this_split_ix;
                 recursive_split_numeric(workspace, input_data, model_params, curr_depth + 1, is_NA_branch);
@@ -796,7 +812,7 @@ void recursive_split_numeric(Workspace &workspace,
                 workspace.best_gain = workspace.this_gain;
                 workspace.column_type_best = Categorical;
                 workspace.col_best = col;
-                memcpy(&workspace.buffer_subset_categ_best[0], &workspace.buffer_subset_categ[0], input_data.ncat[col] * sizeof(signed char));
+                memcpy(workspace.buffer_subset_categ_best.data(), workspace.buffer_subset_categ.data(), input_data.ncat[col] * sizeof(signed char));
             }
 
         }
@@ -807,18 +823,25 @@ void recursive_split_numeric(Workspace &workspace,
     for (size_t col = 0; col < input_data.ncols_ord; col++) {
 
         if (input_data.skip_col[col + input_data.ncols_numeric + input_data.ncols_categ]) continue;
+        if (workspace.exhausted_col_tracker.is_exhausted[col + input_data.ncols_numeric + input_data.ncols_categ]) continue;
 
         /* same code as for categorical, but this time with split level as int instead of boolean array as subset */
-        split_categx_numericy(&workspace.ix_arr[0], workspace.st, workspace.end, input_data.ordinal_data + col * input_data.nrows,
-                              workspace.target_numeric_col, workspace.sd_y, workspace.mean_y, true, input_data.ncat_ord[col], &workspace.buffer_cat_cnt[0],
-                              &workspace.buffer_cat_sum[0], &workspace.buffer_cat_sum_sq[0], &workspace.buffer_cat_sorted[0],
+        split_categx_numericy(workspace.ix_arr.data(), workspace.st, workspace.end, input_data.ordinal_data + col * input_data.nrows,
+                              workspace.target_numeric_col, workspace.sd_y, workspace.mean_y, true, input_data.ncat_ord[col], workspace.buffer_cat_cnt.data(),
+                              workspace.buffer_cat_sum.data(), workspace.buffer_cat_sum_sq.data(), workspace.buffer_cat_sorted.data(),
                               (bool)(input_data.has_NA[col + input_data.ncols_numeric + input_data.ncols_categ]), model_params.min_size_numeric,
-                              &(workspace.this_gain), &workspace.buffer_subset_categ[0], &(workspace.this_split_lev));
+                              &(workspace.this_gain), workspace.buffer_subset_categ.data(), &(workspace.this_split_lev),
+                              &workspace.has_zero_variance);
+        if (workspace.has_zero_variance) {
+            workspace.has_zero_variance = false;
+            workspace.exhausted_col_tracker.push_col(col + input_data.ncols_numeric + input_data.ncols_categ);
+            continue;
+        }
         if (model_params.gain_as_pct) workspace.this_gain /= workspace.sd_y;
 
         if (workspace.this_gain >= model_params.min_gain) {
 
-            divide_subset_split(&workspace.ix_arr[0], input_data.ordinal_data + col * input_data.nrows, workspace.st, workspace.end,
+            divide_subset_split(workspace.ix_arr.data(), input_data.ordinal_data + col * input_data.nrows, workspace.st, workspace.end,
                                 workspace.this_split_lev, (bool)(workspace.buffer_cat_cnt[ input_data.ncat_ord[col] ] > 0),
                                 &(workspace.this_split_NA), &(workspace.this_split_ix) );
 
@@ -826,9 +849,9 @@ void recursive_split_numeric(Workspace &workspace,
 
                 (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
                 workspace.clusters->emplace_back(Ordinal, col, IsNa, (int)0, true);
-                workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, &workspace.ix_arr[0], workspace.st,
-                                                                  workspace.this_split_NA - 1, &workspace.outlier_scores[0], &workspace.outlier_clusters[0],
-                                                                  &workspace.outlier_trees[0], &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
+                workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, workspace.ix_arr.data(), workspace.st,
+                                                                  workspace.this_split_NA - 1, workspace.outlier_scores.data(), workspace.outlier_clusters.data(),
+                                                                  workspace.outlier_trees.data(), workspace.outlier_depth.data(), workspace.clusters->back(), *(workspace.clusters),
                                                                   workspace.clusters->size() - 1, tree_from, curr_depth + 1,
                                                                   workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                                   workspace.orig_mean, workspace.orig_sd,
@@ -850,9 +873,9 @@ void recursive_split_numeric(Workspace &workspace,
             /* left branch */
             (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
             workspace.clusters->emplace_back(Ordinal, col, LessOrEqual, workspace.this_split_lev, is_NA_branch);
-            workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, &workspace.ix_arr[0], workspace.this_split_NA,
-                                                              workspace.this_split_ix - 1, &workspace.outlier_scores[0], &workspace.outlier_clusters[0],
-                                                              &workspace.outlier_trees[0], &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
+            workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, workspace.ix_arr.data(), workspace.this_split_NA,
+                                                              workspace.this_split_ix - 1, workspace.outlier_scores.data(), workspace.outlier_clusters.data(),
+                                                              workspace.outlier_trees.data(), &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
                                                               workspace.clusters->size() - 1, tree_from, curr_depth + 1,
                                                               workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                               workspace.orig_mean, workspace.orig_sd,
@@ -875,9 +898,9 @@ void recursive_split_numeric(Workspace &workspace,
             /* right branch */
             (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
             workspace.clusters->emplace_back(Ordinal, col, Greater, workspace.this_split_lev, is_NA_branch);
-            workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, &workspace.ix_arr[0], workspace.this_split_ix,
-                                                              workspace.end, &workspace.outlier_scores[0], &workspace.outlier_clusters[0],
-                                                              &workspace.outlier_trees[0], &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
+            workspace.has_outliers = define_numerical_cluster(workspace.target_numeric_col, workspace.ix_arr.data(), workspace.this_split_ix,
+                                                              workspace.end, workspace.outlier_scores.data(), workspace.outlier_clusters.data(),
+                                                              workspace.outlier_trees.data(), workspace.outlier_depth.data(), workspace.clusters->back(), *(workspace.clusters),
                                                               workspace.clusters->size() - 1, tree_from, curr_depth + 1,
                                                               workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                               workspace.orig_mean, workspace.orig_sd,
@@ -920,13 +943,13 @@ void recursive_split_numeric(Workspace &workspace,
 
         /* discard outliers if any */
         if (workspace.lev_has_outliers)
-            workspace.st = move_outliers_to_front(&workspace.ix_arr[0], &workspace.outlier_scores[0], workspace.st, workspace.end);
+            workspace.st = move_outliers_to_front(workspace.ix_arr.data(), workspace.outlier_scores.data(), workspace.st, workspace.end);
 
         /* assign rows to their corresponding branch */
         switch(workspace.column_type_best) {
             case Numeric:
             {
-                divide_subset_split(&workspace.ix_arr[0], input_data.numeric_data + workspace.col_best * input_data.nrows,
+                divide_subset_split(workspace.ix_arr.data(), input_data.numeric_data + workspace.col_best * input_data.nrows,
                                     workspace.st, workspace.end, workspace.split_point_best,
                                     (bool)(input_data.has_NA[workspace.col_best]),
                                     &(workspace.this_split_NA), &(workspace.this_split_ix) );
@@ -937,19 +960,19 @@ void recursive_split_numeric(Workspace &workspace,
 
             case Categorical:
             {
-                divide_subset_split(&workspace.ix_arr[0], input_data.categorical_data + workspace.col_best * input_data.nrows,
-                                    workspace.st, workspace.end, &workspace.buffer_subset_categ_best[0], input_data.ncat[workspace.col_best],
+                divide_subset_split(workspace.ix_arr.data(), input_data.categorical_data + workspace.col_best * input_data.nrows,
+                                    workspace.st, workspace.end, workspace.buffer_subset_categ_best.data(), input_data.ncat[workspace.col_best],
                                     (bool)(input_data.has_NA[workspace.col_best + input_data.ncols_numeric]),
                                     &(workspace.this_split_NA), &(workspace.this_split_ix) );
                 spl1 = InSubset; spl2 = NotInSubset;
                 set_tree_as_categorical(workspace.tree->back(), input_data.ncat[workspace.col_best],
-                                        &workspace.buffer_subset_categ_best[0], workspace.col_best);
+                                        workspace.buffer_subset_categ_best.data(), workspace.col_best);
                 break;
             }
 
             case Ordinal:
             {
-                divide_subset_split(&workspace.ix_arr[0], input_data.ordinal_data + workspace.col_best * input_data.nrows,
+                divide_subset_split(workspace.ix_arr.data(), input_data.ordinal_data + workspace.col_best * input_data.nrows,
                                     workspace.st, workspace.end, workspace.split_lev_best,
                                     (bool)(input_data.has_NA[workspace.col_best + input_data.ncols_numeric + input_data.ncols_categ]),
                                     &(workspace.this_split_NA), &(workspace.this_split_ix) );
@@ -1000,8 +1023,8 @@ void recursive_split_numeric(Workspace &workspace,
     }
 
     /* if tree has no clusters and no subtrees, disconnect it from parent and then drop */
+    abandon_column:
     if (check_tree_is_not_needed((*workspace.tree)[tree_from])) {
-        abandon_column:
 
         if (tree_from == 0) {
             workspace.tree->clear();
@@ -1121,6 +1144,8 @@ void process_categ_col(std::vector<Cluster> &cluster_root,
     }
     if (should_skip) return;
 
+    workspace.exhausted_col_tracker.initialize(input_data.tot_cols, model_params.max_depth);
+
 
     /* if the column is already binary, or if using multiple categories, or if there are no more categorical columns, split the data as-is */
     if (
@@ -1212,6 +1237,7 @@ void recursive_split_categ(Workspace &workspace,
     size_t ix1, ix2, ix3;
     SplitType spl1, spl2;
     size_t tree_from = workspace.tree->size() - 1;
+    ExhaustedColumnsLevel level_col_tracker;
 
     /* when using 'follow_all' need to keep track of a lot more things */
     std::unique_ptr<RecursionState> state_backup;
@@ -1237,6 +1263,8 @@ void recursive_split_categ(Workspace &workspace,
         }
     }
 
+    level_col_tracker.initialize(&workspace.exhausted_col_tracker);
+
     /* split with each other column */
 
 
@@ -1245,11 +1273,17 @@ void recursive_split_categ(Workspace &workspace,
 
         if (curr_depth == 0 && workspace.col_is_bin && workspace.ncat_this > 2 && workspace.already_split_main) break;
         if (input_data.skip_col[col]) continue;
-        split_numericx_categy(&workspace.ix_arr[0], workspace.st, workspace.end, input_data.numeric_data + col * input_data.nrows,
+        if (workspace.exhausted_col_tracker.is_exhausted[col]) continue;
+        split_numericx_categy(workspace.ix_arr.data(), workspace.st, workspace.end, input_data.numeric_data + col * input_data.nrows,
                               workspace.untransf_target_col, workspace.ncat_this, workspace.base_info_orig,
-                              &workspace.buffer_cat_cnt[0], (bool)(input_data.has_NA[col]), model_params.min_size_categ,
-                              model_params.take_mid, &(workspace.this_gain), &(workspace.this_split_point),
-                              &(workspace.this_split_ix), &(workspace.this_split_NA));
+                              workspace.buffer_cat_cnt.data(), (bool)(input_data.has_NA[col]), model_params.min_size_categ,
+                              model_params.take_mid, &workspace.this_gain, &workspace.this_split_point,
+                              &workspace.this_split_ix, &workspace.this_split_NA, &workspace.has_zero_variance);
+        if (workspace.has_zero_variance) {
+            workspace.has_zero_variance = false;
+            workspace.exhausted_col_tracker.push_col(col);
+            continue;
+        }
         if (model_params.gain_as_pct) workspace.this_gain /= workspace.base_info_orig;
 
         if (workspace.this_gain >= model_params.min_gain) {
@@ -1367,15 +1401,22 @@ void recursive_split_categ(Workspace &workspace,
 
         if (col == workspace.target_col_num && !workspace.target_col_is_ord) continue;
         if (input_data.skip_col[col + input_data.ncols_numeric]) continue;
+        if (workspace.exhausted_col_tracker.is_exhausted[col + input_data.ncols_numeric]) continue;
 
         if (workspace.col_is_bin) {
             
-            split_categx_biny(&workspace.ix_arr[0], workspace.st, workspace.end,
+            split_categx_biny(workspace.ix_arr.data(), workspace.st, workspace.end,
                               input_data.categorical_data + col * input_data.nrows, workspace.target_categ_col,
-                              input_data.ncat[col], workspace.base_info, &workspace.buffer_cat_cnt[0],
-                              &workspace.buffer_crosstab[0], &workspace.buffer_cat_sorted[0],
+                              input_data.ncat[col], workspace.base_info, workspace.buffer_cat_cnt.data(),
+                              workspace.buffer_crosstab.data(), workspace.buffer_cat_sorted.data(),
                               (bool)(input_data.has_NA[col + input_data.ncols_numeric]), model_params.min_size_categ,
-                              &(workspace.this_gain), &workspace.buffer_subset_categ[0]);
+                              &(workspace.this_gain), workspace.buffer_subset_categ.data(),
+                              &workspace.has_zero_variance);
+            if (workspace.has_zero_variance) {
+                workspace.has_zero_variance = false;
+                workspace.exhausted_col_tracker.push_col(col + input_data.ncols_numeric);
+                continue;
+            }
 
             /* If it was forcibly binarized, need to calculate the gain on the original categories to make it comparable */
             if (
@@ -1386,29 +1427,35 @@ void recursive_split_categ(Workspace &workspace,
                     )
                 )
             {
-                divide_subset_split(&workspace.ix_arr[0], input_data.categorical_data + col * input_data.nrows,
-                                    workspace.st, workspace.end, &workspace.buffer_subset_categ[0], input_data.ncat[col],
+                divide_subset_split(workspace.ix_arr.data(), input_data.categorical_data + col * input_data.nrows,
+                                    workspace.st, workspace.end, workspace.buffer_subset_categ.data(), input_data.ncat[col],
                                     (bool)input_data.has_NA[col + input_data.ncols_numeric],
                                     &(workspace.this_split_NA), &(workspace.this_split_ix) );
-                workspace.this_gain = categ_gain_from_split(&workspace.ix_arr[0], workspace.untransf_target_col, workspace.st,
+                workspace.this_gain = categ_gain_from_split(workspace.ix_arr.data(), workspace.untransf_target_col, workspace.st,
                                                             workspace.this_split_NA, workspace.this_split_ix, workspace.end,
-                                                            workspace.ncat_this, &workspace.buffer_cat_cnt[0], workspace.base_info_orig);
+                                                            workspace.ncat_this, workspace.buffer_cat_cnt.data(), workspace.base_info_orig);
             }
 
         } else {
 
             if (model_params.cat_bruteforce_subset && input_data.ncat[col] > 2) {
-                split_categx_categy_subset(&workspace.ix_arr[0], workspace.st, workspace.end,
+                split_categx_categy_subset(workspace.ix_arr.data(), workspace.st, workspace.end,
                                            input_data.categorical_data + col * input_data.nrows, workspace.target_categ_col,
                                            input_data.ncat[col], workspace.ncat_this, workspace.base_info_orig,
-                                           &workspace.buffer_cat_sorted[0], &workspace.buffer_crosstab[0], &workspace.buffer_cat_cnt[0],
+                                           workspace.buffer_cat_sorted.data(), workspace.buffer_crosstab.data(), workspace.buffer_cat_cnt.data(),
                                            (bool)(input_data.has_NA[col + input_data.ncols_numeric]), model_params.min_size_categ,
-                                           &(workspace.this_gain), &workspace.buffer_subset_categ[0]);
+                                           &(workspace.this_gain), workspace.buffer_subset_categ.data(),
+                                           &workspace.has_zero_variance);
+                if (workspace.has_zero_variance) {
+                    workspace.has_zero_variance = false;
+                    workspace.exhausted_col_tracker.push_col(col + input_data.ncols_numeric);
+                    continue;
+                }
             } else {
-                split_categx_categy_separate(&workspace.ix_arr[0], workspace.st, workspace.end,
+                split_categx_categy_separate(workspace.ix_arr.data(), workspace.st, workspace.end,
                                              input_data.categorical_data + col * input_data.nrows, workspace.target_categ_col,
                                              input_data.ncat[col], workspace.ncat_this, workspace.base_info_orig,
-                                             &workspace.buffer_cat_cnt[0], &workspace.buffer_crosstab[0],
+                                             workspace.buffer_cat_cnt.data(), workspace.buffer_crosstab.data(),
                                              (bool)(input_data.has_NA[col + input_data.ncols_numeric]),
                                              model_params.min_size_categ, &(workspace.this_gain));
             }
@@ -1419,21 +1466,21 @@ void recursive_split_categ(Workspace &workspace,
         if (workspace.this_gain >= model_params.min_gain) {
             
             /* NA branch */
-            workspace.this_split_NA = move_NAs_to_front(&workspace.ix_arr[0], input_data.categorical_data + col * input_data.nrows, workspace.st, workspace.end);
+            workspace.this_split_NA = move_NAs_to_front(workspace.ix_arr.data(), input_data.categorical_data + col * input_data.nrows, workspace.st, workspace.end);
             if ((workspace.this_split_NA - workspace.st) > model_params.min_size_categ) {
 
                 (*workspace.tree)[tree_from].clusters.push_back(workspace.clusters->size());
                 workspace.clusters->emplace_back(Categorical, col, IsNa, (signed char*)NULL, (int)0, true);
                 workspace.has_outliers = define_categ_cluster(workspace.untransf_target_col,
-                                                              &workspace.ix_arr[0], workspace.st, workspace.this_split_NA - 1,
+                                                              workspace.ix_arr.data(), workspace.st, workspace.this_split_NA - 1,
                                                               workspace.ncat_this, model_params.categ_from_maj,
-                                                              &workspace.outlier_scores[0], &workspace.outlier_clusters[0], &workspace.outlier_trees[0],
-                                                              &workspace.outlier_depth[0], workspace.clusters->back(), *(workspace.clusters),
+                                                              workspace.outlier_scores.data(), workspace.outlier_clusters.data(), workspace.outlier_trees.data(),
+                                                              workspace.outlier_depth.data(), workspace.clusters->back(), *(workspace.clusters),
                                                               workspace.clusters->size() - 1, tree_from, curr_depth + 1,
                                                               model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
                                                               workspace.prop_small_this, workspace.prior_prob,
-                                                              &workspace.buffer_cat_cnt[0], &workspace.buffer_cat_sum[0],
-                                                              &workspace.buffer_crosstab[0], &workspace.buffer_subset_outlier[0], &(workspace.drop_cluster));
+                                                              workspace.buffer_cat_cnt.data(), workspace.buffer_cat_sum.data(),
+                                                              workspace.buffer_crosstab.data(), workspace.buffer_subset_outlier.data(), &(workspace.drop_cluster));
                 workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
                 if (workspace.drop_cluster) {
                     workspace.clusters->pop_back();
@@ -1633,13 +1680,20 @@ void recursive_split_categ(Workspace &workspace,
         if (curr_depth == 0 && workspace.col_is_bin && workspace.ncat_this > 2 && workspace.already_split_main) break;
         if (input_data.skip_col[col + input_data.ncols_numeric + input_data.ncols_categ]) continue;
         if (workspace.target_col_is_ord && col == (workspace.target_col_num - input_data.ncols_categ)) continue;
+        if (workspace.exhausted_col_tracker.is_exhausted[col + input_data.ncols_numeric + input_data.ncols_categ]) continue;
 
-        split_ordx_categy(&workspace.ix_arr[0], workspace.st, workspace.end,
+        split_ordx_categy(workspace.ix_arr.data(), workspace.st, workspace.end,
                           input_data.ordinal_data + col * input_data.nrows, workspace.untransf_target_col,
                           input_data.ncat_ord[col], workspace.ncat_this,
-                          workspace.base_info_orig, &workspace.buffer_cat_cnt[0], &workspace.buffer_crosstab[0], &workspace.buffer_cat_sorted[0],
+                          workspace.base_info_orig, workspace.buffer_cat_cnt.data(), workspace.buffer_crosstab.data(), workspace.buffer_cat_sorted.data(),
                           (bool)(input_data.has_NA[col + input_data.ncols_numeric + input_data.ncols_categ]),
-                          model_params.min_size_categ, &(workspace.this_gain), &(workspace.this_split_lev));
+                          model_params.min_size_categ, &(workspace.this_gain), &(workspace.this_split_lev),
+                          &workspace.has_zero_variance);
+        if (workspace.has_zero_variance) {
+            workspace.has_zero_variance = false;
+            workspace.exhausted_col_tracker.push_col(col + input_data.ncols_numeric + input_data.ncols_categ);
+            continue;
+        }
         if (model_params.gain_as_pct) workspace.this_gain /= workspace.base_info_orig;
 
         if (workspace.this_gain >= model_params.min_gain) {
@@ -1766,13 +1820,13 @@ void recursive_split_categ(Workspace &workspace,
 
         /* discard outliers if any */
         if (workspace.lev_has_outliers)
-            workspace.st = move_outliers_to_front(&workspace.ix_arr[0], &workspace.outlier_scores[0], workspace.st, workspace.end);
+            workspace.st = move_outliers_to_front(workspace.ix_arr.data(), workspace.outlier_scores.data(), workspace.st, workspace.end);
 
         /* assign rows to their corresponding branch */
         switch(workspace.column_type_best) {
             case Numeric:
             {
-                divide_subset_split(&workspace.ix_arr[0], input_data.numeric_data + workspace.col_best * input_data.nrows,
+                divide_subset_split(workspace.ix_arr.data(), input_data.numeric_data + workspace.col_best * input_data.nrows,
                                     workspace.st, workspace.end, workspace.split_point_best,
                                     (bool)(input_data.has_NA[workspace.col_best]),
                                     &(workspace.this_split_NA), &(workspace.this_split_ix) );
@@ -1783,7 +1837,7 @@ void recursive_split_categ(Workspace &workspace,
 
             case Ordinal:
             {
-                divide_subset_split(&workspace.ix_arr[0], input_data.ordinal_data + workspace.col_best * input_data.nrows,
+                divide_subset_split(workspace.ix_arr.data(), input_data.ordinal_data + workspace.col_best * input_data.nrows,
                                     workspace.st, workspace.end, workspace.split_lev_best,
                                     (bool)(input_data.has_NA[workspace.col_best + input_data.ncols_numeric + input_data.ncols_categ]),
                                     &(workspace.this_split_NA), &(workspace.this_split_ix) );
@@ -1797,7 +1851,7 @@ void recursive_split_categ(Workspace &workspace,
 
                 if (input_data.ncat[workspace.col_best] == 2) {
 
-                    divide_subset_split(&workspace.ix_arr[0], input_data.categorical_data + workspace.col_best * input_data.nrows,
+                    divide_subset_split(workspace.ix_arr.data(), input_data.categorical_data + workspace.col_best * input_data.nrows,
                                         workspace.st, workspace.end, (int)0,
                                         (bool)(input_data.has_NA[workspace.col_best + input_data.ncols_numeric]),
                                         &(workspace.this_split_NA), &(workspace.this_split_ix) );
@@ -1806,18 +1860,18 @@ void recursive_split_categ(Workspace &workspace,
 
                 } else if (workspace.col_is_bin || model_params.cat_bruteforce_subset) {
 
-                    divide_subset_split(&workspace.ix_arr[0], input_data.categorical_data + workspace.col_best * input_data.nrows,
-                                        workspace.st, workspace.end, &workspace.buffer_subset_categ_best[0], input_data.ncat[workspace.col_best],
+                    divide_subset_split(workspace.ix_arr.data(), input_data.categorical_data + workspace.col_best * input_data.nrows,
+                                        workspace.st, workspace.end, workspace.buffer_subset_categ_best.data(), input_data.ncat[workspace.col_best],
                                         (bool)(input_data.has_NA[workspace.col_best + input_data.ncols_numeric]),
                                         &(workspace.this_split_NA), &(workspace.this_split_ix) );
                     spl1 = InSubset; spl2 = NotInSubset;
                     set_tree_as_categorical(workspace.tree->back(), input_data.ncat[workspace.col_best],
-                                            &workspace.buffer_subset_categ_best[0], workspace.col_best);
+                                            workspace.buffer_subset_categ_best.data(), workspace.col_best);
 
                 } else {
                     spl1 = SingleCateg;
                     workspace.temp_ptr_x = input_data.categorical_data + workspace.col_best * input_data.nrows;
-                    std::sort(&workspace.ix_arr[0] + workspace.st, &workspace.ix_arr[0] + workspace.end + 1,
+                    std::sort(workspace.ix_arr.data() + workspace.st, workspace.ix_arr.data() + workspace.end + 1,
                               [&workspace](const size_t a, const size_t b){return workspace.temp_ptr_x[a] < workspace.temp_ptr_x[b];});
                     set_tree_as_categorical(workspace.tree->back(), workspace.col_best, input_data.ncat[workspace.col_best]);
 
@@ -1827,6 +1881,7 @@ void recursive_split_categ(Workspace &workspace,
                             break;
                         }
                     }
+                    workspace.exhausted_col_tracker.push_col(workspace.col_best + input_data.ncols_numeric);
                 }
                 break;
             }

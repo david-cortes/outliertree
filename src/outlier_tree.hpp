@@ -433,6 +433,66 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                          size_t max_depth = 3, double max_perc_outliers = 0.01, size_t min_size_numeric = 25, size_t min_size_categ = 50,
                          double min_gain = 1e-2, bool gain_as_pct = false, bool follow_all = false, double z_norm = 2.67, double z_outlier = 8.0);
 
+class ExhaustedColumnTracker
+{
+public:
+    std::vector<bool> is_exhausted;
+    std::vector<size_t> col_indices;
+    std::vector<size_t> n_held;
+
+    void initialize(size_t ncols, size_t max_depth)
+    {
+        this->is_exhausted.assign(ncols, false);
+        this->n_held.clear();
+        this->n_held.reserve(max_depth+1);
+        this->col_indices.clear();
+        this->col_indices.reserve(ncols);
+    }
+
+    void push_branch()
+    {
+        this->n_held.push_back(0);
+    }
+
+    void push_col(size_t col)
+    {
+        this->is_exhausted[col] = true;
+        this->col_indices.push_back(col);
+        this->n_held.back() += 1;
+    }
+
+    void pop_branch()
+    {
+        size_t col;
+        while (this->n_held.back() > 0)
+        {
+            col = this->col_indices.back();
+            this->is_exhausted[col] = false;
+            this->col_indices.pop_back();
+            this->n_held.back() -= 1;
+        }
+
+        this->n_held.pop_back();
+    }
+};
+
+class ExhaustedColumnsLevel
+{
+public:
+    bool pop = false;
+    ExhaustedColumnTracker* tracker = nullptr;
+    ExhaustedColumnsLevel() = default;
+    void initialize(ExhaustedColumnTracker* tracker) {
+        this->pop = true;
+        this->tracker = tracker;
+        this->tracker->push_branch();
+    }
+    ~ExhaustedColumnsLevel() {
+        if (this->pop)
+            this->tracker->pop_branch();
+    }
+};
+
 typedef struct {
     
     std::vector<size_t> ix_arr;           /* indices from the target column */
@@ -497,6 +557,9 @@ typedef struct {
     bool already_split_main;    /* when binarizing categoricals/ordinals, avoid attempting the same split with numerical and ordinals that take the non-binarized data */
     bool target_col_is_ord;     /* whether the target column is ordinal (rest is the same as in categoricals) */
     int  ncat_this;             /* number of categories in the target column */
+
+    ExhaustedColumnTracker exhausted_col_tracker;
+    bool has_zero_variance;
 
 } Workspace;
 
@@ -622,23 +685,25 @@ long double categ_gain_from_split(size_t *restrict ix_arr, int *restrict x, size
                                   size_t ncat, size_t *restrict buffer_cat_cnt, long double base_info);
 void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, double *restrict y,
                              long double sd_y, bool has_na, size_t min_size, bool take_mid, long double *restrict buffer_sd,
-                             long double *restrict gain, double *restrict split_point, size_t *restrict split_left, size_t *restrict split_NA);
+                             long double *restrict gain, double *restrict split_point, size_t *restrict split_left, size_t *restrict split_NA, bool *restrict has_zero_variance);
 void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, double *restrict y, long double sd_y, double ymean,
                            bool x_is_ordinal, size_t ncat_x, size_t *restrict buffer_cat_cnt, long double *restrict buffer_cat_sum,
                            long double *restrict buffer_cat_sum_sq, size_t *restrict buffer_cat_sorted,
-                           bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset, int *restrict split_point);
+                           bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset, int *restrict split_point, bool *restrict has_zero_variance);
 void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, int *restrict y,
                            size_t ncat_y, long double base_info, size_t *restrict buffer_cat_cnt,
                            bool has_na, size_t min_size, bool take_mid, long double *restrict gain, double *restrict split_point,
-                           size_t *restrict split_left, size_t *restrict split_NA);
+                           size_t *restrict split_left, size_t *restrict split_NA, bool *restrict has_zero_variance);
 void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_y, size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_ord_cnt,
-                       bool has_na, size_t min_size, long double *gain, int *split_point);
+                       bool has_na, size_t min_size, long double *gain, int *split_point,
+                       bool *restrict has_zero_variance);
 void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_cat_sorted,
-                       bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset);
+                       bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset,
+                       bool *restrict has_zero_variance);
 void split_categx_categy_separate(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                                   size_t ncat_x, size_t ncat_y, long double base_info,
                                   size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab,
@@ -646,7 +711,8 @@ void split_categx_categy_separate(size_t *restrict ix_arr, size_t st, size_t end
 void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                                 size_t ncat_x, size_t ncat_y, long double base_info,
                                 size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_split,
-                                bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset);
+                                bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset,
+                                bool *restrict has_zero_variance);
 
 
 

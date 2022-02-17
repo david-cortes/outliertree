@@ -40,6 +40,9 @@
 
 /* TODO: columns that split by numeric should output the sum/sum_sq to pass it to the cluster functions, instead of recalculating them later */
 
+/* TODO: the calculations of standard deviations when splitting a numeric column by a categorical column are
+   highly imprecise and might throw negative variances. Should switch to a more robust procedure. */
+
 
 void subset_to_onehot(size_t ix_arr[], size_t n_true, size_t n_tot, signed char onehot[])
 {
@@ -242,11 +245,13 @@ long double categ_gain_from_split(size_t *restrict ix_arr, int *restrict x, size
 *    - split_left (out)
 *        Index at which the data is split between the two branches (includes last from left branch).
 *    - split_NA (out)
-*        Index at which the NA data is separated from the other branches
+*        Index at which the NA data is separated from the other branches.
+*    - has_zero_variance (out)
+*        Whether the 'x' column has zero variance (contains only one unique value).
 */
 void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, double *restrict y,
                              long double sd_y, bool has_na, size_t min_size, bool take_mid, long double *restrict buffer_sd,
-                             long double *restrict gain, double *restrict split_point, size_t *restrict split_left, size_t *restrict split_NA)
+                             long double *restrict gain, double *restrict split_point, size_t *restrict split_left, size_t *restrict split_NA, bool *restrict has_zero_variance)
 {
 
     *gain = -HUGE_VAL;
@@ -260,6 +265,7 @@ void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, dou
     double xval;
     long double info_left;
     long double info_NA = 0;
+    *has_zero_variance = false;
 
     /* check that there are enough observations for a split */
     if ((end - st + 1) < (2 * min_size)) return;
@@ -281,6 +287,10 @@ void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, dou
 
     /* sort the remaining non-NA values in ascending order */
     std::sort(ix_arr + st_non_na, ix_arr + end + 1, [&x](const size_t a, const size_t b){return x[a] < x[b];});
+    if (x[ix_arr[st_non_na]] == x[ix_arr[end]]) {
+        *has_zero_variance = true;
+        return;
+    }
 
     /* calculate SD*N backwards first, then forwards */
     mean_prev = y[ix_arr[end]];
@@ -367,12 +377,14 @@ void split_numericx_numericy(size_t *restrict ix_arr, size_t st, size_t end, dou
 *        Array that will indicate which categories go into the left branch in the chosen split.
 *        (value of 1 means it's on the left branch, 0 in the right branch, -1 not applicable)
 *    - split_point (out)
-*        Split level for ordinal X variables (left branch is <= this)
+*        Split level for ordinal X variables (left branch is <= this).
+*    - has_zero_variance (out)
+*        Whether the 'x' column has zero variance (contains only one unique value).
 */
 void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, double *restrict y, long double sd_y, double ymean,
                            bool x_is_ordinal, size_t ncat_x, size_t *restrict buffer_cat_cnt, long double *restrict buffer_cat_sum,
                            long double *restrict buffer_cat_sum_sq, size_t *restrict buffer_cat_sorted,
-                           bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset, int *restrict split_point)
+                           bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset, int *restrict split_point, bool *restrict has_zero_variance)
 {
 
     /* output parameters and variables to use */
@@ -381,6 +393,7 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
     NumericSplit split_info;
     size_t st_cat = 0;
     double sd_y_d = (double) sd_y;
+    *has_zero_variance = false;
 
     /* reset the buffers */
     memset(split_subset,      0, sizeof(signed char)   *  ncat_x);
@@ -414,6 +427,16 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
             buffer_cat_sum_sq[ x[ix_arr[i]] ] += square(z_score(y[ix_arr[i]], ymean, sd_y_d));
         }
 
+    }
+
+    int n_unique_cat = 0;
+    for (size_t cat = 0; cat < ncat_x; cat++) {
+        n_unique_cat += buffer_cat_sum_sq[cat] > 0;
+        if (n_unique_cat >= 2) break;
+    }
+    if (n_unique_cat <= 1) {
+        *has_zero_variance = true;
+        return;
     }
 
     /* set NAs to their own branch */
@@ -531,11 +554,13 @@ void split_categx_numericy(size_t *restrict ix_arr, size_t st, size_t end, int *
 *        Index at which the data is split between the two branches (includes last from left branch).
 *    - split_NA (out)
 *        Index at which the NA data is separated from the other branches
+*    - has_zero_variance (out)
+*        Whether the 'x' column has zero variance (contains only one unique value).
 */
 void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, double *restrict x, int *restrict y,
                            size_t ncat_y, long double base_info, size_t *restrict buffer_cat_cnt,
                            bool has_na, size_t min_size, bool take_mid, long double *restrict gain, double *restrict split_point,
-                           size_t *restrict split_left, size_t *restrict split_NA)
+                           size_t *restrict split_left, size_t *restrict split_NA, bool *restrict has_zero_variance)
 {
     *gain = -HUGE_VAL;
     *split_point = -HUGE_VAL;
@@ -544,6 +569,7 @@ void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, doubl
     CategSplit split_info;
     split_info.ncat = ncat_y;
     split_info.tot = end - st + 1;
+    *has_zero_variance = false;
 
     /* check that there are enough observations for a split */
     if ((end - st + 1) < (2 * min_size)) return;
@@ -572,6 +598,10 @@ void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, doubl
 
     /* sort the remaining non-NA values in ascending order */
     std::sort(ix_arr + st_non_na, ix_arr + end + 1, [&x](const size_t a, const size_t b){return x[a] < x[b];});
+    if (x[ix_arr[st_non_na]] == x[ix_arr[end]]) {
+        *has_zero_variance = true;
+        return;
+    }
 
     /* put all observations on the right branch */
     for (size_t i = st_non_na; i <= end; i++) split_info.right_branch[ y[ix_arr[i]] ]++;
@@ -639,11 +669,14 @@ void split_numericx_categy(size_t *restrict ix_arr, size_t st, size_t end, doubl
 *        Gain calculated on the best split found. If no split is possible, will return -Inf.
 *    - split_point (out)
 *        Threshold for splitting on values of 'x'. If no split is posible, will return -1.
+*    - has_zero_variance (out)
+*        Whether the 'x' column has zero variance (contains only one unique value).
 */
 void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_y, size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_ord_cnt,
-                       bool has_na, size_t min_size, long double *gain, int *split_point)
+                       bool has_na, size_t min_size, long double *gain, int *split_point,
+                       bool *restrict has_zero_variance)
 {
     *gain = -HUGE_VAL;
     *split_point = -1;
@@ -652,6 +685,7 @@ void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *rest
     CategSplit split_info;
     split_info.ncat = ncat_y;
     split_info.tot = end - st + 1;
+    *has_zero_variance = false;
 
     /* check that there are enough observations for a split */
     if ((end - st + 1) < (2 * min_size)) return;
@@ -687,6 +721,16 @@ void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *rest
     }
     split_info.size_right = end - st_non_na + 1;
     split_info.size_left  = 0;
+
+    int n_unique_cat = 0;
+    for (size_t cat = 0; cat < ncat_x; cat++) {
+        n_unique_cat += buffer_ord_cnt[cat] > 0;
+        if (n_unique_cat >= 2) break;
+    }
+    if (n_unique_cat <= 1) {
+        *has_zero_variance = true;
+        return;
+    }
 
     /* look for the best split point, by moving one observation at a time to the left branch*/
     for (size_t ord_cat = 0; ord_cat < (ncat_x - 1); ord_cat++) {
@@ -750,11 +794,14 @@ void split_ordx_categy(size_t *restrict ix_arr, size_t st, size_t end, int *rest
 *    - split_subset[ncat_x] (out)
 *        Array that will indicate which categories go into the left branch in the chosen split.
 *        (value of 1 means it's on the left branch, 0 in the right branch, -1 not applicable)
+*    - has_zero_variance (out)
+*        Whether the 'x' column has zero variance (contains only one unique value).
 */
 void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                        size_t ncat_x, long double base_info,
                        size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_cat_sorted,
-                       bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset)
+                       bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset,
+                       bool *restrict has_zero_variance)
 {
     *gain = -HUGE_VAL;
     size_t st_non_na;
@@ -764,6 +811,7 @@ void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *rest
     size_t st_cat;
     split_info.ncat = 2;
     split_info.tot = end - st + 1;
+    *has_zero_variance = false;
 
     /* check that there are enough observations for a split */
     if ((end - st + 1) < (2 * min_size)) return;
@@ -798,6 +846,16 @@ void split_categx_biny(size_t *restrict ix_arr, size_t st, size_t end, int *rest
     }
     split_info.size_right = end - st_non_na + 1;
     split_info.size_left  = 0;
+
+    int n_unique_cat = 0;
+    for (size_t cat = 0; cat < ncat_x; cat++) {
+        n_unique_cat += buffer_cat_cnt[cat] > 0;
+        if (n_unique_cat >= 2) break;
+    }
+    if (n_unique_cat <= 1) {
+        *has_zero_variance = true;
+        return;
+    }
 
     /* sort the categories according to their mean of y */
     for (size_t cat = 0; cat < ncat_x; cat++) buffer_cat_sorted[cat] = cat;
@@ -955,11 +1013,14 @@ void split_categx_categy_separate(size_t *restrict ix_arr, size_t st, size_t end
 *    - split_subset[ncat_x] (out)
 *        Array that will indicate which categories go into the left branch in the chosen split.
 *        (value of 1 means it's on the left branch, 0 in the right branch, -1 not applicable)
+*    - has_zero_variance (out)
+*        Whether the 'x' column has zero variance (contains only one unique value).
 */
 void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, int *restrict x, int *restrict y,
                                 size_t ncat_x, size_t ncat_y, long double base_info,
                                 size_t *restrict buffer_cat_cnt, size_t *restrict buffer_crosstab, size_t *restrict buffer_split,
-                                bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset)
+                                bool has_na, size_t min_size, long double *gain, signed char *restrict split_subset,
+                                bool *restrict has_zero_variance)
 {
     *gain = -HUGE_VAL;
     long double this_gain;
@@ -968,6 +1029,7 @@ void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, 
     split_info.tot = end - st + 1;
     split_info.ncat = ncat_y;
     size_t st_non_na;
+    *has_zero_variance = false;
 
     /* will divide into 3 branches: NA, within subset, outside subset */
     memset(buffer_split, 0, 3 * ncat_y * sizeof(size_t));
@@ -992,6 +1054,16 @@ void split_categx_categy_subset(size_t *restrict ix_arr, size_t st, size_t end, 
         for (size_t i = st; i < st_non_na; i++) {
             split_info.NA_branch[ y[ix_arr[i]] ]++;
         }
+    }
+
+    int n_unique_cat = 0;
+    for (size_t cat = 0; cat < ncat_x; cat++) {
+        n_unique_cat += buffer_cat_cnt[cat] > 0;
+        if (n_unique_cat >= 2) break;
+    }
+    if (n_unique_cat <= 1) {
+        *has_zero_variance = true;
+        return;
     }
 
     /* put all categories on the right branch */
