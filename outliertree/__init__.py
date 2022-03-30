@@ -109,9 +109,8 @@ class OutlierTree:
         Number of parallel threads to use. When fitting the model, it will only use up to one thread per
         column, while for prediction it will use up to one thread per row. The more threads that are
         used, the more memory will be required and allocated, so using more threads will not always lead
-        to better speed. Passing zero or negative numbers will default to the maximum number of available CPU
-        cores (but not if the object attribute is overwritten). Can be changed after the object is
-        already initialized.
+        to better speed. Negative numbers are interpreted as following joblib's formula (but not if the object
+        attribute is overwritten after initialization). Can be changed after the object is already initialized.
 
     Attributes
     ----------
@@ -167,9 +166,9 @@ class OutlierTree:
         assert isinstance(min_size_categ, int)
         if nthreads is None:
             nthreads = 1 
-        if nthreads <= 0:
-            nthreads = multiprocessing.cpu_count()
-        assert nthreads > 0
+        if nthreads < 0:
+            nthreads = multiprocessing.cpu_count() + 1 + nthreads
+        assert nthreads >= 0
         assert isinstance(nthreads, int)
 
         if (nthreads > 1) and (not _get_has_openmp()):
