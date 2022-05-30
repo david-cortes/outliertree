@@ -470,13 +470,13 @@ class OutlierTree:
         def check_is_num_dtype(x):
             try:
                 return np.issubdtype(x, np.number)
-            except:
+            except Exception:
                 return False
 
         def check_is_dt64_dtype(x):
             try:
                 return np.issubdtype(x, np.datetime64)
-            except:
+            except Exception:
                 return False
 
         cols_num  = df.dtypes.map(check_is_num_dtype).to_numpy()
@@ -704,7 +704,7 @@ class OutlierTree:
     def _decode_date(self, ts_int, cl_num):
         try:
             return np.datetime64(np.int(ts_int - 1 + self._ts_min[cl_num]), "s")
-        except:
+        except Exception:
             return np.nan
 
     def _generate_empty_out_df(self, nrows):
