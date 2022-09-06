@@ -18,4 +18,4 @@ Suggests: knitr, rmarkdown, kableExtra, data.table
 LinkingTo: Rcpp, Rcereal
 LazyData: true
 VignetteBuilder: knitr
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.1

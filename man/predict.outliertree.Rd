@@ -10,6 +10,7 @@
   outliers_print = 15L,
   min_decimals = 2L,
   return_outliers = TRUE,
+  nthreads = parallel::detectCores(),
   ...
 )
 }
@@ -26,6 +27,8 @@ outliers. The number of decimals will be dynamically increased according to the 
 values being reported. Ignored when passing `outliers_print=0` or `outliers_print=FALSE`.}
 
 \item{return_outliers}{Whether to return the outliers in an R object (otherwise will just print them).}
+
+\item{nthreads}{Number of parallel threads to use. Parallelization is done by rows.}
 
 \item{...}{Not used.}
 }
@@ -73,7 +76,8 @@ outliers_model = outlier.tree(df, outliers_print=FALSE, nthreads=1)
 
 ### find the test outlier
 test_outliers = predict(outliers_model, df_test,
-    outliers_print = 1, return_outliers = TRUE)
+    outliers_print = 1, return_outliers = TRUE,
+    nthreads = 1)
 
 ### retrieve the outlier info (for row 1) as an R list
 test_outliers[[1]]

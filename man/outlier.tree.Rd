@@ -123,7 +123,7 @@ values being reported. Ignored when passing `outliers_print=0` or `outliers_prin
 \item{nthreads}{Number of parallel threads to use. When fitting the model, it will only use up to one
 thread per column, while for prediction it will use up to one thread per row. The more threads that are
 used, the more memory will be required and allocated, so using more threads will not always lead to better
-speed. Can be changed after the object is already initialized.}
+speed.}
 }
 \value{
 An object with the fitted model that can be used to detect more outliers in new data, and from
@@ -178,7 +178,7 @@ outliers[700:1000]
 ### use custom row names
 df.w.names <- hypothyroid
 row.names(df.w.names) <- paste0("rownum", 1:nrow(hypothyroid))
-outliers.w.names <- predict(model, df.w.names, return_outliers=TRUE)
+outliers.w.names <- predict(model, df.w.names, return_outliers=TRUE, nthreads=1)
 outliers.w.names[["rownum745"]]
 }
 \references{

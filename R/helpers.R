@@ -261,10 +261,8 @@ check.nthreads <- function(nthreads) {
         nthreads <- 1L
     } else if (is.na(nthreads)) {
         nthreads <- 1L
-    } else if (nthreads == "auto") {
-        nthreads <- parallel::detectCores()
     } else if (nthreads < 1L) {
-        nthreads <- parallel::detectCores()
+        nthreads <- 1L
     }
     nthreads <- as.integer(nthreads)
     if (nthreads > 1L && !R_has_openmp()) {

@@ -87,7 +87,7 @@ NULL
 #' @param nthreads Number of parallel threads to use. When fitting the model, it will only use up to one
 #' thread per column, while for prediction it will use up to one thread per row. The more threads that are
 #' used, the more memory will be required and allocated, so using more threads will not always lead to better
-#' speed. Can be changed after the object is already initialized.
+#' speed.
 #' @return An object with the fitted model that can be used to detect more outliers in new data, and from
 #' which outliers in the training data can be extracted (when passing `save_outliers` = `TRUE`).
 #' @details Explainable outlier detection through decision-tree grouping. Tries to detect outliers by
@@ -139,7 +139,7 @@ NULL
 #' ### use custom row names
 #' df.w.names <- hypothyroid
 #' row.names(df.w.names) <- paste0("rownum", 1:nrow(hypothyroid))
-#' outliers.w.names <- predict(model, df.w.names, return_outliers=TRUE)
+#' outliers.w.names <- predict(model, df.w.names, return_outliers=TRUE, nthreads=1)
 #' outliers.w.names[["rownum745"]]
 #' @export
 outlier.tree <- function(df, max_depth = 4L, min_gain = 1e-2, z_norm = 2.67, z_outlier = 8.0,
@@ -238,7 +238,6 @@ outlier.tree <- function(df, max_depth = 4L, min_gain = 1e-2, z_norm = 2.67, z_o
     model_data$obj_from_cpp$found_outliers  <-  NULL
     
     ### return object with corresponding class
-    model_data$nthreads <- nthreads
     class(model_data)   <- "outliertree"
     return(model_data)
 }
@@ -252,6 +251,7 @@ outlier.tree <- function(df, max_depth = 4L, min_gain = 1e-2, z_norm = 2.67, z_o
 #' outliers. The number of decimals will be dynamically increased according to the relative magnitudes of the
 #' values being reported. Ignored when passing `outliers_print=0` or `outliers_print=FALSE`.
 #' @param return_outliers Whether to return the outliers in an R object (otherwise will just print them).
+#' @param nthreads Number of parallel threads to use. Parallelization is done by rows.
 #' @param ... Not used.
 #' @return If passing `return_outliers` = `TRUE`, will return a list of lists with the outliers and their
 #' information (each row is an entry in the first list, with the same names as the rows in the input data
@@ -291,7 +291,8 @@ outlier.tree <- function(df, max_depth = 4L, min_gain = 1e-2, z_norm = 2.67, z_o
 #' 
 #' ### find the test outlier
 #' test_outliers = predict(outliers_model, df_test,
-#'     outliers_print = 1, return_outliers = TRUE)
+#'     outliers_print = 1, return_outliers = TRUE,
+#'     nthreads = 1)
 #' 
 #' ### retrieve the outlier info (for row 1) as an R list
 #' test_outliers[[1]]
@@ -300,7 +301,7 @@ outlier.tree <- function(df, max_depth = 4L, min_gain = 1e-2, z_norm = 2.67, z_o
 #' # dt = t(data.table::as.data.table(test_outliers))
 #' @export 
 predict.outliertree <- function(object, newdata, outliers_print = 15L, min_decimals = 2L,
-                                return_outliers = TRUE, ...) {
+                                return_outliers = TRUE, nthreads = parallel::detectCores(), ...) {
     unpack.outlier.tree(object)
     outliers_print  <- check.outliers.print(outliers_print)
     return_outliers <- as.logical(return_outliers)
@@ -314,7 +315,7 @@ predict.outliertree <- function(object, newdata, outliers_print = 15L, min_decim
     }
     
     c_arr_data    <- split.types.new(newdata, object)
-    outliers_info <- predict_OutlierTree(object$obj_from_cpp$ptr_model, NROW(newdata), object$nthreads,
+    outliers_info <- predict_OutlierTree(object$obj_from_cpp$ptr_model, NROW(newdata), check.nthreads(nthreads),
                                          c_arr_data$arr_num, c_arr_data$arr_cat, c_arr_data$arr_ord,
                                          object$cat_levels,
                                          object$ord_levels,
@@ -365,7 +366,8 @@ predict.outliertree <- function(object, newdata, outliers_print = 15L, min_decim
 #' pred <- predict(otree,
 #'   hypothyroid,
 #'   outliers_print=0,
-#'   return_outliers=TRUE)
+#'   return_outliers=TRUE,
+#'   nthreads=1)
 #'   
 #' ### Print stored predictions
 #' ### Row 531 is an outlier, but 532 is not

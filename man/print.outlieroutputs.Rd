@@ -43,7 +43,8 @@ otree <- outlier.tree(hypothyroid,
 pred <- predict(otree,
   hypothyroid,
   outliers_print=0,
-  return_outliers=TRUE)
+  return_outliers=TRUE,
+  nthreads=1)
   
 ### Print stored predictions
 ### Row 531 is an outlier, but 532 is not
