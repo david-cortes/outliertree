@@ -123,7 +123,7 @@ values being reported. Ignored when passing `outliers_print=0` or `outliers_prin
 \item{nthreads}{Number of parallel threads to use. When fitting the model, it will only use up to one
 thread per column, while for prediction it will use up to one thread per row. The more threads that are
 used, the more memory will be required and allocated, so using more threads will not always lead to better
-speed.}
+speed. Can be changed after the object is already initialized.}
 }
 \value{
 An object with the fitted model that can be used to detect more outliers in new data, and from

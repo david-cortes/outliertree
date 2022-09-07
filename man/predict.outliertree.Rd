@@ -10,7 +10,7 @@
   outliers_print = 15L,
   min_decimals = 2L,
   return_outliers = TRUE,
-  nthreads = parallel::detectCores(),
+  nthreads = object$nthreads,
   ...
 )
 }
