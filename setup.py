@@ -151,11 +151,14 @@ class build_ext_subclass( build_ext ):
         args_apple_omp2 = ["-Xclang", "-fopenmp", "-L/usr/local/lib", "-lomp", "-I/usr/local/include"]
         has_brew_omp = False
         if is_apple:
-            res_brew_pref = subprocess.run(["brew", "--prefix", "libomp"], capture_output=True)
-            if res_brew_pref.returncode == EXIT_SUCCESS:
-                has_brew_omp = True
-                brew_omp_prefix = res_brew_pref.stdout.decode().strip()
-                args_apple_omp3 = ["-Xclang", "-fopenmp", f"-L{brew_omp_prefix}/lib", "-lomp", f"-I{brew_omp_prefix}/include"]
+            try:
+                res_brew_pref = subprocess.run(["brew", "--prefix", "libomp"], capture_output=True)
+                if res_brew_pref.returncode == EXIT_SUCCESS:
+                    brew_omp_prefix = res_brew_pref.stdout.decode().strip()
+                    args_apple_omp3 = ["-Xclang", "-fopenmp", f"-L{brew_omp_prefix}/lib", "-lomp", f"-I{brew_omp_prefix}/include"]
+                    has_brew_omp = True
+            except Exception as e:
+                pass
 
 
         if self.test_supports_compile_arg(arg_omp1, with_omp=True):
@@ -278,7 +281,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.8.1-5',
+    version = '1.8.1-6',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     url = 'https://github.com/david-cortes/outliertree',
