@@ -58,12 +58,18 @@ Procedure is described in more detail in [Explainable outlier detection through 
 # Installation
 
 * For R:
+
+**Note:** This package benefits from extra optimizations that aren't enabled by default for R packages. See [this guide](https://github.com/david-cortes/installing-optimized-libraries) for instructions on how to enable them.
+
 ```r
 install.packages("outliertree")
 ```
 
 
 * For Python:
+
+**Note:** requires C/C++ compilers configured for Python. See [this guide](https://github.com/david-cortes/installing-optimized-libraries) for instructions.
+
 ```
 pip install outliertree
 ```
