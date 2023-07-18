@@ -11,6 +11,10 @@ For the R version, see the CRAN webpage:
 
 `<https://cran.r-project.org/package=outliertree>`_
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
 Installation
 ============
 Package is available on PyPI, can be installed with

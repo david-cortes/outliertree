@@ -1,4 +1,7 @@
-pandas>=0.24.0
-numpy
-cython
-Sphinx>=3.2.1
+numpy>=1.25
+cython>=3.0.0
+scipy>=1.11.1
+setuptools
+wheel
+Sphinx
+pandas
