@@ -281,7 +281,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.8.1-6',
+    version = '1.8.1-7',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     url = 'https://github.com/david-cortes/outliertree',
@@ -294,7 +294,8 @@ setup(
                                 include_dirs=[np.get_include(), ".", "./src"],
                                 define_macros=[
                                     ("_FOR_PYTHON", None),
-                                    ("NDEBUG", None)
+                                    ("NDEBUG", None),
+                                    ("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")
                                 ],
                                 language="c++",
                             )]

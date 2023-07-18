@@ -103,7 +103,7 @@ cdef extern from "outlier_tree.hpp":
         vector[vector[bool_t]] cat_outlier_any_cl
         size_t max_depth
 
-    bool_t get_has_openmp() nogil except +
+    bool_t get_has_openmp() except + nogil
 
     bool_t fit_outliers_models(ModelOutputs &model_outputs,
                                double *numeric_data,     size_t ncols_numeric,
@@ -112,12 +112,12 @@ cdef extern from "outlier_tree.hpp":
                                size_t nrows, char *cols_ignore, int nthreads,
                                bool_t categ_as_bin, bool_t ord_as_bin, bool_t cat_bruteforce_subset, bool_t categ_from_maj, bool_t take_mid,
                                size_t max_conditions, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ,
-                               double min_gain, bool_t gain_as_pct, bool_t follow_all, double z_norm, double z_outlier) nogil except +
+                               double min_gain, bool_t gain_as_pct, bool_t follow_all, double z_norm, double z_outlier) except + nogil
 
     bool_t find_new_outliers(double *numeric_data,
                              int    *categorical_data,
                              int    *ordinal_data,
-                             size_t nrows, int nthreads, ModelOutputs &model_outputs) nogil except +
+                             size_t nrows, int nthreads, ModelOutputs &model_outputs) except + nogil
 
     void forget_row_outputs(ModelOutputs &model_outputs)
 
