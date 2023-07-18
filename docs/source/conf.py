@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath('./'))
 # -- Project information -----------------------------------------------------
 
 project = 'OutlierTree'
-copyright = '2019, David Cortes'
+copyright = '2023, David Cortes'
 author = 'David Cortes'
 
 # The short X.Y version
@@ -73,7 +73,7 @@ language = None
 exclude_patterns = []
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = None
+# pygments_style = None
 
 
 # -- Options for HTML output -------------------------------------------------
