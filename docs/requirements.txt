@@ -3,5 +3,6 @@ cython>=3.0.0
 scipy>=1.11.1
 setuptools
 wheel
-Sphinx>=7.0.1
+Sphinx>=4.2.0
+sphinx-rtd-theme>=1.0.0
 pandas
