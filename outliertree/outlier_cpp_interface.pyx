@@ -157,9 +157,6 @@ cdef class OutlierCppObject:
         dealloc_ModelOutputs(self.model_outputs)
         self.model_outputs = get_empty_ModelOutputs()
 
-    def __dealloc__(self):
-        dealloc_ModelOutputs(self.model_outputs)
-
     def __deepcopy__(self, memo):
         other = OutlierCppObject()
         other.model_outputs = deepcopy(self.model_outputs)
