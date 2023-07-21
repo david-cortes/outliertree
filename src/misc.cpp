@@ -680,18 +680,6 @@ int decimals_diff(double val1, double val2)
     return (int) res;
 }
 
-
-/* Reason behind this function: Cython (as of v0.29) will not auto-deallocate
-   structs which are part of a cdef'd class, which produces a memory leak
-   but can be force-destructed. Unfortunately, Cython itself doesn't even
-   allow calling destructors for structs, so it has to be done externally.
-   This function should otherwise have no reason to exist.
-*/
-void dealloc_ModelOutputs(ModelOutputs &model_outputs)
-{
-    model_outputs.~ModelOutputs();
-}
-
 ModelOutputs get_empty_ModelOutputs()
 {
     return ModelOutputs();

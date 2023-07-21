@@ -123,8 +123,6 @@ cdef extern from "outlier_tree.hpp":
 
     void check_more_two_values(double *arr_num, size_t nrows, size_t ncols, int nthreads, char *too_few_values)
 
-    void dealloc_ModelOutputs(ModelOutputs &model_outputs)
-
     ModelOutputs get_empty_ModelOutputs()
 
     bool_t cy_check_interrupt_switch()
@@ -154,7 +152,6 @@ cdef class OutlierCppObject:
     cdef ModelOutputs model_outputs
 
     def __init__(self):
-        dealloc_ModelOutputs(self.model_outputs)
         self.model_outputs = get_empty_ModelOutputs()
 
     def __deepcopy__(self, memo):
