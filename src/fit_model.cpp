@@ -209,42 +209,39 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
 
     /* calculate prior probabilities for categorical variables (in parallel), see if any is unsplittable */
     if (tot_cols > ncols_numeric) {
-        #pragma omp parallel
+        #pragma omp parallel sections if(nthreads > 1)
         {
-            #pragma omp sections
+
+            #pragma omp section
             {
+                if (ncols_categ > 0) {
+                    calculate_all_cat_counts(model_outputs.start_ix_cat_counts.data(), input_data.cat_counts.data(), input_data.ncat,
+                                             input_data.categorical_data, input_data.ncols_categ, input_data.nrows,
+                                             input_data.has_NA.data() + ncols_numeric, input_data.skip_col.data() + input_data.ncols_numeric,
+                                             std::min(input_data.ncols_categ, (size_t)std::max(1, nthreads - 1)) );
 
-                #pragma omp section
-                {
-                    if (ncols_categ > 0) {
-                        calculate_all_cat_counts(model_outputs.start_ix_cat_counts.data(), input_data.cat_counts.data(), input_data.ncat,
-                                                 input_data.categorical_data, input_data.ncols_categ, input_data.nrows,
-                                                 input_data.has_NA.data() + ncols_numeric, input_data.skip_col.data() + input_data.ncols_numeric,
-                                                 std::min(input_data.ncols_categ, (size_t)std::max(1, nthreads - 1)) );
-
-                        check_cat_col_unsplittable(model_outputs.start_ix_cat_counts.data(), input_data.cat_counts.data(), input_data.ncat,
-                                                   input_data.ncols_categ, std::min(model_params.min_size_numeric, model_params.min_size_categ), input_data.nrows,
-                                                   input_data.skip_col.data() + input_data.ncols_numeric,
-                                                   std::min(input_data.ncols_categ, (size_t)std::max(1, nthreads - 1)));
-                    }
-
-
+                    check_cat_col_unsplittable(model_outputs.start_ix_cat_counts.data(), input_data.cat_counts.data(), input_data.ncat,
+                                               input_data.ncols_categ, std::min(model_params.min_size_numeric, model_params.min_size_categ), input_data.nrows,
+                                               input_data.skip_col.data() + input_data.ncols_numeric,
+                                               std::min(input_data.ncols_categ, (size_t)std::max(1, nthreads - 1)));
                 }
 
-                #pragma omp section
-                {
-                    if (ncols_ord > 0) {
-                        calculate_all_cat_counts(model_outputs.start_ix_cat_counts.data() + input_data.ncols_categ, input_data.cat_counts.data(), input_data.ncat_ord,
-                                                 input_data.ordinal_data, input_data.ncols_ord, input_data.nrows,
-                                                 input_data.has_NA.data() + input_data.ncols_numeric + input_data.ncols_categ,
-                                                 input_data.skip_col.data() + input_data.ncols_numeric + input_data.ncols_categ,
-                                                 std::max((int)1, nthreads - (int)input_data.ncols_categ) );
 
-                        check_cat_col_unsplittable(model_outputs.start_ix_cat_counts.data() + input_data.ncols_categ, input_data.cat_counts.data(), input_data.ncat_ord,
-                                                   ncols_ord, std::min(model_params.min_size_numeric, model_params.min_size_categ), input_data.nrows,
-                                                   input_data.skip_col.data() + input_data.ncols_numeric + input_data.ncols_categ,
-                                                   std::max((int)1, nthreads - (int)input_data.ncols_categ));
-                    }
+            }
+
+            #pragma omp section
+            {
+                if (ncols_ord > 0) {
+                    calculate_all_cat_counts(model_outputs.start_ix_cat_counts.data() + input_data.ncols_categ, input_data.cat_counts.data(), input_data.ncat_ord,
+                                             input_data.ordinal_data, input_data.ncols_ord, input_data.nrows,
+                                             input_data.has_NA.data() + input_data.ncols_numeric + input_data.ncols_categ,
+                                             input_data.skip_col.data() + input_data.ncols_numeric + input_data.ncols_categ,
+                                             std::max((int)1, nthreads - (int)input_data.ncols_categ) );
+
+                    check_cat_col_unsplittable(model_outputs.start_ix_cat_counts.data() + input_data.ncols_categ, input_data.cat_counts.data(), input_data.ncat_ord,
+                                               ncols_ord, std::min(model_params.min_size_numeric, model_params.min_size_categ), input_data.nrows,
+                                               input_data.skip_col.data() + input_data.ncols_numeric + input_data.ncols_categ,
+                                               std::max((int)1, nthreads - (int)input_data.ncols_categ));
                 }
             }
 
@@ -266,7 +263,7 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
     /* determine an approximate size for the output clusters, and reserve memory right away */
     model_outputs.all_clusters.resize(tot_cols);
     model_outputs.all_trees.resize(tot_cols);
-    #pragma omp parallel for shared(model_outputs, input_data, model_params, tot_cols)
+    #pragma omp parallel for num_threads(nthreads) shared(model_outputs, input_data, model_params, tot_cols)
     for (size_t_for col = 0; col < tot_cols; col++) {
         if (input_data.skip_col[col]) continue;
         if (cols_ignore != NULL && cols_ignore[col]) continue;
