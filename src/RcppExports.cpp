@@ -10,27 +10,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// deserialize_OutlierTree
-SEXP deserialize_OutlierTree(Rcpp::RawVector src, SEXP ptr_obj);
-RcppExport SEXP _outliertree_deserialize_OutlierTree(SEXP srcSEXP, SEXP ptr_objSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< Rcpp::RawVector >::type src(srcSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type ptr_obj(ptr_objSEXP);
-    rcpp_result_gen = Rcpp::wrap(deserialize_OutlierTree(src, ptr_obj));
-    return rcpp_result_gen;
-END_RCPP
-}
-// check_null_ptr_model
-Rcpp::LogicalVector check_null_ptr_model(SEXP ptr_model);
-RcppExport SEXP _outliertree_check_null_ptr_model(SEXP ptr_modelSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< SEXP >::type ptr_model(ptr_modelSEXP);
-    rcpp_result_gen = Rcpp::wrap(check_null_ptr_model(ptr_model));
-    return rcpp_result_gen;
-END_RCPP
-}
 // fit_OutlierTree
 Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric, Rcpp::IntegerVector arr_cat, size_t ncols_categ, Rcpp::IntegerVector ncat, Rcpp::IntegerVector arr_ord, size_t ncols_ord, Rcpp::IntegerVector ncat_ord, size_t nrows, Rcpp::LogicalVector cols_ignore_r, int nthreads, bool categ_as_bin, bool ord_as_bin, bool cat_bruteforce_subset, bool categ_from_maj, bool take_mid, size_t max_depth, double max_perc_outliers, size_t min_size_numeric, size_t min_size_categ, double min_gain, bool follow_all, bool gain_as_pct, double z_norm, double z_outlier, bool return_outliers, Rcpp::ListOf<Rcpp::StringVector> cat_levels, Rcpp::ListOf<Rcpp::StringVector> ord_levels, Rcpp::StringVector colnames_num, Rcpp::StringVector colnames_cat, Rcpp::StringVector colnames_ord, Rcpp::NumericVector min_date, Rcpp::NumericVector min_ts);
 RcppExport SEXP _outliertree_fit_OutlierTree(SEXP arr_numSEXP, SEXP ncols_numericSEXP, SEXP arr_catSEXP, SEXP ncols_categSEXP, SEXP ncatSEXP, SEXP arr_ordSEXP, SEXP ncols_ordSEXP, SEXP ncat_ordSEXP, SEXP nrowsSEXP, SEXP cols_ignore_rSEXP, SEXP nthreadsSEXP, SEXP categ_as_binSEXP, SEXP ord_as_binSEXP, SEXP cat_bruteforce_subsetSEXP, SEXP categ_from_majSEXP, SEXP take_midSEXP, SEXP max_depthSEXP, SEXP max_perc_outliersSEXP, SEXP min_size_numericSEXP, SEXP min_size_categSEXP, SEXP min_gainSEXP, SEXP follow_allSEXP, SEXP gain_as_pctSEXP, SEXP z_normSEXP, SEXP z_outlierSEXP, SEXP return_outliersSEXP, SEXP cat_levelsSEXP, SEXP ord_levelsSEXP, SEXP colnames_numSEXP, SEXP colnames_catSEXP, SEXP colnames_ordSEXP, SEXP min_dateSEXP, SEXP min_tsSEXP) {
@@ -119,8 +98,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_outliertree_deserialize_OutlierTree", (DL_FUNC) &_outliertree_deserialize_OutlierTree, 2},
-    {"_outliertree_check_null_ptr_model", (DL_FUNC) &_outliertree_check_null_ptr_model, 1},
     {"_outliertree_fit_OutlierTree", (DL_FUNC) &_outliertree_fit_OutlierTree, 33},
     {"_outliertree_predict_OutlierTree", (DL_FUNC) &_outliertree_predict_OutlierTree, 13},
     {"_outliertree_check_few_values", (DL_FUNC) &_outliertree_check_few_values, 4},
@@ -128,7 +105,9 @@ static const R_CallMethodDef CallEntries[] = {
     {NULL, NULL, 0}
 };
 
+void init_altrepped_class(DllInfo* dll);
 RcppExport void R_init_outliertree(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
+    init_altrepped_class(dll);
 }

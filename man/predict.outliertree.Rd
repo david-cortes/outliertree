@@ -86,5 +86,5 @@ test_outliers[[1]]
 # dt = t(data.table::as.data.table(test_outliers))
 }
 \seealso{
-\link{outlier.tree} \link{print.outlieroutputs} \link{unpack.outlier.tree}
+\link{outlier.tree} \link{print.outlieroutputs}
 }

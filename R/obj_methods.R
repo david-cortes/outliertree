@@ -10,7 +10,6 @@
 #' @return The same input `x` that was passed (as `invisible`).
 #' @export
 print.outliertree <- function(x, ...) {
-    unpack.outlier.tree(x)
     cat("Outlier Tree model\n")
     if (NROW(x$cols_num))  cat(sprintf("\tNumeric variables: %d\n",     NROW(x$cols_num)))
     if (NROW(x$cols_date)) cat(sprintf("\tDate variables: %d\n",        NROW(x$cols_date)))

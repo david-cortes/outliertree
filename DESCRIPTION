@@ -1,7 +1,7 @@
 Package: outliertree
 Type: Package
 Title: Explainable Outlier Detection Through Decision Tree Conditioning
-Version: 1.8.1-1
+Version: 1.8.1-2
 Author: David Cortes
 Maintainer: David Cortes <david.cortes.rivera@gmail.com>
 URL: https://github.com/david-cortes/outliertree
@@ -12,10 +12,10 @@ Description: Outlier detection method that flags suspicious values within observ
   Full procedure is described in Cortes (2020) <arXiv:2001.00636>.
   Loosely based on the 'GritBot' <https://www.rulequest.com/gritbot-info.html> software.
 License: GPL (>= 3)
-Imports: Rcpp (>= 1.0.1)
-Depends: R (>= 3.5.0)
+Imports: Rcpp (>= 1.0.1), methods
+Depends: R (>= 4.3.0)
 Suggests: knitr, rmarkdown, kableExtra, data.table
 LinkingTo: Rcpp, Rcereal
 LazyData: true
 VignetteBuilder: knitr
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3

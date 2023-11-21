@@ -2,6 +2,7 @@
 
 #include <Rcpp.h>
 #include <Rcpp/unwindProtect.h>
+#include <R_ext/Altrep.h>
 // [[Rcpp::plugins(cpp11)]]
 
 /* This is to serialize the model objects */
@@ -15,18 +16,26 @@
 /* This is the package's header */
 #include "outlier_tree.hpp"
 
+void delete_model_from_R_ptr(SEXP R_ptr)
+{
+    ModelOutputs *model = static_cast<ModelOutputs*>(R_ExternalPtrAddr(R_ptr));
+    delete model;
+    R_SetExternalPtrAddr(R_ptr, nullptr);
+    R_ClearExternalPtr(R_ptr);
+}
+
 SEXP alloc_RawVec(void *data)
 {
     size_t vec_size = *(size_t*)data;
     if (vec_size > (size_t)std::numeric_limits<R_xlen_t>::max())
         Rcpp::stop("Resulting model is too large for R to handle.");
-    return Rcpp::RawVector((R_xlen_t)vec_size);
+    return Rf_allocVector(RAWSXP, vec_size);
 }
 
 /* for model serialization and re-usage in R */
 /* https://stackoverflow.com/questions/18474292/how-to-handle-c-internal-data-structure-in-r-in-order-to-allow-save-load */
 /* this extra comment below the link is a workaround for Rcpp issue 675 in GitHub, do not remove it */
-Rcpp::RawVector serialize_OutlierTree(ModelOutputs *model_outputs)
+SEXP serialize_OutlierTree(ModelOutputs *model_outputs)
 {
     std::stringstream ss;
     {
@@ -36,35 +45,20 @@ Rcpp::RawVector serialize_OutlierTree(ModelOutputs *model_outputs)
     ss.seekg(0, ss.end);
     std::stringstream::pos_type vec_size = ss.tellg();
     if (vec_size <= 0) {
-        Rcpp::Rcerr << "Error: model is too big to serialize, resulting object will not be usable.\n" << std::endl;
-        return Rcpp::RawVector();
+        Rf_error("Error: model is too big to serialize, resulting object will not be usable.\n");
     }
     size_t vec_size_ = (size_t)vec_size;
-    Rcpp::RawVector retval = Rcpp::unwindProtect(alloc_RawVec, (void*)&vec_size_);
-    if (!retval.size())
-        return retval;
+    SEXP retval = PROTECT(Rcpp::unwindProtect(alloc_RawVec, (void*)&vec_size_));
     ss.seekg(0, ss.beg);
-    ss.read(reinterpret_cast<char*>(RAW(retval)), retval.size());
+    ss.read(reinterpret_cast<char*>(RAW(retval)), vec_size_);
+    UNPROTECT(1);
     return retval;
 }
 
-SEXP safe_XPtr(void *model_ptr)
-{
-    return Rcpp::XPtr<ModelOutputs>((ModelOutputs*)model_ptr, true);
-}
-
-void R_delete_model(SEXP R_ptr)
-{
-    ModelOutputs *model = static_cast<ModelOutputs*>(R_ExternalPtrAddr(R_ptr));
-    delete model;
-    R_ClearExternalPtr(R_ptr);
-}
-
-// [[Rcpp::export(rng = false)]]
-SEXP deserialize_OutlierTree(Rcpp::RawVector src, SEXP ptr_obj)
+SEXP deserialize_OutlierTree(SEXP src, SEXP ptr_obj)
 {
     std::stringstream ss;
-    ss.write(reinterpret_cast<char*>(RAW(src)), src.size());
+    ss.write(reinterpret_cast<char*>(RAW(src)), Rf_xlength(src));
     ss.seekg(0, ss.beg);
     std::unique_ptr<ModelOutputs> model_outputs = std::unique_ptr<ModelOutputs>(new ModelOutputs());
     {
@@ -72,25 +66,134 @@ SEXP deserialize_OutlierTree(Rcpp::RawVector src, SEXP ptr_obj)
         iarchive(*model_outputs);
     }
     R_SetExternalPtrAddr(ptr_obj, model_outputs.get());
-    R_RegisterCFinalizerEx(ptr_obj, R_delete_model, TRUE);
+    R_RegisterCFinalizerEx(ptr_obj, delete_model_from_R_ptr, TRUE);
     model_outputs.release();
     return R_NilValue;
 }
 
+static R_altrep_class_t otree_altrepped_pointer_class;
+
+R_xlen_t altrepped_pointer_length(SEXP obj)
+{
+    return 1;
+}
+
+SEXP get_element_from_altrepped_ptr(SEXP R_altrepped_obj, R_xlen_t idx)
+{
+    return R_altrep_data1(R_altrepped_obj);
+}
+
+Rboolean inspect_altrepped_pointer(SEXP x, int pre, int deep, int pvec, void (*inspect_subtree)(SEXP, int, int, int))
+{
+    Rprintf("Altrepped pointer [address:%p]\n", R_ExternalPtrAddr(R_altrep_data1(x)));
+    return TRUE;
+}
+
+SEXP duplicate_altrepped_pointer(SEXP altrepped_obj, Rboolean deep)
+{
+    SEXP R_ptr_name = PROTECT(Rf_mkString("ptr"));
+    SEXP R_ptr_class = PROTECT(Rf_mkString("otree_altrepped_handle"));
+    SEXP out = PROTECT(R_new_altrep(otree_altrepped_pointer_class, R_NilValue, R_NilValue));
+
+    if (!deep) {
+        R_set_altrep_data1(out, R_altrep_data1(altrepped_obj));
+    }
+
+    else {
+
+        SEXP R_ptr = PROTECT(R_MakeExternalPtr(nullptr, R_NilValue, R_NilValue));
+
+        try {
+            std::unique_ptr<ModelOutputs> new_obj(new ModelOutputs());
+            ModelOutputs *cpp_ptr = (ModelOutputs*)R_ExternalPtrAddr(R_altrep_data1(altrepped_obj));
+            *new_obj = *cpp_ptr;
+
+            R_SetExternalPtrAddr(R_ptr, new_obj.get());
+            R_RegisterCFinalizerEx(R_ptr, delete_model_from_R_ptr, TRUE);
+            new_obj.release();
+        }
+
+        catch (const std::exception &ex) {
+            Rf_error("%s\n", ex.what());
+        }
+
+        R_set_altrep_data1(out, R_ptr);
+        UNPROTECT(1);
+    }
+
+    Rf_setAttrib(out, R_NamesSymbol, R_ptr_name);
+    Rf_setAttrib(out, R_NamesSymbol, R_ptr_class);
+    UNPROTECT(3);
+    return out;
+}
+
+SEXP serialize_altrepped_pointer(SEXP altrepped_obj)
+{
+    return serialize_OutlierTree((ModelOutputs*)R_ExternalPtrAddr(R_altrep_data1(altrepped_obj)));
+}
+
+SEXP deserialize_altrepped_pointer(SEXP cls, SEXP R_state)
+{
+    SEXP R_ptr_name = PROTECT(Rf_mkString("ptr"));
+    SEXP R_ptr_class = PROTECT(Rf_mkString("otree_altrepped_handle"));
+    SEXP R_ptr = PROTECT(R_MakeExternalPtr(nullptr, R_NilValue, R_NilValue));
+    SEXP out = PROTECT(R_new_altrep(otree_altrepped_pointer_class, R_NilValue, R_NilValue));
+
+    try {
+        deserialize_OutlierTree(R_state, R_ptr);
+    }
+    catch (const std::exception &ex) {
+        Rf_error("%s\n", ex.what());
+    }
+
+    R_set_altrep_data1(out, R_ptr);
+    Rf_setAttrib(out, R_NamesSymbol, R_ptr_name);
+    Rf_setAttrib(out, R_ClassSymbol, R_ptr_class);
+
+    UNPROTECT(4);
+    return out;
+}
+
+SEXP get_altrepped_pointer(void *void_ptr)
+{
+    SEXP R_ptr_name = PROTECT(Rf_mkString("ptr"));
+    SEXP R_ptr_class = PROTECT(Rf_mkString("otree_altrepped_handle"));
+    SEXP R_ptr = PROTECT(R_MakeExternalPtr(nullptr, R_NilValue, R_NilValue));
+    SEXP out = PROTECT(R_new_altrep(otree_altrepped_pointer_class, R_NilValue, R_NilValue));
+
+    std::unique_ptr<ModelOutputs> *ptr = (std::unique_ptr<ModelOutputs>*)void_ptr;
+    R_SetExternalPtrAddr(R_ptr, ptr->get());
+    R_RegisterCFinalizerEx(R_ptr, delete_model_from_R_ptr, TRUE);
+    ptr->release();
+    
+    R_set_altrep_data1(out, R_ptr);
+    Rf_setAttrib(out, R_NamesSymbol, R_ptr_name);
+    Rf_setAttrib(out, R_ClassSymbol, R_ptr_class);
+
+    UNPROTECT(4);
+    return out;
+}
+
+// [[Rcpp::init]]
+void init_altrepped_class(DllInfo* dll)
+{
+    otree_altrepped_pointer_class = R_make_altlist_class("otree_altrepped_pointer_class", "outliertree", dll);
+    R_set_altrep_Length_method(otree_altrepped_pointer_class, altrepped_pointer_length);
+    R_set_altrep_Inspect_method(otree_altrepped_pointer_class, inspect_altrepped_pointer);
+    R_set_altrep_Serialized_state_method(otree_altrepped_pointer_class, serialize_altrepped_pointer);
+    R_set_altrep_Unserialize_method(otree_altrepped_pointer_class, deserialize_altrepped_pointer);
+    R_set_altrep_Duplicate_method(otree_altrepped_pointer_class, duplicate_altrepped_pointer);
+    R_set_altlist_Elt_method(otree_altrepped_pointer_class, get_element_from_altrepped_ptr);
+}
+
 SEXP safe_int(void *x)
 {
-    return Rcpp::wrap(*(int*)x);
+    return Rf_ScalarInteger(*(int*)x);
 }
 
 SEXP safe_bool(void *x)
 {
-    return Rcpp::wrap(*(bool*)x);
-}
-
-// [[Rcpp::export(rng = false)]]
-Rcpp::LogicalVector check_null_ptr_model(SEXP ptr_model)
-{
-    return Rcpp::LogicalVector(R_ExternalPtrAddr(ptr_model) == NULL);
+    return Rf_ScalarLogical(*(bool*)x);
 }
 
 double* set_R_nan_as_C_nan(double *restrict x_R, std::vector<double> &x_C, size_t n, int nthreads)
@@ -263,7 +366,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
             } else if (outl_col < (ncols_num + ncols_cat)) {
                 if (outl_col < (ncols_num + ncols_cat_cat)) {
                     tmp_bool = Rcpp::LogicalVector(model_outputs.all_clusters[outl_col][outl_clust].subset_common.size(), false);
-                    for (size_t cat = 0; cat < tmp_bool.size(); cat++) {
+                    for (size_t cat = 0; cat < (size_t)tmp_bool.size(); cat++) {
                         if (model_outputs.all_clusters[outl_col][outl_clust].subset_common[cat] == 0) {
                             tmp_bool[cat] = true;
                             }
@@ -307,7 +410,7 @@ Rcpp::List describe_outliers(ModelOutputs &model_outputs,
                 }
             } else {
                 tmp_bool = Rcpp::LogicalVector(model_outputs.all_clusters[outl_col][outl_clust].subset_common.size(), false);
-                for (size_t cat = 0; cat < tmp_bool.size(); cat++) {
+                for (size_t cat = 0; cat < (size_t)tmp_bool.size(); cat++) {
                     if (model_outputs.all_clusters[outl_col][outl_clust].subset_common[cat] == 0) {
                         tmp_bool[cat] = true;
                     }
@@ -1273,7 +1376,6 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
 {
     Rcpp::List outp = Rcpp::List::create(
         Rcpp::_["ptr_model"] = R_NilValue,
-        Rcpp::_["serialized_obj"] = R_NilValue,
         Rcpp::_["bounds"] = R_NilValue,
         Rcpp::_["outliers_info"] = R_NilValue,
         Rcpp::_["ntrees"] = R_NilValue,
@@ -1294,7 +1396,6 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
     double *arr_num_C = set_R_nan_as_C_nan(REAL(arr_num), Xcpp, arr_num.size(), nthreads);
 
     std::unique_ptr<ModelOutputs> model_outputs = std::unique_ptr<ModelOutputs>(new ModelOutputs());
-    try {
     found_outliers = fit_outliers_models(*model_outputs,
                                          arr_num_C, ncols_numeric,
                                          INTEGER(arr_cat), ncols_categ, INTEGER(ncat),
@@ -1312,13 +1413,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
         &min_ts
     };
     outp["bounds"] = Rcpp::unwindProtect(extract_outl_bounds_wrapper, (void*)&temp);
-    outp["serialized_obj"] = serialize_OutlierTree(model_outputs.get());
-    } catch(std::bad_alloc &e) {
-        Rcpp::stop("Insufficient memory.\n");
-    }
 
-    if (!Rf_xlength(outp["serialized_obj"]))
-        return outp;
     if (return_outliers) {
         args_describe_outliers temp = {
             model_outputs.get(),
@@ -1349,8 +1444,7 @@ Rcpp::List fit_OutlierTree(Rcpp::NumericVector arr_num, size_t ncols_numeric,
     outp["nclust"] = Rcpp::unwindProtect(safe_int, (void*)&nclust_int);
     outp["found_outliers"] = Rcpp::unwindProtect(safe_bool, (void*)&found_outliers);
     
-    outp["ptr_model"] = Rcpp::unwindProtect(safe_XPtr, model_outputs.get());
-    model_outputs.release();
+    outp["ptr_model"] = Rcpp::unwindProtect(get_altrepped_pointer, &model_outputs);
     return outp;
 }
 

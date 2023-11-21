@@ -188,5 +188,5 @@ outliers.w.names[["rownum745"]]
 }
 }
 \seealso{
-\link{predict.outliertree} \link{extract.training.outliers} \link{hypothyroid} \link{unpack.outlier.tree}
+\link{predict.outliertree} \link{extract.training.outliers} \link{hypothyroid}
 }
