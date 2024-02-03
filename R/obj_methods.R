@@ -45,10 +45,34 @@ summary.outliertree <- function(object, ...) {
 #' @param object Outliers as returned by predict method on an object from `outlier.tree`.
 #' @param outliers_print Maximum number of outliers to print.
 #' @param ... Not used.
+#' @return The same `object` input, returned invisibly.
 #' @seealso \link{print.outlieroutputs}
 #' @export 
 summary.outlieroutputs <- function(object, outliers_print = 15, ...) {
     cat(sprintf("Outlier outputs from %d rows [%d of which are outliers]\n\n\n",
                 NROW(object), sum(!is.na(sapply(object, function(x) x$tree_depth)))))
     print.outlieroutputs(object, outliers_print)
+}
+
+#' @title Get Variable Names for OutlierTree Model
+#' @description Returns the variable names from the data to which an OutlierTree model was fitted.
+#' 
+#' Columns will be returned in the following order according to their types, regardless of the order
+#' that they had in theoriginal input data:\itemize{
+#' \item{1.} Numeric.
+#' \item{2.} Date.
+#' \item{3.} Timestamp (POSIXct, POSIXlt).
+#' \item{4.} Categorical.
+#' \item{5.} Boolean / logical.
+#' \item{6.} Ordinal.
+#' }
+#' @param object An OutlierTree model as returned by function \link{outlier.tree}.
+#' @param ... Not used.
+#' @return A character vector with the variable names.
+#' @export 
+variable.names.outliertree <- function(object, ...) {
+    return(c(
+        object$cols_num, object$cols_date, object$cols_ts,
+        object$cols_cat, object$cols_bool, object$cols_ord
+    ))
 }

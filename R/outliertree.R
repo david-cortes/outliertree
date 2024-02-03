@@ -1,5 +1,5 @@
 #' @importFrom parallel detectCores
-#' @importFrom stats predict
+#' @importFrom stats predict variable.names
 #' @importFrom utils head
 #' @importFrom methods new
 #' @importFrom Rcpp evalCpp
