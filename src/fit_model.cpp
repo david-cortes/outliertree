@@ -11,7 +11,7 @@
 *      arXiv preprint arXiv:2001.00636 (2020).
 *    
 *    
-*    Copyright 2020 David Cortes.
+*    Copyright 2020-2024 David Cortes.
 *    
 *    Written for C++11 standard and OpenMP 2.0 or later. Code is meant to be wrapped into scripting languages
 *    such as R or Python.
@@ -552,7 +552,8 @@ void process_numeric_col(std::vector<Cluster> &cluster_root,
                                                           workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                           workspace.orig_mean, workspace.orig_sd,
                                                           workspace.left_tail, workspace.right_tail, workspace.orig_target_col,
-                                                          model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
+                                                          model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                          true);
     workspace.tree->back().clusters.push_back(0);
 
     /* remove outliers if any were found */
@@ -636,7 +637,8 @@ void recursive_split_numeric(Workspace &workspace,
                                                                   workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                                   workspace.orig_mean, workspace.orig_sd,
                                                                   workspace.left_tail, workspace.right_tail, workspace.orig_target_col,
-                                                                  model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
+                                                                  model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                                  false);
                 workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
 
                 if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
@@ -663,7 +665,8 @@ void recursive_split_numeric(Workspace &workspace,
                                                               workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                               workspace.orig_mean, workspace.orig_sd,
                                                               workspace.left_tail, workspace.right_tail, workspace.orig_target_col,
-                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
+                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                              false);
             workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
 
             if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
@@ -687,7 +690,8 @@ void recursive_split_numeric(Workspace &workspace,
                                                               workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                               workspace.orig_mean, workspace.orig_sd,
                                                               workspace.left_tail, workspace.right_tail, workspace.orig_target_col,
-                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
+                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                              false);
             workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
 
             if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
@@ -750,7 +754,8 @@ void recursive_split_numeric(Workspace &workspace,
                                                                   workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                                   workspace.orig_mean, workspace.orig_sd,
                                                                   workspace.left_tail, workspace.right_tail, workspace.orig_target_col,
-                                                                  model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
+                                                                  model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                                  false);
                 workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
 
                 if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
@@ -777,7 +782,8 @@ void recursive_split_numeric(Workspace &workspace,
                                                               workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                               workspace.orig_mean, workspace.orig_sd,
                                                               workspace.left_tail, workspace.right_tail, workspace.orig_target_col,
-                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
+                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                              false);
             workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
 
             if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
@@ -805,7 +811,8 @@ void recursive_split_numeric(Workspace &workspace,
                                                               workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                               workspace.orig_mean, workspace.orig_sd,
                                                               workspace.left_tail, workspace.right_tail, workspace.orig_target_col,
-                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
+                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                              false);
             workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
 
             if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
@@ -871,7 +878,8 @@ void recursive_split_numeric(Workspace &workspace,
                                                                   workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                                   workspace.orig_mean, workspace.orig_sd,
                                                                   workspace.left_tail, workspace.right_tail, workspace.orig_target_col,
-                                                                  model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
+                                                                  model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                                  false);
                 workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
 
                 if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
@@ -898,7 +906,8 @@ void recursive_split_numeric(Workspace &workspace,
                                                               workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                               workspace.orig_mean, workspace.orig_sd,
                                                               workspace.left_tail, workspace.right_tail, workspace.orig_target_col,
-                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
+                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                              false);
             workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
 
             if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {
@@ -928,7 +937,8 @@ void recursive_split_numeric(Workspace &workspace,
                                                               workspace.log_transf, workspace.log_minval, workspace.exp_transf,
                                                               workspace.orig_mean, workspace.orig_sd,
                                                               workspace.left_tail, workspace.right_tail, workspace.orig_target_col,
-                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier);
+                                                              model_params.max_perc_outliers, model_params.z_norm, model_params.z_outlier,
+                                                              false);
             workspace.lev_has_outliers = workspace.has_outliers? true : workspace.lev_has_outliers;
 
             if (model_params.follow_all && ((curr_depth + 1) < model_params.max_depth)) {

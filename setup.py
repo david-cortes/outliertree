@@ -27,6 +27,18 @@ try:
 except AttributeError:
     EXIT_SUCCESS = 0
 
+## For debugging
+if "--asan" in sys.argv:
+    ADD_ASAN = True
+    sys.argv.remove("--asan")
+else:
+    ADD_ASAN = False
+if "--ggdb" in sys.argv:
+    ADD_GGDB = True
+    sys.argv.remove("--ggdb")
+else:
+    ADD_GGDB = False
+
 ## https://stackoverflow.com/questions/724664/python-distutils-how-to-get-a-compiler-that-is-going-to-be-used
 class build_ext_subclass( build_ext ):
     def build_extensions(self):
@@ -59,18 +71,23 @@ class build_ext_subclass( build_ext ):
             self.add_O2()
             self.add_std_cpp11()
             for e in self.extensions:
-                # e.extra_compile_args = ['-fopenmp', '-O2', '-march=native', '-std=c++11']
-                # e.extra_link_args    = ['-fopenmp']
-
                 if is_mingw:
                     e.extra_compile_args += ['-Wno-sign-compare', '-Wno-maybe-uninitialized']
 
-                # e.extra_compile_args = ['-O2', '-march=native', '-std=c++11']
-
-                ### for testing (run with `LD_PRELOAD=libasan.so python script.py`)
-                # extra_compile_args=["-std=c++11", "-fsanitize=address", "-static-libasan", "-ggdb"],
-                # extra_link_args = ["-fsanitize=address", "-static-libasan"]
+                ### for extra testing
                 # e.define_macros += [("TEST_MODE_DEFINE", None)]
+
+        if ADD_ASAN and not is_msvc:
+            # run this with `LD_PRELOAD=libasan.so python script.py`
+            for e in self.extensions:
+                if not is_clang:
+                    e.extra_compile_args += ["-fsanitize=address", "-static-libasan", "-ggdb"]
+                else:
+                    e.extra_compile_args += ["-fsanitize=address", "-static-libsan", "-ggdb"]
+
+        elif ADD_GGDB and not is_msvc:
+            for e in self.extensions:
+                e.extra_compile_args += ["-ggdb"]
 
         build_ext.build_extensions(self)
 
@@ -281,7 +298,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.8.2',
+    version = '1.9.0',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     url = 'https://github.com/david-cortes/outliertree',

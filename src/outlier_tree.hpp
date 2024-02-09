@@ -733,7 +733,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                               size_t *restrict outlier_depth, Cluster &cluster, std::vector<Cluster> &clusters, size_t cluster_num, size_t tree_num, size_t tree_depth,
                               bool is_log_transf, double log_minval, bool is_exp_transf, double orig_mean, double orig_sd,
                               double left_tail, double right_tail, double *restrict orig_x,
-                              double max_perc_outliers, double z_norm, double z_outlier);
+                              double max_perc_outliers, double z_norm, double z_outlier,
+                              bool check_nonneg_outliers);
 void define_categ_cluster_no_cond(int *restrict x, size_t *restrict ix_arr, size_t st, size_t end, size_t ncateg,
                                   double *restrict outlier_scores, size_t *restrict outlier_clusters, size_t *restrict outlier_trees,
                                   size_t *restrict outlier_depth, Cluster &cluster,

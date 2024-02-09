@@ -11,7 +11,7 @@
 *      arXiv preprint arXiv:2001.00636 (2020).
 *    
 *    
-*    Copyright 2020 David Cortes.
+*    Copyright 2020-2024 David Cortes.
 *    
 *    Written for C++11 standard and OpenMP 2.0 or later. Code is meant to be wrapped into scripting languages
 *    such as R or Python.
@@ -97,6 +97,10 @@
 *        Model parameter. Default is 2.67.
 *    - z_outlier (in)
 *        Model parameter. Default is 8.0. Must be greater than z_norm.
+*    - check_nonneg_outliers (in)
+*        Whether to add an extra check for possible outliers defined as having negative values while all
+*        the rest have positive values, regardless of how many standard deviations away they are.
+*        This is currently only done on the first cluster (no conditions on any variable).
 *    
 *    Returns:
 *        - Whether there were any outliers detected.
@@ -107,7 +111,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                               size_t cluster_num, size_t tree_num, size_t tree_depth,
                               bool is_log_transf, double log_minval, bool is_exp_transf, double orig_mean, double orig_sd,
                               double left_tail, double right_tail, double *restrict orig_x,
-                              double max_perc_outliers, double z_norm, double z_outlier)
+                              double max_perc_outliers, double z_norm, double z_outlier,
+                              bool check_nonneg_outliers)
 {
 
     /*  TODO: this function could try to determine if the distribution is multimodal, and if so,
@@ -120,6 +125,7 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     /* NAs and Inf should have already been removed, and outliers with fewer conditionals already discarded */
     bool has_low_values  = false;
     bool has_high_values = false;
+    bool has_outlier_neg_values = false;
     long double running_mean = 0;
     long double running_ssq  = 0;
     long double mean_prev    = 0;
@@ -127,14 +133,15 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     double mean;
     double sd;
     size_t cnt;
-    size_t tail_size     = (size_t) calculate_max_outliers((long double)(end - st + 1), max_perc_outliers);
+    size_t tot           = end - st + 1;
+    size_t tail_size     = (size_t) calculate_max_outliers((long double)tot, max_perc_outliers);
     size_t st_non_tail   = st  + tail_size;
     size_t end_non_tail  = end - tail_size;
     size_t st_normals    = 0;
     size_t end_normals   = 0;
     double min_gap = z_outlier - z_norm;
 
-    double curr_gap, next_gap, eps, lim_by_orig;
+    double curr_gap, next_gap, lim_by_orig;
 
     /* Note: there is no good reason and no theory behind these numbers.
        TODO: find a better way of setting this */
@@ -166,9 +173,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     if ((!isinf(left_tail) || !isinf(right_tail)) && !is_log_transf && !is_exp_transf) {
         sd *= 0.5;
     }
-    sd = std::fmax(sd, 1e-15);
     while (std::numeric_limits<double>::epsilon() > sd*std::fmin(min_gap, z_norm))
-        sd *= 4;
+        sd = std::nextafter(sd, std::numeric_limits<double>::infinity());
     cluster.cluster_mean = mean;
     cluster.cluster_sd = sd;
     cnt = end - st + 1;
@@ -212,10 +218,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                 cluster.display_lim_low = orig_x[ix_arr[row + 1]];
                 cluster.perc_above = (long double)(end - st_normals + 1) / (long double)(end - st + 1);
 
-                eps = 1e-15;
                 while (cluster.display_lim_low <= cluster.lower_lim) {
-                    cluster.lower_lim -= eps;
-                    eps *= 4;
+                    cluster.lower_lim = std::nextafter(cluster.lower_lim, -std::numeric_limits<double>::infinity());
                 }
                 break;
             }
@@ -225,6 +229,7 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
         if (st_normals == 0) {
             has_low_values = false;
         } else {
+            assign_low_outliers:
             for (size_t row = st; row < st_normals; row++) {
 
                 /* assign outlier if it's a better cluster than previously assigned */
@@ -254,7 +259,23 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
             }
         }
     }
-    if (!has_low_values) {
+    /* special type of outliers not based on standard deviations */
+    if (check_nonneg_outliers && st_normals == 0 && tot >= 500 && orig_x[ix_arr[st]] < 0. && orig_x[ix_arr[end]] >= 2.) {
+        size_t max_neg_outliers = (tot < 10000)? 1 : ((tot < 100000)? 2 : 3);
+        if (orig_x[ix_arr[st + max_neg_outliers]] > 0.) {
+            size_t num_neg = 0;
+            for (size_t row = st; row < st + max_neg_outliers; row++) {
+                num_neg += orig_x[ix_arr[row]] < 0.;
+            }
+            st_normals = st + num_neg;
+            cluster.lower_lim = 0.;
+            cluster.display_lim_low = orig_x[ix_arr[st + st_normals]];
+            cluster.perc_above = (long double)(end - st_normals + 1) / (long double)(end - st + 1);
+            has_outlier_neg_values = true;
+            goto assign_low_outliers;
+        }
+    }
+    if (!has_low_values && !has_outlier_neg_values) {
         cluster.perc_above = 1.0;
         if (!is_log_transf && !is_exp_transf) {
 
@@ -271,10 +292,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
         }
 
         if (cluster.lower_lim > -HUGE_VAL) {
-            eps = 1e-15;
             while (cluster.lower_lim >= orig_x[ix_arr[st]]) {
-                cluster.lower_lim -= eps;
-                eps *= 4.;
+                cluster.lower_lim = std::nextafter(cluster.lower_lim, -std::numeric_limits<double>::infinity());
             }
         }
 
@@ -324,10 +343,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                 cluster.display_lim_high = orig_x[ix_arr[row - 1]];
                 cluster.perc_below = (long double)(end_normals - st + 1) / (long double)(end - st + 1);
 
-                eps = 1e-15;
                 while (cluster.display_lim_high >= cluster.upper_lim) {
-                    cluster.upper_lim += eps;
-                    eps *= 4;
+                    cluster.upper_lim = std::nextafter(cluster.upper_lim, std::numeric_limits<double>::infinity());
                 }
                 break;
             }
@@ -384,10 +401,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
         }
 
         if (cluster.upper_lim < HUGE_VAL) {
-            eps = 1e-15;
             while (cluster.upper_lim <= orig_x[ix_arr[end]]) {
-                cluster.upper_lim += eps;
-                eps *= 4.;
+                cluster.upper_lim = std::nextafter(cluster.upper_lim, std::numeric_limits<double>::infinity());
             }
         }
 
@@ -406,8 +421,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     }
 
     /* save displayed statistics for cluster */
-    if (has_high_values || has_low_values || is_log_transf || is_exp_transf) {
-        size_t st_disp  = has_low_values?  st_normals  : st;
+    if (has_high_values || has_low_values || is_log_transf || is_exp_transf || has_outlier_neg_values) {
+        size_t st_disp  = (has_low_values || has_outlier_neg_values)?  st_normals  : st;
         size_t end_disp = has_high_values? end_normals : end;
         running_mean = 0;
         running_ssq  = 0;
@@ -428,7 +443,7 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     }
 
     /* report whether outliers were found or not */
-    return has_low_values || has_high_values;
+    return has_low_values || has_high_values || has_outlier_neg_values;
 }
 
 
