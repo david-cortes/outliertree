@@ -44,3 +44,4 @@ src/Makevars
 autom4te.cache/*
 example/titanic3.csv
 vignettes/*.html
+outliertree_compiler_testing.cpp

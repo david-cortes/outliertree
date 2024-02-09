@@ -2,6 +2,7 @@ global-include *.pyx
 global-include *.pxd 
 global-include *.cpp
 global-include *.hpp
+exclude outliertree_compiler_testing.cpp
 exclude outliertree/outlier_cpp_interface.cpp
 exclude src/RcppExports.cpp
 exclude src/Rwrapper.cpp
