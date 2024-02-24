@@ -485,11 +485,11 @@ class OutlierTree:
             except Exception:
                 return False
 
-        cols_num  = df.dtypes.map(check_is_num_dtype).to_numpy()
-        cols_bool = (df.dtypes == "bool").to_numpy()
-        cols_cat  = (df.dtypes == "category").to_numpy()
-        cols_str  = (df.dtypes == "object").to_numpy()
-        cols_ts   = df.dtypes.map(check_is_dt64_dtype).to_numpy()
+        cols_num  = df.dtypes.map(check_is_num_dtype).to_numpy(copy=False)
+        cols_bool = (df.dtypes == "bool").to_numpy(copy=False)
+        cols_cat  = (df.dtypes == "category").to_numpy(copy=False)
+        cols_str  = (df.dtypes == "object").to_numpy(copy=False)
+        cols_ts   = df.dtypes.map(check_is_dt64_dtype).to_numpy(copy=False)
         cols_unsupported = (~cols_num) & (~cols_bool) & (~cols_cat) & (~cols_str) & (~cols_ts)
         if np.any(cols_unsupported):
             err_msg = "Model support only columns of types: numeric, boolean, string, categorical, ordinal, datetime64"
@@ -500,7 +500,7 @@ class OutlierTree:
         cols_ord = np.array([False] * df.dtypes.shape[0]).astype(cols_num.dtype)
         if np.any(cols_cat):
             cols_ord = df.columns[cols_cat][ df[df.columns[cols_cat]].apply(lambda x: x.dtype.ordered, axis = 0) ]
-            cols_ord = np.in1d(df.columns.values, cols_ord)
+            cols_ord = np.in1d(df.columns.to_numpy(copy=False), cols_ord)
             if np.any(cols_ord):
                 cols_cat = cols_cat & (~cols_ord)
                 cols_str = cols_str | cols_cat
@@ -513,9 +513,9 @@ class OutlierTree:
 
         ### Note: numpy represents NAs in timestamps as negative integers
         if np.any(cols_ts):
-            np_ts = df[df.columns[cols_ts]].to_numpy().astype('datetime64[s]').astype(int).astype(ctypes.c_double)
-            np_ts[pd.isnull(df[df.columns[cols_ts]]).to_numpy()] = np.nan
-            df_ts = pd.DataFrame(np_ts, columns = df.columns[cols_ts])
+            np_ts = df[df.columns[cols_ts]].to_numpy(dtype="datetime64[s]", copy=False).astype(np.int64).astype(ctypes.c_double)
+            np_ts[pd.isnull(df[df.columns[cols_ts]]).to_numpy(copy=False)] = np.nan
+            df_ts = pd.DataFrame(np_ts, columns = df.columns[cols_ts], copy=False)
         else:
             df_ts = pd.DataFrame()
 
@@ -525,29 +525,31 @@ class OutlierTree:
             df_num = None
         else:
             ### check that it doesn't contain booleans disguised as numeric or all the same value
-            too_few_values = check_few_values(df_num.values, self.nthreads)
+            too_few_values = check_few_values(
+                np.require(df_num, dtype=ctypes.c_double, requirements=["ENSUREARRAY", "F_CONTIGUOUS"]),
+                self.nthreads
+            )
             if np.any(too_few_values):
                 warnings.warn("Some numeric columns have less than 3 different values - head: " + str(df_num.columns[too_few_values][:3]))
-            self.cols_num_ = df_num.columns.values.copy()
+            self.cols_num_ = df_num.columns.to_numpy(copy=True)
 
 
         ### Categorical variables need to be encoded
         if df_cat.shape[1] == 0:
             df_cat = None
         else:
-            self.cols_cat_ = df_cat.columns.values.copy()
+            self.cols_cat_ = df_cat.columns.to_numpy(copy=True)
             self._cat_mapping = list()
             for cl in range(df_cat.shape[1]):
                 df_cat[df_cat.columns[cl]], encoding_this = pd.factorize(df_cat[df_cat.columns[cl]])
-                df_cat[df_cat.columns[cl]] = df_cat[df_cat.columns[cl]].astype(ctypes.c_int)
                 # https://github.com/pandas-dev/pandas/issues/30618
                 if encoding_this.__class__.__name__ == "CategoricalIndex":
-                    encoding_this = encoding_this.to_numpy()
+                    encoding_this = encoding_this.to_numpy(copy=False)
                 self._cat_mapping.append(encoding_this)
 
         ### Booleans are taken as categoricals
         if df_bool.shape[1] > 0:
-            self.cols_bool_ = df_bool.columns.values.copy()
+            self.cols_bool_ = df_bool.columns.to_numpy(copy=True)
             self._cat_mapping += [np.array([False,True])]*df_bool.shape[1]
             if df_cat is not None:
                 df_cat = pd.concat([df_cat, df_bool], axis = 1)
@@ -558,13 +560,13 @@ class OutlierTree:
         if df_ord.shape[1] == 0:
             df_ord = None
         else:
-            self.cols_ord_ = df_ord.columns.values.copy()
+            self.cols_ord_ = df_ord.columns.to_numpy(copy=True)
             self._ord_mapping = list()
             for cl in range(df_ord.shape[1]):
                 self._ord_mapping.append(df_ord[df_ord.columns[cl]].dtype.categories)
                 if self._ord_mapping[-1].shape[0] <= 2:
-                    raise ValueError("Can only pass ordinal columns with at least 3 levels - column " + f_ord.columns[cl] + " has fewer.")
-                df_ord[df_ord.columns[cl]] = df_ord[df_ord.columns[cl]].cat.codes.astype(ctypes.c_int)
+                    raise ValueError("Can only pass ordinal columns with at least 3 levels - column " + df_ord.columns[cl] + " has fewer.")
+                df_ord[df_ord.columns[cl]] = df_ord[df_ord.columns[cl]].cat.codes
 
 
         ### Timestamps are very large numbers that can overflow when summing their squares, so they are
@@ -574,13 +576,14 @@ class OutlierTree:
             df_ts = None
         else:
             if df_ts.shape[0] >= 5000:
-                warn_msg = "Calculations on timestamps with many rows are not precise "
-                warn_msg += "(these use sums of squares with C doubles (windows) or long doubles (others)). "
-                warn_msg += "If these are dates or years, for which the required precision is less, it's recommended "
-                warn_msg += "to pass them as numerical floats instead (e.g. '2008.0', '2009.0', etc.)."
-                warnings.warn(warn_msg)
-            self.cols_ts_ = df_ts.columns.values.copy()
-            self._ts_min = df_ts.min(axis = 0).to_numpy().reshape((1, -1))
+                warnings.warn(
+                    "Calculations on timestamps with many rows are not precise "
+                    "(these use sums of squares with C doubles (windows) or long doubles (others)). "
+                    "If these are dates or years, for which the required precision is less, it's recommended "
+                    "to pass them as numerical floats instead (e.g. '2008.0', '2009.0', etc.)."
+                )
+            self.cols_ts_ = df_ts.columns.to_numpy(copy=True)
+            self._ts_min = df_ts.min(axis = 0).to_numpy(copy=False).reshape((1, -1))
             df_ts = (df_ts - self._ts_min + 1).astype(ctypes.c_double)
 
             if df_num is not None:
@@ -588,9 +591,14 @@ class OutlierTree:
             else:
                 df_num = df_ts
 
-        return  np.asfortranarray(df_num.to_numpy()) if df_num is not None else np.empty((0, 0), dtype = ctypes.c_double), \
-                np.asfortranarray(df_cat.to_numpy()) if df_cat is not None else np.empty((0, 0), dtype = ctypes.c_int), \
-                np.asfortranarray(df_ord.to_numpy()) if df_ord is not None else np.empty((0, 0), dtype = ctypes.c_int)
+        return (
+            np.require(df_num, dtype=ctypes.c_double, requirements=["ENSUREARRAY", "F_CONTIGUOUS"])
+            if df_num is not None else np.empty((0, 0), dtype = ctypes.c_double),
+            np.require(df_cat, dtype=ctypes.c_int, requirements=["ENSUREARRAY", "F_CONTIGUOUS"])
+            if df_cat is not None else np.empty((0, 0), dtype = ctypes.c_int),
+            np.require(df_ord, dtype=ctypes.c_int, requirements=["ENSUREARRAY", "F_CONTIGUOUS"])
+            if df_ord is not None else np.empty((0, 0), dtype = ctypes.c_int),
+        )
 
     def _split_types_new_df(self, df):
         df_num = df[self.cols_num_].astype(ctypes.c_double) if self.cols_num_.shape[0] > 0 else None
@@ -601,8 +609,8 @@ class OutlierTree:
 
         if df_cat is not None:
             for cl in range(self.cols_cat_.shape[0]):
-                new_cat = (~np.in1d(df_cat[self.cols_cat_[cl]], self._cat_mapping[cl])) & (~pd.isnull(df_cat[self.cols_cat_[cl]]).to_numpy())
-                df_cat[self.cols_cat_[cl]] = pd.Categorical(df_cat[self.cols_cat_[cl]], self._cat_mapping[cl]).codes.astype(ctypes.c_int)
+                new_cat = (~np.in1d(df_cat[self.cols_cat_[cl]], self._cat_mapping[cl])) & (~pd.isnull(df_cat[self.cols_cat_[cl]]).to_numpy(copy=False))
+                df_cat[self.cols_cat_[cl]] = pd.Categorical(df_cat[self.cols_cat_[cl]], self._cat_mapping[cl]).codes
                 if np.any(new_cat):
                     warn_new_cols = True
                     cols_warn_new.append(self.cols_cat_[cl])
@@ -610,8 +618,8 @@ class OutlierTree:
 
         if df_ord is not None:
             for cl in range(self.cols_ord_.shape[0]):
-                new_cat = (~np.in1d(df_ord[self.cols_ord_[cl]], self._ord_mapping[cl])) & (~pd.isnull(df_ord[self.cols_ord_[cl]]).to_numpy())
-                df_ord[self.cols_ord_[cl]] = pd.Categorical(df_ord[self.cols_ord_[cl]], self._ord_mapping[cl]).codes.astype(ctypes.c_int)
+                new_cat = (~np.in1d(df_ord[self.cols_ord_[cl]], self._ord_mapping[cl])) & (~pd.isnull(df_ord[self.cols_ord_[cl]]).to_numpy(copy=False))
+                df_ord[self.cols_ord_[cl]] = pd.Categorical(df_ord[self.cols_ord_[cl]], self._ord_mapping[cl]).codes
                 if np.any(new_cat):
                     warn_new_cols = True
                     cols_warn_new.append(self.cols_ord_[cl])
@@ -625,21 +633,32 @@ class OutlierTree:
                 df_cat = pd.concat([df_cat, df_bool], axis = 1)
 
         if self.cols_ts_.shape[0] > 0:
-            df_ts = pd.DataFrame((df[self.cols_ts_].to_numpy().astype('datetime64[s]').astype(int) - self._ts_min + 1).reshape((df.shape[0], -1)), columns = self.cols_ts_).astype(ctypes.c_double)
+            df_ts = pd.DataFrame(
+                (
+                    df[self.cols_ts_].to_numpy(copy=False, dtype="datetime64[s]").astype(int) - self._ts_min + 1
+                ).reshape((df.shape[0], -1)),
+                columns = self.cols_ts_, copy=False
+            )
             if df_num is None:
                 df_num = df_ts
             else:
                 df_num = pd.concat([df_num, df_ts], axis = 1)
 
         if warn_new_cols:
-            warn_msg  = "Some categorical/ordinal columns had new values that were not "
-            warn_msg += "present in the training data. These values will be ignored. "
-            warn_msg += "Columns head: " + ", ".join([str(cl) for cl in cols_warn_new])[:3]
-            warnings.warn(warn_msg)
+            warnings.warn(
+                "Some categorical/ordinal columns had new values that were not "
+                "present in the training data. These values will be ignored. "
+                f"Columns head: {', '.join([str(cl) for cl in cols_warn_new[:3]])}"
+            )
 
-        return  np.asfortranarray(df_num.to_numpy()) if df_num is not None else np.empty((0, 0), dtype = ctypes.c_double), \
-                np.asfortranarray(df_cat.to_numpy()) if df_cat is not None else np.empty((0, 0), dtype = ctypes.c_int), \
-                np.asfortranarray(df_ord.to_numpy()) if df_ord is not None else np.empty((0, 0), dtype = ctypes.c_int)
+        return (
+            np.require(df_num, dtype=ctypes.c_double, requirements=["ENSUREARRAY", "F_CONTIGUOUS"])
+            if df_num is not None else np.empty((0, 0), dtype = ctypes.c_double),
+            np.require(df_cat, dtype=ctypes.c_int, requirements=["ENSUREARRAY", "F_CONTIGUOUS"])
+            if df_cat is not None else np.empty((0, 0), dtype = ctypes.c_int),
+            np.require(df_ord, dtype=ctypes.c_int, requirements=["ENSUREARRAY", "F_CONTIGUOUS"])
+            if df_ord is not None else np.empty((0, 0), dtype = ctypes.c_int),
+        )
 
 
 
@@ -669,7 +688,7 @@ class OutlierTree:
         if cols_ignore.shape[0] == df.shape[1]:
             ### Note: speed here could be improved if NumPy ever decides to introduce something like R's 'match'
             #https://stackoverflow.com/questions/4110059/pythonor-numpy-equivalent-of-match-in-r
-            df_cols_lst = list(df.columns.values)
+            df_cols_lst = list(df.columns.to_numpy(copy=False))
             order_cols = [df_cols_lst.index(cl) for cl in cols_concat]
             cols_ignore = cols_ignore[np.array(order_cols)]
             #https://github.com/numpy/numpy/issues/13973
@@ -948,10 +967,10 @@ class OutlierTree:
     def _check_valid_outliers_df(self, df_outliers):
         required_cols = np.array([
                                     "suspicious_value", "group_statistics",
-                                    "conditions",      "tree_depth",
-                                    "uses_NA_branch",  "outlier_score"
+                                    "conditions",       "tree_depth",
+                                    "uses_NA_branch",   "outlier_score"
                                 ])
-        if np.any(~np.in1d(required_cols, df_outliers.columns.values)):
+        if np.any(~np.in1d(required_cols, df_outliers.columns.to_numpy(copy=False))):
             raise ValueError("DataFrame passed is not an output from this object's '.fit' or '.predict' methods.")
 
     def _simplify_condition(self, condition):
@@ -1080,13 +1099,13 @@ class OutlierTree:
         df_out = pd.DataFrame(arr_num)
         df_out.columns = np.r_[temp_obj.cols_num_, temp_obj.cols_ts_]
         for cl in range(temp_obj.cols_ts_.shape[0]):
-            df_out[temp_obj.cols_ts_[cl]] = pd.Series(df[temp_obj.cols_ts_[cl]]).dt.strftime("%Y-%m-%d %H:%M:%S").to_numpy()
+            df_out[temp_obj.cols_ts_[cl]] = pd.Series(df[temp_obj.cols_ts_[cl]]).dt.strftime("%Y-%m-%d %H:%M:%S").to_numpy(copy=False)
         for cl in range(temp_obj.cols_cat_.shape[0]):
-            df_out[temp_obj.cols_cat_[cl]] = df[temp_obj.cols_cat_[cl]].to_numpy()
+            df_out[temp_obj.cols_cat_[cl]] = df[temp_obj.cols_cat_[cl]].to_numpy(copy=False)
         for cl in range(temp_obj.cols_bool_.shape[0]):
-            df_out[temp_obj.cols_bool_[cl]] = df[temp_obj.cols_bool_[cl]].astype("bool").to_numpy()
+            df_out[temp_obj.cols_bool_[cl]] = df[temp_obj.cols_bool_[cl]].to_numpy(copy=False, dtype="bool")
         for cl in range(temp_obj.cols_ord_.shape[0]):
-            df_out[temp_obj.cols_ord_[cl]] = df[temp_obj.cols_ord_[cl]].to_numpy()
+            df_out[temp_obj.cols_ord_[cl]] = df[temp_obj.cols_ord_[cl]].to_numpy(copy=False)
         df_out.index = row_names
 
         ### generate CSV file
