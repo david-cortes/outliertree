@@ -2,14 +2,17 @@ Package: outliertree
 Type: Package
 Title: Explainable Outlier Detection Through Decision Tree Conditioning
 Version: 1.10.0
-Author: David Cortes
+Authors@R: person(given = "David",
+                  family = "Cortes",
+                  role = c("aut", "cre"),
+                  email = "david.cortes.rivera@gmail.com")
 Maintainer: David Cortes <david.cortes.rivera@gmail.com>
 URL: https://github.com/david-cortes/outliertree
 BugReports: https://github.com/david-cortes/outliertree/issues
 Description: Outlier detection method that flags suspicious values within observations,
   constrasting them against the normal values in a user-readable format, potentially
   describing conditions within the data that make a given outlier more rare.
-  Full procedure is described in Cortes (2020) <arXiv:2001.00636>.
+  Full procedure is described in Cortes (2020) <doi:10.48550/arXiv.2001.00636>.
   Loosely based on the 'GritBot' <https://www.rulequest.com/gritbot-info.html> software.
 License: GPL (>= 3)
 Imports: Rcpp (>= 1.0.1), methods
