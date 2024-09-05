@@ -173,8 +173,7 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
     if ((!isinf(left_tail) || !isinf(right_tail)) && !is_log_transf && !is_exp_transf) {
         sd *= 0.5;
     }
-    while (std::numeric_limits<double>::epsilon() > sd*std::fmin(min_gap, z_norm))
-        sd = std::nextafter(sd, std::numeric_limits<double>::infinity());
+    sd = std::fmax(sd, std::numeric_limits<double>::epsilon() / std::fmin(min_gap, z_norm));
     cluster.cluster_mean = mean;
     cluster.cluster_sd = sd;
     cnt = end - st + 1;
@@ -218,8 +217,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                 cluster.display_lim_low = orig_x[ix_arr[row + 1]];
                 cluster.perc_above = (long double)(end - st_normals + 1) / (long double)(end - st + 1);
 
-                while (cluster.display_lim_low <= cluster.lower_lim) {
-                    cluster.lower_lim = std::nextafter(cluster.lower_lim, -std::numeric_limits<double>::infinity());
+                if (cluster.display_lim_low <= cluster.lower_lim) {
+                    cluster.lower_lim = std::nextafter(cluster.display_lim_low, -std::numeric_limits<double>::infinity());
                 }
                 break;
             }
@@ -292,8 +291,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
         }
 
         if (cluster.lower_lim > -HUGE_VAL) {
-            while (cluster.lower_lim >= orig_x[ix_arr[st]]) {
-                cluster.lower_lim = std::nextafter(cluster.lower_lim, -std::numeric_limits<double>::infinity());
+            if (cluster.lower_lim >= orig_x[ix_arr[st]]) {
+                cluster.lower_lim = std::nextafter(orig_x[ix_arr[st]], -std::numeric_limits<double>::infinity());
             }
         }
 
@@ -343,8 +342,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
                 cluster.display_lim_high = orig_x[ix_arr[row - 1]];
                 cluster.perc_below = (long double)(end_normals - st + 1) / (long double)(end - st + 1);
 
-                while (cluster.display_lim_high >= cluster.upper_lim) {
-                    cluster.upper_lim = std::nextafter(cluster.upper_lim, std::numeric_limits<double>::infinity());
+                if (cluster.display_lim_high >= cluster.upper_lim) {
+                    cluster.upper_lim = std::nextafter(cluster.display_lim_high, -std::numeric_limits<double>::infinity());
                 }
                 break;
             }
@@ -401,8 +400,8 @@ bool define_numerical_cluster(double *restrict x, size_t *restrict ix_arr, size_
         }
 
         if (cluster.upper_lim < HUGE_VAL) {
-            while (cluster.upper_lim <= orig_x[ix_arr[end]]) {
-                cluster.upper_lim = std::nextafter(cluster.upper_lim, std::numeric_limits<double>::infinity());
+            if (cluster.upper_lim <= orig_x[ix_arr[end]]) {
+                cluster.upper_lim = std::nextafter(orig_x[ix_arr[end]], std::numeric_limits<double>::infinity());
             }
         }
 
