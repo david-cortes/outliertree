@@ -10,6 +10,7 @@ from Cython.Distutils import build_ext
 import sys, os, subprocess, warnings, re
 from sys import platform
 from os import environ
+import tempfile
 
 found_omp = True
 def set_omp_false():
@@ -226,7 +227,7 @@ class build_ext_subclass( build_ext ):
             if not isinstance(comm, list):
                 comm = [comm]
             print("--- Checking compiler support for option '%s'" % " ".join(comm))
-            fname = "outliertreetree_compiler_testing.cpp"
+            fname = os.path.join(tempfile.gettempdir(), "outliertreetree_compiler_testing.cpp")
             with open(fname, "w") as ftest:
                 ftest.write(u"int main(int argc, char**argv) {return 0;}\n")
             try:
@@ -266,7 +267,7 @@ class build_ext_subclass( build_ext ):
             if not hasattr(self.compiler, "compiler_cxx"):
                 return None
             print("--- Checking compiler support for '__restrict' qualifier")
-            fname = "outliertree_compiler_testing.cpp"
+            fname = os.path.join(tempfile.gettempdir(), "outliertree_compiler_testing.cpp")
             with open(fname, "w") as ftest:
                 ftest.write(u"int main(int argc, char**argv) {return 0;}\n")
             try:
@@ -298,7 +299,7 @@ class build_ext_subclass( build_ext ):
 setup(
     name  = "outliertree",
     packages = ["outliertree"],
-    version = '1.10.0',
+    version = '1.10.0-1',
     description = 'Explainable outlier detection through smart decision tree conditioning',
     author = 'David Cortes',
     url = 'https://github.com/david-cortes/outliertree',
