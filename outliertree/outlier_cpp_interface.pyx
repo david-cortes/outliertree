@@ -1,5 +1,4 @@
-#cython: auto_pickle=True
-#cython: language_level=3
+#cython: freethreading_compatible=True, auto_pickle=True, language_level=3
 import  numpy as np
 cimport numpy as np
 from libcpp cimport bool as bool_t ###don't confuse it with Python bool
