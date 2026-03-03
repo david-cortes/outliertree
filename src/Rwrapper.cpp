@@ -45,7 +45,7 @@ SEXP serialize_OutlierTree(ModelOutputs *model_outputs)
     ss.seekg(0, ss.end);
     std::stringstream::pos_type vec_size = ss.tellg();
     if (vec_size <= 0) {
-        Rf_error("Error: model is too big to serialize, resulting object will not be usable.\n");
+        Rcpp::stop("Error: model is too big to serialize, resulting object will not be usable.\n");
     }
     size_t vec_size_ = (size_t)vec_size;
     SEXP retval = PROTECT(Rcpp::unwindProtect(alloc_RawVec, (void*)&vec_size_));
@@ -114,7 +114,7 @@ SEXP duplicate_altrepped_pointer(SEXP altrepped_obj, Rboolean deep)
         }
 
         catch (const std::exception &ex) {
-            Rf_error("%s\n", ex.what());
+            Rcpp::stop(ex.what());
         }
 
         R_set_altrep_data1(out, R_ptr);
@@ -143,7 +143,7 @@ SEXP deserialize_altrepped_pointer(SEXP cls, SEXP R_state)
         deserialize_OutlierTree(R_state, R_ptr);
     }
     catch (const std::exception &ex) {
-        Rf_error("%s\n", ex.what());
+        Rcpp::stop(ex.what());
     }
 
     R_set_altrep_data1(out, R_ptr);
