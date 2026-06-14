@@ -304,7 +304,7 @@ cdef class OutlierCppObject:
 
                 ### info used to rank outlierness
                 out_df.iat[row, 3] = self.model_outputs.outlier_depth_final[row]
-                out_df.iat[row, 4] = bool(self.model_outputs.all_clusters[outl_col][outl_clust].has_NA_branch)
+                out_df.iat[row, 4] = float(bool(self.model_outputs.all_clusters[outl_col][outl_clust].has_NA_branch))
                 out_df.iat[row, 5] = self.model_outputs.outlier_scores_final[row]
 
                 ### info about the suspicious value

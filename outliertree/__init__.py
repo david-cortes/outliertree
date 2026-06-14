@@ -500,7 +500,7 @@ class OutlierTree:
         cols_ord = np.array([False] * df.dtypes.shape[0]).astype(cols_num.dtype)
         if np.any(cols_cat):
             cols_ord = df.columns[cols_cat][ df[df.columns[cols_cat]].apply(lambda x: x.dtype.ordered, axis = 0) ]
-            cols_ord = np.in1d(df.columns.to_numpy(copy=False), cols_ord)
+            cols_ord = np.isin(df.columns.to_numpy(copy=False), cols_ord)
             if np.any(cols_ord):
                 cols_cat = cols_cat & (~cols_ord)
                 cols_str = cols_str | cols_cat
@@ -609,7 +609,7 @@ class OutlierTree:
 
         if df_cat is not None:
             for cl in range(self.cols_cat_.shape[0]):
-                new_cat = (~np.in1d(df_cat[self.cols_cat_[cl]], self._cat_mapping[cl])) & (~pd.isnull(df_cat[self.cols_cat_[cl]]).to_numpy(copy=False))
+                new_cat = (~np.isin(df_cat[self.cols_cat_[cl]], self._cat_mapping[cl])) & (~pd.isnull(df_cat[self.cols_cat_[cl]]).to_numpy(copy=False))
                 df_cat[self.cols_cat_[cl]] = pd.Categorical(df_cat[self.cols_cat_[cl]], self._cat_mapping[cl]).codes
                 if np.any(new_cat):
                     warn_new_cols = True
@@ -618,7 +618,7 @@ class OutlierTree:
 
         if df_ord is not None:
             for cl in range(self.cols_ord_.shape[0]):
-                new_cat = (~np.in1d(df_ord[self.cols_ord_[cl]], self._ord_mapping[cl])) & (~pd.isnull(df_ord[self.cols_ord_[cl]]).to_numpy(copy=False))
+                new_cat = (~np.isin(df_ord[self.cols_ord_[cl]], self._ord_mapping[cl])) & (~pd.isnull(df_ord[self.cols_ord_[cl]]).to_numpy(copy=False))
                 df_ord[self.cols_ord_[cl]] = pd.Categorical(df_ord[self.cols_ord_[cl]], self._ord_mapping[cl]).codes
                 if np.any(new_cat):
                     warn_new_cols = True
@@ -670,8 +670,8 @@ class OutlierTree:
         self._check_cols_present(df, self.cols_bool_)
 
     def _check_cols_present(self, df, cols):
-        if np.any(~np.in1d(cols, df.columns)):
-            missing_cols = cols[~np.in1d(cols, df.columns)]
+        if np.any(~np.isin(cols, df.columns)):
+            missing_cols = cols[~np.isin(cols, df.columns)]
             raise ValueError("Input DataFrame missing " + str(missing_cols.shape[0]) + " columns - head: " + str(list(missing_cols[:3])))
 
     def _process_cols_ignore(self, df, cols_ignore):
@@ -698,9 +698,9 @@ class OutlierTree:
             else:
                 return np.empty(0).astype("bool")
         else:
-            if np.any(~np.in1d(cols_ignore, df.columns)):
+            if np.any(~np.isin(cols_ignore, df.columns)):
                 warnings.warn("'cols_ignore' contains column names not present in the input DataFrame.")
-            cols_ignore = np.in1d(cols_concat, cols_ignore)
+            cols_ignore = np.isin(cols_concat, cols_ignore)
             if np.any(cols_ignore):
                 return cols_ignore
             else:
@@ -834,7 +834,7 @@ class OutlierTree:
             ### first suspicious value
             ln_value = "row [%s]" % row.Index
             ln_value += " - suspicious column: [%s] - " % row.suspicious_value["column"]
-            if np.in1d(row.suspicious_value["column"], self.cols_num_).max():
+            if np.isin(row.suspicious_value["column"], self.cols_num_).max():
                 if "decimals" in row.suspicious_value:
                     min_dec_this = max(min_dec_this, row.suspicious_value["decimals"])
                 ln_value += ("suspicious value: [%%.%df]" % min_dec_this) % row.suspicious_value["value"]
@@ -847,7 +847,7 @@ class OutlierTree:
             if "mean" in row.group_statistics:
                 ## numeric
                 if "upper_thr" in row.group_statistics:
-                    if np.in1d(row.suspicious_value["column"], self.cols_num_).max():
+                    if np.isin(row.suspicious_value["column"], self.cols_num_).max():
                         ln_group += (("\tdistribution: %%.%df%%%% <= %%.%df" % (3, min_dec_this))
                                                                      % (row.group_statistics["pct_below"] * 100,
                                                                         row.group_statistics["upper_thr"]))
@@ -855,7 +855,7 @@ class OutlierTree:
                         ln_group += "\tdistribution: %.3f%% <= [%s]" % (row.group_statistics["pct_below"] * 100,
                                                                         row.group_statistics["upper_thr"])
                 else:
-                    if np.in1d(row.suspicious_value["column"], self.cols_num_).max():
+                    if np.isin(row.suspicious_value["column"], self.cols_num_).max():
                         ln_group += (("\tdistribution: %%.%df%%%% >= %%.%df" % (3, min_dec_this))
                                                                      % (row.group_statistics["pct_above"] * 100,
                                                                         row.group_statistics["lower_thr"]))
@@ -863,7 +863,7 @@ class OutlierTree:
                         ln_group += "\tdistribution: %.3f%% >= [%s]" % (row.group_statistics["pct_above"] * 100,
                                                                         row.group_statistics["lower_thr"])
                 
-                if np.in1d(row.suspicious_value["column"], self.cols_num_).max():
+                if np.isin(row.suspicious_value["column"], self.cols_num_).max():
                     ln_group += ((" - [mean: %%.%df] - [sd: %%.%df] - [norm. obs: %%d]" % (min_dec_this, min_dec_this))
                                                                                  % (row.group_statistics["mean"],
                                                                                     row.group_statistics["sd"],
@@ -913,7 +913,7 @@ class OutlierTree:
                     if cond["comparison"] == "is NA":
                         ln_cond += "\n\t\t[%s] is NA" % cond["column"]
                     elif cond["comparison"] == "<=":
-                        if np.in1d(cond["column"], self.cols_num_).max():
+                        if np.isin(cond["column"], self.cols_num_).max():
                             ln_cond += (("\n\t\t[%%s] <= [%%.%df] (value: %%.%df)" % (min_dec_this, min_dec_this))
                                                                             % (cond["column"],
                                                                                cond["value_comp"],
@@ -923,7 +923,7 @@ class OutlierTree:
                                                                            cond["value_comp"],
                                                                            cond["value_this"])
                     elif cond["comparison"] == ">":
-                        if np.in1d(cond["column"], self.cols_num_).max():
+                        if np.isin(cond["column"], self.cols_num_).max():
                             ln_cond += (("\n\t\t[%%s] > [%%.%df] (value: %%.%df)" % (min_dec_this, min_dec_this))
                                                                            % (cond["column"],
                                                                               cond["value_comp"],
@@ -934,7 +934,7 @@ class OutlierTree:
                                                                           cond["value_this"])
                     
                     elif cond["comparison"] == "between":
-                        if np.in1d(cond["column"], self.cols_num_).max():
+                        if np.isin(cond["column"], self.cols_num_).max():
                             ln_cond += (("\n\t\t[%%s] between (%%.%df, %%.%df] (value: %%.%df)" % (min_dec_this, min_dec_this, min_dec_this))
                                                                                        % (cond["column"],
                                                                                           cond["value_comp"][0],
@@ -970,7 +970,7 @@ class OutlierTree:
                                     "conditions",       "tree_depth",
                                     "uses_NA_branch",   "outlier_score"
                                 ])
-        if np.any(~np.in1d(required_cols, df_outliers.columns.to_numpy(copy=False))):
+        if np.any(~np.isin(required_cols, df_outliers.columns.to_numpy(copy=False))):
             raise ValueError("DataFrame passed is not an output from this object's '.fit' or '.predict' methods.")
 
     def _simplify_condition(self, condition):
@@ -1022,7 +1022,7 @@ class OutlierTree:
                         if smallest_in is None:
                             smallest_in = np.array(cn["value_comp"])
                         else:
-                            smallest_in = smallest_in[np.in1d(smallest_in, cn["value_comp"])]
+                            smallest_in = smallest_in[np.isin(smallest_in, cn["value_comp"])]
                     elif cn["comparison"] == "=":
                         n_eq += 1
                         val_eq = cn["value_comp"]
