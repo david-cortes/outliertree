@@ -305,6 +305,8 @@ class OutlierTree:
         """
         ## TODO: this should have 'fit' / 'fit_transform' instead of these parameters
         outliers_print = self._check_outliers_print(outliers_print, min_decimals)
+        if not isinstance(df, pd.DataFrame) and hasattr(df, "to_pandas"):
+            df = df.to_pandas()
         self._check_valid_data(df)
         self._reset_object()
         arr_num, arr_cat, arr_ord = self._split_types(df)
@@ -407,6 +409,8 @@ class OutlierTree:
         if not self.is_fitted_:
             raise ValueError("Can only call '.predict' after the model has already been fit to some data.")
         outliers_print = self._check_outliers_print(outliers_print, min_decimals)
+        if not isinstance(df, (pd.DataFrame, pd.Series)) and hasattr(df, "to_pandas"):
+            df = df.to_pandas()
         if df.__class__.__name__ == "Series":
             df = df.to_frame().T
         self._check_valid_data(df)
