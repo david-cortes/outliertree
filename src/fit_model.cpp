@@ -152,8 +152,8 @@ bool fit_outliers_models(ModelOutputs &model_outputs,
                             std::vector<char>(), -1, std::vector<size_t>(),
                         };
 
-    model_outputs.ncat.assign(ncat, ncat + ncols_categ);
-    model_outputs.ncat_ord.assign(ncat_ord, ncat_ord + ncols_ord);
+    if (ncols_categ) model_outputs.ncat.assign(ncat, ncat + ncols_categ);
+    if (ncols_ord) model_outputs.ncat_ord.assign(ncat_ord, ncat_ord + ncols_ord);
     model_outputs.ncols_numeric = ncols_numeric;
     model_outputs.ncols_categ = ncols_categ;
     model_outputs.ncols_ord = ncols_ord;
